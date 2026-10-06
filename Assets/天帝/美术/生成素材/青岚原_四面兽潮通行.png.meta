@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: 4bec24c6e3bfbb44381b8820f85583ba
+TextureImporter:
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+    sRGBTexture: 0
+  isReadable: 1
+  maxTextureSize: 2048
+  textureSettings:
+    filterMode: 0
+    aniso: 1
+    wrapU: 1
+    wrapV: 1
+  nPOTScale: 0
+  textureType: 0
+  alphaIsTransparency: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 100
+    overridden: 0
+  userData: Tap四面兽潮地图4096原画或0.5米人工通行采样
+  assetBundleName:
+  assetBundleVariant:

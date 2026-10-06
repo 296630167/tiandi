@@ -1,0 +1,263 @@
+{
+  "sprites": [
+    {
+      "name": "页面背景",
+      "width": 1600,
+      "height": 900,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "一级面板",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "属性面板",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "详情框",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "道纹卡槽",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "二级面板",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "画布内衬",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "按钮",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "选中按钮",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "纸页签",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "选中页签",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "锁定页签",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "小信息框",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "确认按钮",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "取消按钮",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "返回按钮",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "数值增加提示",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "数值减少提示",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "滚动轨",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "滚动滑块",
+      "width": 256,
+      "height": 256,
+      "border": 24,
+      "atlas": false
+    },
+    {
+      "name": "道纹底板",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "源纹底板",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "选中框",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "品质框",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "锁定",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "解锁",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "已装备",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "未装备",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "可替换",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "不可替换",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "返回图标",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "旋转图标",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "源点图标",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "撤销图标",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "下拉图标",
+      "width": 256,
+      "height": 256,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "分割线",
+      "width": 512,
+      "height": 16,
+      "border": 16,
+      "atlas": false
+    },
+    {
+      "name": "构筑道纹图集",
+      "width": 2048,
+      "height": 2048,
+      "border": 0,
+      "atlas": true
+    }
+  ]
+}

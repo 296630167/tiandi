@@ -1,0 +1,40 @@
+fileFormatVersion: 2
+guid: 6c1beafedb484de2a4b121eb883d0003
+TextureImporter:
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+    sRGBTexture: 1
+  isReadable: 0
+  maxTextureSize: 4096
+  textureSettings:
+    filterMode: 1
+    aniso: 1
+    wrapU: 1
+    wrapV: 1
+  nPOTScale: 0
+  spriteMode: 1
+  spriteMeshType: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  textureType: 8
+  alphaIsTransparency: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    textureFormat: -1
+    textureCompression: 2
+    compressionQuality: 100
+    overridden: 0
+  spriteSheet:
+    sprites: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 6c1beafedb484de2a4b121eb883d0003
+    internalID: 0
+  userData: Tap高清补绘完整长卷融合后分段；同源边缘8像素
+  assetBundleName:
+  assetBundleVariant:

@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: 74028faabcb5495da4b4a23e34b610d0
+TextureImporter:
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+    sRGBTexture: 0
+  isReadable: 1
+  maxTextureSize: 2048
+  textureSettings:
+    filterMode: 0
+    aniso: 1
+    wrapU: 1
+    wrapV: 1
+  nPOTScale: 0
+  textureType: 0
+  alphaIsTransparency: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 100
+    overridden: 0
+  userData: 长卷人工描边0.5米通行图；白可走黑阻挡
+  assetBundleName:
+  assetBundleVariant:

@@ -1,0 +1,140 @@
+{
+  "sprites": [
+    {
+      "name": "导航按钮",
+      "id": "DWUI_D主页导航按钮",
+      "width": 980,
+      "height": 318,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "地图卷轴",
+      "id": "DWUI_D主页地图卷轴",
+      "width": 978,
+      "height": 964,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "实力卷轴",
+      "id": "DWUI_D主页实力卷轴",
+      "width": 1009,
+      "height": 280,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "主操作按钮",
+      "id": "DWUI_D主页主操作按钮",
+      "width": 961,
+      "height": 251,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "设置按钮",
+      "id": "DWUI_D主页设置按钮",
+      "width": 662,
+      "height": 215,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标角色",
+      "id": "DWUI_D主页图标角色",
+      "width": 46,
+      "height": 46,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标道纹",
+      "id": "DWUI_D主页图标道纹",
+      "width": 44,
+      "height": 45,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标道纹改造",
+      "id": "DWUI_D主页图标道纹改造",
+      "width": 47,
+      "height": 42,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标道纹图鉴",
+      "id": "DWUI_D主页图标道纹图鉴",
+      "width": 43,
+      "height": 43,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标宝盒",
+      "id": "DWUI_D主页图标宝盒",
+      "width": 46,
+      "height": 44,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标道纹回收",
+      "id": "DWUI_D主页图标道纹回收",
+      "width": 43,
+      "height": 42,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标设置",
+      "id": "DWUI_D主页图标设置",
+      "width": 30,
+      "height": 30,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "图标灵石",
+      "id": "DWUI_D主页图标灵石",
+      "width": 32,
+      "height": 40,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "地图卡框",
+      "id": "DWUI_D主页地图卡框",
+      "width": 171,
+      "height": 192,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "地图名称绢纸",
+      "id": "DWUI_D主页地图名称绢纸",
+      "width": 132,
+      "height": 35,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "封印纹章",
+      "id": "DWUI_D主页封印纹章",
+      "width": 70,
+      "height": 65,
+      "border": 0,
+      "atlas": false
+    },
+    {
+      "name": "导航留白",
+      "id": "DWUI_D主页导航留白",
+      "width": 384,
+      "height": 760,
+      "border": 0,
+      "atlas": false
+    }
+  ]
+}
