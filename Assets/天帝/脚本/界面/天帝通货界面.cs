@@ -254,7 +254,8 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
             bool 可选 = 通货可选(种类);
             int 数 = 通货.数量(种类); bool 选中 = 可选 && 种类 == 当前通货;
             通货键[i].interactable = 可选;
-            通货键[i].GetComponent<CanvasGroup>().alpha = 1;
+            // 禁用态只降低整张材料卡的透明度，保留原有纸面颜色和图标可读性。
+            通货键[i].GetComponent<CanvasGroup>().alpha = 可选 ? 1f : .5f;
             var 按钮色 = 通货键[i].colors; 按钮色.disabledColor = Color.white; 通货键[i].colors = 按钮色;
             数量字[i].text = "×" + (通货.无限通货 ? 通货.数量显示(种类) : 简写数量(数));
             数量字[i].color = 数 == 0 ? 淡字 : 天帝道纹美术.强调;

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -38,7 +39,12 @@ public static class 天帝全页巡检
     static string 启动(bool 回收, bool 层级补拍 = false)
     {
         if(EditorApplication.isPlayingOrWillChangePlaymode||Enumerable.Range(0,SceneManager.sceneCount).Any(i=>SceneManager.GetSceneAt(i).isDirty))throw new InvalidOperationException("需编辑模式且场景无未保存修改。");
-        if(SceneManager.GetActiveScene().path!="Assets/天帝/场景/天帝.unity")throw new InvalidOperationException("请在现有主场景执行。");
+        if(SceneManager.GetActiveScene().path!="Assets/天帝/场景/天帝.unity")
+        {
+            if(SceneManager.GetActiveScene().isDirty)throw new InvalidOperationException("当前场景有未保存修改，请先保存。");
+            // 命令行或新开的编辑器通常没有加载主场景；干净场景可直接切换，避免巡检入口误报中断。
+            EditorSceneManager.OpenScene("Assets/天帝/场景/天帝.unity");
+        }
         天帝数值同步检查.校验();
         仅回收=回收;
         仅层级补拍=层级补拍;
@@ -103,7 +109,8 @@ public static class 天帝全页巡检
         {
             if(文.GetComponentsInParent<CanvasGroup>().Any(x=>x.alpha<.1f))continue;
             if(!在视口(文.rectTransform))continue;
-            页.文字数++;if(!文.resizeTextForBestFit&&文.preferredHeight>文.rectTransform.rect.height+2)
+            // Overflow 用于地图等级胶囊等单行标签；仅对允许换行的文字检查裁切。
+            页.文字数++;if(文.verticalOverflow==VerticalWrapMode.Truncate&&!文.resizeTextForBestFit&&文.preferredHeight>文.rectTransform.rect.height+2)
                 页.溢出.Add(文.transform.parent.name+"/"+文.name+"："+文.text+" ["+文.preferredHeight+"/"+文.rectTransform.rect.height+"]");
         }
         报告.页面.Add(页);var t=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(目录,名+".jpg"),t.EncodeToJPG(86));UnityEngine.Object.Destroy(t);
@@ -193,7 +200,12 @@ public static class 天帝全页巡检
         游戏.界面.道纹页.指针移动(游戏.界面.道纹页.格屏幕位置(Vector2Int.zero));yield return 拍("18b源纹解封详情");检查("源纹解封详情实际可见",游戏.界面.道纹页.浮窗显示);
         游戏.返回主页();游戏.打开道纹改造();yield return 拍("19道纹改造");游戏.界面.改造页.打开背包();yield return 拍("20改造背包");
         var 包=游戏.GetComponentInChildren<天帝道纹背包>();if(包.显示项(0)!=null){包.显示详情(0,new Vector2(Screen.width*.5f,Screen.height*.5f));yield return 拍("21背包详情");}
-        包.隐藏详情();点("展开接口筛选");yield return 拍("21b高级接口筛选");
+        包.隐藏详情();
+        // 桌面端接口筛选常驻显示，不创建移动端的折叠按钮；两端都直接验证筛选结果。
+        var 展开接口 = 游戏.GetComponentsInChildren<Button>().FirstOrDefault(x => x.name == "展开接口筛选" && x.interactable);
+        if (展开接口 != null) 点("展开接口筛选"); else 包.设置接口筛选(1, true);
+        yield return 拍("21b高级接口筛选");
+        包.设置接口筛选(0, false);
         var d=包.GetComponentsInChildren<Dropdown>().First(x=>x.name=="背包品阶筛选");d.Show();yield return new WaitForSecondsRealtime(.22f);yield return 拍("21c背包品阶菜单");d.Hide();
         游戏.界面.改造页.关闭背包();游戏.返回主页();游戏.界面.显示战斗加载("正在前往青岚原……");yield return 拍("21d加载界面");游戏.界面.显示主页();
         游戏.进入战斗();while(游戏.阶段==游戏阶段.战斗加载)yield return null;

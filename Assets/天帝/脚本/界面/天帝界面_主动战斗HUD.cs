@@ -154,6 +154,11 @@ public partial class 天帝界面
             技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
             技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
             技能状态字[i].color = 当前闪色槽 == i && 灵力闪色秒 > 0 ? new Color(.85f, .20f, .12f) : 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文;
+            // 移动端文字为便于显示会挂到技能区顶层，单独同步 CanvasGroup alpha，禁用态保持整枚技能一致变灰。
+            float 文字Alpha = 技能透明[i].alpha;
+            var 标签色 = 技能标签[i].color; 标签色.a = 文字Alpha; 技能标签[i].color = 标签色;
+            var 状态色 = 技能状态字[i].color; 状态色.a = 文字Alpha; 技能状态字[i].color = 状态色;
+            var 按键色 = 技能按键字[i].color; 按键色.a = 文字Alpha; 技能按键字[i].color = 按键色;
         }
         float 闪冷却 = 战.闪避冷却剩余;
         bool 闪可操作非冷却 = !战.玩家死亡 && !战斗已暂停;
@@ -202,7 +207,8 @@ public partial class 天帝界面
         { 置(r, x, y, 172, 172); r.localScale = Vector3.one * (球 / 172); }
         球位(生命球区, 手机 ? 148 : w * .5f - 500, h - 球 - (手机 ? 12 : 28));
         球位(灵力球区, 手机 ? 222 : w * .5f + 328, h - 球 - (手机 ? 12 : 28));
-        置(技能区, 手机 ? w - 176 : w * .5f - 304, h - (手机 ? 128 : 152), 手机 ? 168 : 608, 手机 ? 116 : 128);
+        // 手机六枚圆形技能保持 56px 触控热区，同时向左扩展一格，给右侧通知和闪避留安全边距。
+        置(技能区, 手机 ? w - 184 : w * .5f - 304, h - (手机 ? 128 : 152), 手机 ? 168 : 608, 手机 ? 116 : 128);
         for (int i = 0; i < 6; i++)
         {
             float x = 手机 ? i % 3 * 56 : i * 102, y = 手机 ? i / 3 * 56 : 0;
@@ -237,7 +243,7 @@ public partial class 天帝界面
         var 地图状态 = 战斗界面层.Find("主角战斗状态") as RectTransform;
         置(地图状态, 手机 ? 10 : 18, 手机 ? 8 : 18, 手机 ? 148 : 290, 手机 ? 44 : 76);
         foreach (var 文 in 地图状态.GetComponentsInChildren<Text>())
-        { if (文 == 战斗血量) continue; 天帝响应布局.比例(文.rectTransform, .05f, 文 == 战斗经验字 ? .50f : .04f, .9f, .40f); if (手机) 文.fontSize = 文 == 战斗经验字 ? 9 : 10; }
+        { if (文 == 战斗血量) continue; 天帝响应布局.比例(文.rectTransform, .05f, 文 == 战斗经验字 ? .50f : .04f, .9f, .40f); if (手机) 文.fontSize = 文 == 战斗经验字 ? 10 : 11; }
         天帝响应布局.比例(战斗经验底, .05f, .44f, .9f, .035f);
         bool 满级 = 游戏.主角属性.等级 >= 天帝数值.玩家上限;
         战斗条进度(战斗经验条, 战斗经验底, 满级 ? 1 : (float)游戏.道纹数据.当前经验 / Mathf.Max(1, 游戏.道纹数据.升级所需经验));
@@ -250,7 +256,7 @@ public partial class 天帝界面
             if (战斗波次 != null)
             {
                 天帝响应布局.比例(战斗波次.rectTransform, .05f, .06f, .90f, .88f);
-                战斗波次.fontSize = 9;
+                战斗波次.fontSize = 10;
                 战斗波次.alignment = TextAnchor.MiddleLeft;
             }
         }
@@ -263,10 +269,16 @@ public partial class 天帝界面
         置(目标, 手机 ? 10 : 18, 手机 ? 112 : h - 202, 手机 ? 160 : 274, 手机 ? 24 : 60);
         if (战斗目标 != null)
         {
-            战斗目标.fontSize = 手机 ? 8 : 16; 战斗目标.horizontalOverflow = HorizontalWrapMode.Overflow;
+            战斗目标.fontSize = 手机 ? 10 : 16; 战斗目标.horizontalOverflow = HorizontalWrapMode.Overflow;
             if (手机) 天帝响应布局.比例(战斗目标.rectTransform, .06f, .08f, .88f, .84f);
         }
-        if (拾取列表 != null) 置(拾取列表.区域, 手机 ? w - 208 : w - 380, 手机 ? 120 : h - 440, 手机 ? 195 : 362, 手机 ? 42 : 150);
+        // 紧凑拾取提示内部按四行堆叠；移动端放到技能栏左侧，保留完整行高并避免遮挡可点击技能。
+        if (拾取列表 != null)
+        {
+            float 提示宽 = 手机 ? Mathf.Min(238, Mathf.Max(188, w - 230)) : 362;
+            float 提示左 = 手机 ? Mathf.Max(10, Mathf.Min(w - 提示宽 - 10, w - 184 - 提示宽 - 8)) : w - 380;
+            置(拾取列表.区域, 提示左, 手机 ? 120 : h - 440, 提示宽, 手机 ? 216 : 150);
+        }
         if (手机 && 战斗摇杆 != null) 置((RectTransform)战斗摇杆.transform, 10, h - 90, 82, 82);
     }
 }

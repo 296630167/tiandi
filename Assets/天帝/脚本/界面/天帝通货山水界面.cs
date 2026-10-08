@@ -92,7 +92,8 @@ public sealed partial class 天帝通货界面
             var 种=天帝通货.可用种类[i];int 槽=Array.IndexOf(材料顺序,种);int 行=槽<8?槽/2:槽==10?5:4;int 列=槽==10?0:槽%2;
             var 卡=(RectTransform)通货键[i].transform;山水位置(卡,36+列*342,76+行*77+(槽>=8?43:0),321,68);
             山水位置(卡.Find("图标") as RectTransform,10,7,56,55);
-            山水文字(名称字[i],82,9,130,28,22);
+            // 名称行使用完整字面高度，避免默认字体首选高度超过 28px 时被裁掉。
+            山水文字(名称字[i],82,5,130,34,22);
             名称字[i].verticalOverflow=VerticalWrapMode.Overflow;
             山水文字(数量字[i],213,8,66,32,26,TextAnchor.MiddleRight);
             数量字[i].fontStyle=FontStyle.Bold;数量字[i].verticalOverflow=VerticalWrapMode.Overflow;
@@ -100,7 +101,8 @@ public sealed partial class 天帝通货界面
             var 数量描边=数量字[i].gameObject.AddComponent<Outline>();数量描边.effectColor=new Color32(247,239,218,220);数量描边.effectDistance=new Vector2(.8f,-.8f);
             foreach(var 文 in 卡.GetComponentsInChildren<Text>())if(文!=名称字[i]&&文!=数量字[i])
             {
-                山水文字(文,82,37,220,20,16);文.verticalOverflow=VerticalWrapMode.Overflow;
+                // 用途说明与名称分开留出安全行距，长说明仍在卡内换行。
+                山水文字(文,82,41,220,24,16);文.verticalOverflow=VerticalWrapMode.Overflow;
             }
         }
         var 分隔=左.Find("材料说明分隔") as RectTransform;山水位置(分隔,40,574,640,1);
