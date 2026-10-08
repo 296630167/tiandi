@@ -2,27 +2,40 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-// 全游戏共用的敦煌彩绘素材；引用放在已有美术资源资产中，构建时一并收录。
+// 全游戏共用的青绿岩彩语义皮肤，旧资源编号与品阶颜色保留兼容。
 public static class 天帝道纹美术
 {
-    public static readonly Color 正文 = new Color(.12f, .29f, .34f);
-    public static readonly Color 次文 = new Color(.33f, .40f, .41f);
+    static Texture2D 瓷图;
+    static bool 已查瓷图;
+    public static Texture2D 白瓷图集
+    {
+        get { if (!已查瓷图) { 瓷图=Resources.Load<Texture2D>("白瓷道纹/构筑道纹图集"); 已查瓷图=true; } return 瓷图; }
+    }
+    public static readonly Color 正文 = new Color(.09f, .24f, .27f);
+    public static readonly Color 次文 = new Color(.27f, .37f, .37f);
     public static readonly Color 纸墨 = 正文;
     public static readonly Color 纸次墨 = 次文;
-    public static readonly Color 强调 = new Color(.13f, .40f, .48f);
+    public static readonly Color 强调 = new Color(.14f, .38f, .39f);
     public static readonly Color 金墨 = new Color(.53f, .33f, .13f);
-    public static readonly Color 浅字 = new Color(1f, .97f, .86f);
-    public static readonly Color 纸色 = new Color(1f, .95f, .81f);
+    public static readonly Color 浅字 = new Color(.95f, .91f, .78f);
+    public static readonly Color 纸色 = new Color(.95f, .91f, .80f);
     public static readonly Color 行底 = new Color(.93f, .94f, .85f);
-    public static readonly Color 画布石青 = new Color(.22f, .37f, .43f);
+    public static readonly Color 画布石青 = new Color(.16f, .29f, .32f);
     public static readonly Color 成功色 = new Color(.16f, .41f, .30f);
     public static readonly Color 警示色 = new Color(.64f, .27f, .17f);
     // 品阶文字在通知深底上使用独立亮色，浅纸面继续沿用原品阶配色。
     static readonly string[] 深底品阶色 = { "#FFF7DC", "#8DE5B2", "#8FC7FF", "#E5B1FF", "#FFCE8E", "#FFB1AB", "#FFE68E", "#BFE9FF" };
     public static string 深底品阶文字(道纹品阶 阶) => "<color=" + 深底品阶色[Mathf.Clamp((int)阶, 0, 7)] + ">" + 阶 + "</color>";
-    public static Sprite 获取(string 名) => 天帝美术资源.当前?.获取("DWUI_" + 名);
+    public static Sprite 获取(string 名) => 天帝剪纸界面皮肤.获取(名) ?? 天帝青绿皮肤.获取("DWUI_" + 名) ?? 天帝美术资源.当前?.获取("DWUI_" + 名);
     public static bool 已接入 => 获取("页面背景") != null;
     public static bool 彩绘皮肤 => 获取("主页落地阴影") != null;
+    // 中央只显示一个字；完整名称仍由卡片说明与详情显示。
+    public static string 单字(道纹实例 纹)
+    {
+        if(纹==null)return "";
+        string 名=纹.短名;
+        return string.IsNullOrEmpty(名)?"":名.Substring(0,1);
+    }
     // 保留原有语义色相，将旧暗底用的浅字转成亮纸上的深色。
     public static Color 纸面文字(Color 原色)
     {
@@ -35,9 +48,9 @@ public static class 天帝道纹美术
     public static void 应用(Image 图, string 名, bool 拉伸 = true)
     {
         var 资源 = 获取(名); if (资源 == null) return;
-        图.sprite = 资源; 图.type = 拉伸 ? Image.Type.Sliced : Image.Type.Simple;
+        图.sprite = 资源; 图.type = 拉伸 && !(天帝剪纸界面皮肤.已启用&&名.Contains("按钮")) ? Image.Type.Sliced : Image.Type.Simple;
         图.color = Color.white; 图.raycastTarget = false;
-        图.pixelsPerUnitMultiplier = 彩绘皮肤 ? 2 : 1;
+        图.pixelsPerUnitMultiplier = 天帝剪纸界面皮肤.已启用 ? 1 : 彩绘皮肤 ? 2 : 1;
     }
     public static void 选中(Image 图, bool 是)
     {

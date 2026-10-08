@@ -45,13 +45,18 @@ def region_counts(level):
     return [total - elite - leader - 1, elite, leader, 1]
 
 
+def arena_growth(level, key):
+    arena = CFG['map']['arena']
+    original = arena[key + '_start'] + (arena[key + '_end'] - arena[key + '_start']) * (clamp(level, 1, 100) - 1) / 99
+    opening = arena['opening']
+    if level >= opening['last_level'] or key not in ('active', 'batch', 'interval'):
+        return original
+    blend = clamp((level - 1) / max(1, opening['last_level'] - 1), 0, 1)
+    return opening[key] + (original - opening[key]) * blend
+
+
 def tactical_growth(level, key, start=1):
     return start + (CFG['battle_content']['growth'][key] - start) * (clamp(level, 1, 100) - 1) / 99
-
-
-def arena_growth(level, key):
-    a = CFG['map']['arena']
-    return a[key + '_start'] + (a[key + '_end'] - a[key + '_start']) * (clamp(level, 1, 100) - 1) / 99
 
 
 def boss_grade_floor(level):
@@ -791,8 +796,16 @@ def battle_content_audit():
     b = CFG['battle_content']
     a = CFG['map']['arena']
     check('大图中央出生边缘安全带', a['width'] == a['height'] == 64 and 0 < a['edge_padding'] < a['edge_depth'] < a['width'] / 2 and a['spawn_player_distance'] >= 14)
-    check('大图批次与在场端点', arena_growth(1,'active') == 24 and arena_growth(100,'active') == 240 and arena_growth(1,'batch') == 4 and arena_growth(100,'batch') == 24 and math.isclose(arena_growth(100,'interval'),.9))
+    check('大图批次与在场端点', arena_growth(1,'active') == 16 and arena_growth(100,'active') == 240 and arena_growth(1,'batch') == 2 and arena_growth(100,'batch') == 24 and math.isclose(arena_growth(100,'interval'),.9))
+    check('初期增援各参数平滑且十级恢复原节奏', all(
+        math.isclose(arena_growth(level,key),a[key+'_start']+(a[key+'_end']-a[key+'_start'])*(level-1)/99)
+        for level in range(10,101) for key in ('active','batch','interval')) and
+        all(arena_growth(level,'active')<=arena_growth(level+1,'active') and arena_growth(level,'batch')<=arena_growth(level+1,'batch') and arena_growth(level,'interval')>=arena_growth(level+1,'interval') for level in range(1,100)))
     check('反风筝参数仍有可躲预警', 0 < a['bite_follow_fraction'] < 1 and a['charge_period'] >= 7 and a['aim_lead_max'] <= .8 and a['flank_fraction'] <= .4)
+    terrain=a['terrain']
+    check('随机障碍数量和迭代有界',0<terrain['cluster_min']<=terrain['cluster_max']<=32 and 1<=terrain['members_min']<=terrain['members_max']<=4 and terrain['attempts']<=128)
+    check('随机地图安全区与走廊留白',terrain['spawn_safe']>=5 and terrain['edge_clear']>=5 and terrain['corridor_half_width']>=1.8 and 0<terrain['cover_fraction']<=.25)
+    check('浅滩仅减速且不锁住移动',0<terrain['shallow_speed']<=1 and terrain['shallows_min']<=terrain['shallows_max'] and terrain['shallow_radius_min']<=terrain['shallow_radius_max'])
     for level in range(1,101):
         check(f'大图{level}刷新预算有效', 0 < arena_growth(level,'batch') <= arena_growth(level,'active') < sum(region_counts(level)) and arena_growth(level,'interval') >= .89)
     check('19普通物种2头目1狼王', len(b['species']) == 22)
@@ -821,6 +834,10 @@ def battle_content_audit():
         check(f'地图{level}19技能四品质属性伤害归一',ok)
     check('辅助预算不能无限续命', b['support']['heal_fraction'] <= b['support']['heal_target_cap'] <= .15 and b['support']['heal_global_cap'] <= .1 and b['support']['shield_global_cap'] <= .08)
     check('持续区保留逃路且总伤害有限', b['limits']['zones'] <= 3 and b['limits']['escape_count'] >= 3 and b['limits']['ground_seconds']/b['limits']['tick_interval']*b['limits']['ground_damage'] <= .4)
+    m, v = b['movement'], b['presentation']
+    check('战术决策低频且换位有限', m['decision_seconds'] >= .4 and 0 < m['orbit_step'] <= 2 and 0 < m['support_cover'] < m['assist_range'] and m['boss_close'] < m['boss_far'])
+    check('战斗演出有独立可见预算', 0 < v['glow_visible_max'] <= 48 and 0 < v['spark_count'] <= 8 and 0 < v['impact_seconds'] <= .5 and 0 < v['trail_length'] <= 1)
+    check('预警保留边界并限制填充遮挡', 0 < v['telegraph_alpha'] < v['telegraph_fill_alpha'] <= .3 and 0 < v['hit_stretch'] <= .15 and 0 < v['windup_squash'] <= .15)
 
 
 def write_outputs(players, combat, enemies, stress, offlevel, survival, maps, talents, recommendations, xp):

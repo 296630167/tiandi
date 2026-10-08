@@ -72,6 +72,7 @@ public static class 天帝移动适配验证
             点(输入,页.格屏幕位置(格)); 键("卸下道纹"); 查("触屏卸下保留同一库存实例",!纹.格子.HasValue && 网.道纹.Contains(纹));
             查("触屏卸下可撤销",页.撤销上一步() && 网.道纹.Single(x=>x.编号==纹.编号).格子==格);
             纹=网.道纹.Single(x=>x.编号==纹.编号); 页.触屏选择(纹,页.格屏幕位置(格)); 页.取消触屏选择(); 查("取消选择清空浮窗和待放朝向",页.触屏选中道纹==null && !页.浮窗显示 && !页.触屏待放接口.HasValue);
+            页.定位格子(new Vector2Int(2,0)); // 前面极限缩放/平移后，将本次点击目标移回真实可编辑区。
             点(输入,页.格屏幕位置(new Vector2Int(2,0)));typeof(天帝道纹界面).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(页,null);
             查("无选择解锁结果提示可持续阅读",页.GetComponentsInChildren<Text>().Any(x=>x.text.Contains("格子已解锁")&&x.text.Contains("消耗1技能点")));
 
@@ -103,7 +104,9 @@ public static class 天帝移动适配验证
             ui.显示道纹(网);Canvas.ForceUpdateCanvases();ui.更新适配();
             var 设计=ui根.transform.Find("安全区/设计区") as RectTransform;
             查("设计区固定16比9逻辑尺寸",Vector2.Distance(设计.rect.size,天帝移动适配.布局尺寸)<.1f);
-            查("设计区映射到1920比1080",Vector2.Distance(Vector2.Scale(设计.rect.size,设计.localScale),天帝移动适配.固定分辨率)<.1f);
+            var 屏幕=天帝移动适配.屏幕尺寸;var 有效区=天帝移动适配.有效安全区(天帝移动适配.安全区,屏幕);
+            float 安全比例=天帝移动适配.显示比例(有效区)/天帝移动适配.显示比例(new Rect(0,0,屏幕.x,屏幕.y));
+            查("设计区以1920比1080基准适配可用安全区",Vector2.Distance(Vector2.Scale(设计.rect.size,设计.localScale),(Vector2)天帝移动适配.固定分辨率*安全比例)<.1f);
             查("已移除整页阅读缩放工具",!ui根.GetComponentsInChildren<Transform>(true).Any(x=>x.name=="触屏阅读工具"));
 
             // 检查真实HUD生成函数，测试屏幕只作用于本隐形画布，不调整GameView。

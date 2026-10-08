@@ -24,7 +24,13 @@ public static class 天帝数值
     public static double 取(string 路径) => 天帝数值配置.取(路径);
     public static double 地图进度(int 等级) => 夹(等级 - 1, 0, 99) / 99;
     public static double 大图成长(int 等级, string 键)
-        => 取("map.arena." + 键 + "_start") + (取("map.arena." + 键 + "_end") - 取("map.arena." + 键 + "_start")) * 地图进度(等级);
+    {
+        double 原 = 取("map.arena." + 键 + "_start") + (取("map.arena." + 键 + "_end") - 取("map.arena." + 键 + "_start")) * 地图进度(等级);
+        double 末级 = 取("map.arena.opening.last_level");
+        if (等级 >= 末级 || 键 != "active" && 键 != "batch" && 键 != "interval") return 原;
+        double 初 = 取("map.arena.opening." + 键), 比例 = 夹((等级 - 1) / Math.Max(1, 末级 - 1), 0, 1);
+        return 初 + (原 - 初) * 比例;
+    }
     public static double 敌战术成长(int 等级, string 键, double 初值 = 1)
         => 初值 + (取("battle_content.growth." + 键) - 初值) * 地图进度(等级);
     public static int 区域敌人数(int 等级, int 品质)

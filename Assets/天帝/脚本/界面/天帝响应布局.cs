@@ -12,6 +12,7 @@ public sealed class 天帝比例矩形 : MonoBehaviour
 public sealed class 天帝响应布局 : MonoBehaviour
 {
     readonly List<天帝比例矩形> 待建 = new List<天帝比例矩形>();
+    public int 修订号 { get; private set; }
     static readonly Vector2 默认尺寸 = new Vector2(1600, 900);
     public static RectTransform 创建(RectTransform 父, string 名, float x, float y, float w, float h)
     {
@@ -26,7 +27,7 @@ public sealed class 天帝响应布局 : MonoBehaviour
     {
         var d = r.GetComponent<天帝比例矩形>() ?? r.gameObject.AddComponent<天帝比例矩形>(); d.参考尺寸 = 参考;
         var canvas = r.GetComponentInParent<Canvas>(); if (canvas == null) return;
-        var 布局 = canvas.GetComponent<天帝响应布局>() ?? canvas.gameObject.AddComponent<天帝响应布局>(); 布局.待建.Add(d);
+        var 布局 = canvas.GetComponent<天帝响应布局>() ?? canvas.gameObject.AddComponent<天帝响应布局>(); 布局.待建.Add(d); 布局.修订号++;
     }
     static Vector2 参考(RectTransform r)
     {

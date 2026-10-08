@@ -1,0 +1,20 @@
+{
+  "用途": "既有独立生成资源的衍生处理，不是概念图或截图裁片",
+  "来源": {
+    "外框": {
+      "原独立资源": "Assets\\天帝\\Resources\\山水首两页\\属性_生命.png",
+      "sha256": "430db2419ac7e762e2a108d015cf73343ccf94203789f389c0ea12cd96b7a2ac"
+    },
+    "液体材质": {
+      "原独立资源": "Assets\\天帝\\Resources\\青绿界面\\深青面板.png",
+      "sha256": "0ec37071d6691a1582297c3b10fffb09f4523e82547338c0de1f06b344b0c8f7"
+    }
+  },
+  "处理": "外框清中心、液体使用既有深青水彩材质并加球面明暗，UGUI动态着色和液位",
+  "新远程请求": {
+    "model_requested": "gpt / GPT Image 2",
+    "model_returned": null,
+    "status": "unknown_after_300s_timeout",
+    "未重试": true
+  }
+}

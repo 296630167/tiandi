@@ -20,10 +20,12 @@ public sealed partial class 天帝道纹界面
     public int 当前预览通路 { get; private set; }
     readonly Button[] 通路按钮 = new Button[6];
     RectTransform 来源层;
+    RectTransform 来源卡内容;
     Text 来源正文;
     public 普攻参数 当前演示参数 { get; private set; }
-    public string 构筑预览说明 => 对比字 != null ? 对比字.text : "";
-    public string 连接诊断说明 => 连接字 != null ? 连接字.text : "";
+    string 山水完整预览说明, 山水完整诊断说明;
+    public string 构筑预览说明 => 山水构筑 ? 山水完整预览说明 ?? "" : 对比字 != null ? 对比字.text : "";
+    public string 连接诊断说明 => 山水构筑 ? 山水完整诊断说明 ?? "" : 连接字 != null ? 连接字.text : "";
     static readonly Color 亮青 = 天帝道纹美术.强调;
 
     void 建构筑预览()
@@ -48,7 +50,7 @@ public sealed partial class 天帝道纹界面
         文字(框, "顺序链路：攻击分段 · 生存/射速全网去重", 22, 413, 388, 20, 13, TextAnchor.MiddleLeft).color = 天帝道纹美术.纸次墨;
         变化底 = 区块(框, "数值变化提示", 16, 439, 400, 74).gameObject.AddComponent<Image>(); 天帝道纹美术.应用(变化底, "数值增加提示"); 变化底.enabled = false;
         对比字 = 文字(框, "", 22, 445, 388, 66, 15, TextAnchor.UpperLeft); 对比字.color = 天帝道纹美术.纸墨;
-        连接字 = 文字(框, "", 22, 515, 388, 44, 13, TextAnchor.UpperLeft); 连接字.color = 天帝道纹美术.纸次墨;
+        连接字 = 文字(框, "", 22, 511, 388, 48, 13, TextAnchor.UpperLeft); 连接字.color = 天帝道纹美术.纸次墨;
         对比字.verticalOverflow = 连接字.verticalOverflow = VerticalWrapMode.Truncate;
     }
     void 重建构筑预览()
@@ -73,6 +75,7 @@ public sealed partial class 天帝道纹界面
             天帝界面美术.选项(键.GetComponent<Image>(), d == 当前预览通路, !开);
             var 字 = 键.GetComponentInChildren<Text>(); 字.color = 开 ? 天帝道纹美术.纸墨 : new Color(.35f,.42f,.39f);
             字.text = (((6 - d) % 6) + 1) + " · " + 天帝道纹.方向名[d] + (开 ? "" : " " + 天帝道纹.通路解封等级(d) + "级");
+            if(山水构筑){天帝图三四山水素材.按钮(键,d==当前预览通路);字.fontSize=14;字.resizeTextMaxSize=15;}
         }
     }
     普攻参数 读取演示参数(天帝道纹 网)
@@ -91,9 +94,11 @@ public sealed partial class 天帝道纹界面
         return Mathf.Abs(差) < .0001f ? "" : " <color=" + (差 > 0 ? "#28654F>+" : "#934839>") + 差.ToString(格式) + "</color>";
     }
     void 更新构筑预览(道纹实例 纹, Vector2Int? 放置格, bool 旋转, bool 收回)
+        => 更新待放构筑预览(纹, 放置格, 旋转, 收回, null);
+    void 更新待放构筑预览(道纹实例 纹, Vector2Int? 放置格, bool 旋转, bool 收回, int? 待放接口)
     {
         if (攻击演示 == null || 连接诊断 == null) return;
-        int? 接口覆盖 = 拖纹 == 纹 ? 拖动接口 : null;
+        int? 接口覆盖 = 待放接口 ?? (拖纹 == 纹 ? 拖动接口 : null);
         int? 入口覆盖 = 拖纹 == 纹 ? 拖影纹?.入口方向 : null;
         if (已有预览缓存 && 上次预览纹 == 纹 && 上次预览格 == 放置格 && 上次预览旋转 == 旋转 && 上次预览收回 == 收回 && 上次预览接口 == 接口覆盖 && 上次预览入口 == 入口覆盖) return;
         上次预览纹 = 纹; 上次预览格 = 放置格; 上次预览旋转 = 旋转; 上次预览收回 = 收回; 已有预览缓存 = true;
@@ -109,6 +114,7 @@ public sealed partial class 天帝道纹界面
         {
             bool 减 = 后.伤害 < 当前.伤害 || 后.数量 < 当前.数量 || 后.分裂 < 当前.分裂 || 后.连锁 < 当前.连锁;
             天帝道纹美术.应用(变化底, 减 ? "数值减少提示" : "数值增加提示"); 变化底.color = new Color(1,1,1,.72f);
+            if(山水构筑){变化底.sprite=null;变化底.color=new Color(.40f,.60f,.48f,.12f);}
         }
         射击字.text = 后.顺序计划 != null ? "每颗属性独立 · 加成来源查看各段 · " + 后.间隔.ToString("0.00") + "秒/次" : "普通 " + 后.普通伤害.ToString("0.##") + " ＋ 五行 " + 后.五行额外伤害.ToString("0.##") + "  ·  " + 后.间隔.ToString("0.00") + "秒 / 次";
         形态字.text = 后.顺序计划 != null ? 后.顺序计划.摘要 : "数量 " + 后.数量 + "   分裂 " + 后.分裂 + "   连锁 " + 后.连锁 + "\n直线飞行   范围 " + 后.溅射半径.ToString("0.#") + "米";
@@ -130,7 +136,7 @@ public sealed partial class 天帝道纹界面
             {
                 画布.高亮路径.Clear(); 画布.高亮路径.AddRange(预览诊断.路径(新纹, 当前预览通路));
             }
-            var 变 = new StringBuilder(旋转 ? "右键旋转后（尚未执行）" : 收回 ? "拖回背包后（尚未执行）" : "放置后（尚未执行）");
+            var 变 = new StringBuilder(旋转 ? "旋转后（尚未执行）" : 收回 ? "收回背包后（尚未执行）" : "放置后（尚未执行）");
             变.Append("\n将亮起 ").Append(亮起).Append(" 枚 · 将暗掉 ").Append(暗掉).Append(" 枚");
             int 项 = 0;
             for (int i = 0; i < 数据.生效加成.Length; i++)
@@ -148,13 +154,31 @@ public sealed partial class 天帝道纹界面
             连接字.text = 归属说明(数据, 纹, 连接诊断);
             var 字 = new StringBuilder(天帝道纹.通路名称(当前预览通路)).Append(" · 接通 ").Append(数据.弹槽生效数[当前预览通路]).Append(" 枚");
             字.Append("\n原始词条：力量+").Append(数据.生效加成[(int)道纹属性.力量].ToString("0.##")).Append("  智力+").Append(数据.生效加成[(int)道纹属性.智力].ToString("0.##")).Append("  速度+").Append(数据.生效加成[(int)道纹属性.速度].ToString("0.##"));
-            字.Append(数据.通路参与射击(当前预览通路) ? "\n已接入通路轮流射击 · 余响复用原通路" : "\n空通路待配置 · 接入道纹后参与射击"); 对比字.text = 字.ToString();
+            字.Append(数据.通路开放(当前预览通路) ? "\n按对应数字键施法 · 余响继承通路与方向" : "\n接口尚未解封"); 对比字.text = 字.ToString();
+        }
+        if(山水构筑)
+        {
+            // 计算与完整诊断保持原文；主栏只展示当前决策所需摘要，规则与各段来源在详情入口中查看。
+            山水完整预览说明=对比字.text;山水完整诊断说明=连接字.text;
+            单弹字.text=后.顺序计划!=null?"<size=17>"+(沙盘==null?"首发数量":身份)+"  </size><size=30>"+后.顺序计划.根弹数+"</size><size=17> 颗</size>":"<size=17>"+身份+"  </size><size=30>"+后.伤害.ToString("0.##")+"</size>"+(沙盘!=null?变化(当前.伤害,后.伤害):"");
+            射击字.text="释放间隔  "+后.间隔.ToString("0.00")+" 秒 / 次";
+            形态字.text=后.顺序计划!=null?后.顺序计划.摘要.Split('\n')[0]:"数量 "+后.数量+"   分裂 "+后.分裂+"   连锁 "+后.连锁+"\n范围 "+后.溅射半径.ToString("0.#")+" 米";
+            if(后.顺序计划!=null){int 分隔=形态字.text.IndexOf('·');if(分隔>=0)形态字.text=形态字.text.Substring(分隔+1).Trim();}
+            对比字.text=沙盘==null?"本通路已接通 "+数据.弹槽生效数[当前预览通路]+" 枚\n"+(数据.通路开放(当前预览通路)?"按对应数字键施法":"接口尚未解封"):(旋转?"旋转后（尚未执行）":收回?"收回后（尚未执行）":"放置后（尚未执行）")+"\n将亮起 "+亮起+" 枚 · 将暗掉 "+暗掉+" 枚";
+            连接字.text=纹==null?"拖动道纹，预览放置后的变化":山水完整诊断说明.Split('\n')[0];
+            if(纹!=null&&连接字.text.Length>18){int 分隔=连接字.text.IndexOf('·');连接字.text=(分隔<0?"道纹状态":连接字.text.Substring(0,分隔).Trim())+" · 悬停查看详情";}
         }
         画布.SetVerticesDirty();
     }
     string 归属说明(天帝道纹 网, 道纹实例 纹, 天帝道纹连接诊断 诊断)
     {
         if (纹 == null || !纹.生效 || 纹.是源纹) return 诊断.说明(纹);
+        if (纹.是特性道纹)
+        {
+            string 状态 = 纹.特性状态 ?? "已接通 · 请查看条件";
+            int 换行 = 状态.IndexOf('\n');
+            return (换行 < 0 ? 状态 : 状态.Substring(0, 换行)) + "\n点选道纹看实际条件；加成来源可看完整链路。";
+        }
         int 归属 = 网.通路掩码(纹); var 路 = new List<string>();
         for (int i = 0; i < 6; i++) { int d = (6 - i) % 6; if ((归属 & (1 << d)) != 0) 路.Add((i + 1).ToString()); }
         return "已接通 · 通路 " + string.Join(" / ", 路) + (路.Count > 1 ? " 共享（白点）" : "") + ((归属 & (1 << 当前预览通路)) == 0 ? "\n未归属当前所选通路。" : "");
@@ -174,17 +198,33 @@ public sealed partial class 天帝道纹界面
             来源层 = 区块(根, "加成来源层", 0, 0, 1600, 900);
             var 遮 = 底(来源层, "来源遮罩", 0, 0, 1600, 900, new Color(0, 0, 0, .65f)); 遮.GetComponent<Image>().raycastTarget = true;
             var 框 = 底(来源层, "来源面板", 350, 80, 900, 740, new Color(.035f, .065f, .078f));
-            文字(框, "有效加成来源", 25, 16, 690, 48, 28, TextAnchor.MiddleLeft);
-            按钮(框, "关闭", 740, 19, 130, 44, 关闭筛选);
-            文字(框, "顺序链路：各弹攻击独立 · 生存/射速全网去重 · 白点表示共享节点", 25, 70, 850, 36, 17, TextAnchor.MiddleLeft);
-            var 视 = 底(框, "来源滚动视口", 25, 120, 850, 592, new Color(.025f, .046f, .055f)); 视.GetComponent<Image>().raycastTarget = true; 视.gameObject.AddComponent<RectMask2D>();
+            天帝辅助页山水.纸(框.GetComponent<Image>(),"弹窗纸框");
+            var 标题=文字(框, "有效加成来源", 190, 76, 520, 70, 32, TextAnchor.MiddleCenter);标题.fontStyle=FontStyle.Normal;
+            var 关闭=按钮(框, "关闭", 740, 82, 130, 48, 关闭筛选);天帝辅助页山水.按钮(关闭);
+            文字(框, "顺序链路：各弹攻击独立 · 生存/射速全网去重 · 白点表示共享节点", 38, 142, 822, 46, 17, TextAnchor.MiddleLeft);
+            var 视 = 底(框, "来源滚动视口", 25, 194, 850, 510, new Color(.025f, .046f, .055f)); 视.GetComponent<Image>().raycastTarget = true; 视.gameObject.AddComponent<RectMask2D>();
             var 滚 = 视.gameObject.AddComponent<ScrollRect>(); 滚.horizontal = false; 滚.vertical = true; 滚.movementType = ScrollRect.MovementType.Clamped; 滚.viewport = 视;
             来源正文 = 文字(视, "", 14, 10, 796, 570, 20, TextAnchor.UpperLeft); 滚.content = 来源正文.rectTransform;
+            来源正文.fontStyle=FontStyle.Normal;来源正文.color=天帝剪纸界面皮肤.墨;来源正文.lineSpacing=1.16f;
             来源正文.rectTransform.anchorMin = 来源正文.rectTransform.anchorMax = 来源正文.rectTransform.pivot = new Vector2(0, 1);
-            var 轨 = 底(框, "来源滚动轨", 856, 124, 14, 584, Color.white); 天帝道纹美术.应用(轨.GetComponent<Image>(), "滚动轨");
+            if(!天帝移动适配.启用)
+            {
+                来源卡内容=区块(视,"来源分组卡片列表",0,0,802,510);天帝响应布局.动态(来源卡内容);
+                来源正文.rectTransform.SetParent(来源卡内容,false);滚.content=来源卡内容;
+            }
+            var 轨 = 底(框, "来源滚动轨", 856, 198, 14, 502, Color.white); 天帝道纹美术.应用(轨.GetComponent<Image>(), "滚动轨");
             var 柄 = 底(轨, "滚动滑块", 0, 0, 14, 80, Color.white); 天帝道纹美术.应用(柄.GetComponent<Image>(), "滚动滑块");
             var 条 = 轨.gameObject.AddComponent<Scrollbar>(); 条.handleRect = 柄; 条.targetGraphic = 柄.GetComponent<Image>(); 条.direction = Scrollbar.Direction.BottomToTop;
             滚.verticalScrollbar = 条; 滚.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            if(山水构筑)
+            {
+                视.GetComponent<Image>().sprite=null;视.GetComponent<Image>().color=new Color(1,1,1,.18f);
+                天帝双端页面布局.固定(轨,856,198,10,502);
+                var 滑区=new GameObject("来源滑动区域",typeof(RectTransform)).GetComponent<RectTransform>();滑区.SetParent(轨,false);
+                滑区.anchorMin=Vector2.zero;滑区.anchorMax=Vector2.one;滑区.offsetMin=滑区.offsetMax=Vector2.zero;
+                柄.SetParent(滑区,false);天帝响应布局.动态(柄);柄.anchorMin=Vector2.zero;柄.anchorMax=Vector2.one;柄.offsetMin=柄.offsetMax=Vector2.zero;
+                天帝响应布局.动态(来源正文.rectTransform);
+            }
             if (天帝移动适配.启用)
                 天帝双端页面布局.移动页(框, 面板 =>
                 {
@@ -224,10 +264,74 @@ public sealed partial class 天帝道纹界面
             文.Append(t.道纹.名称).Append(" #").Append(t.道纹.编号).Append("\n").Append(t.道纹.特性状态).Append("\n\n");
         来源正文.text = 文.Length == 0 ? "暂无有效属性加成。\n连通道纹后，这里会列出每项加成来自哪些道纹。" : 文.ToString();
         var 正文区 = 来源正文.rectTransform;
-        if (正文区.GetComponent<天帝比例矩形>()?.待提交 == false)
+        if(来源卡内容!=null)
+        {
+            建来源分组卡(网);
+            var 滚=来源卡内容.parent.GetComponent<ScrollRect>();
+            滚.verticalNormalizedPosition=1;
+            滚.verticalScrollbar.gameObject.SetActive(来源卡内容.rect.height>((RectTransform)来源卡内容.parent).rect.height);
+        }
+        else if(山水构筑)
+        {
+            float 视高=((RectTransform)正文区.parent).rect.height;
+            天帝双端页面布局.固定(正文区,14,12,796,Mathf.Max(视高-24,来源正文.preferredHeight+24));
+            var 滚=正文区.parent.GetComponent<ScrollRect>();滚.verticalScrollbar.gameObject.SetActive(来源正文.preferredHeight+24>视高);
+        }
+        else if (正文区.GetComponent<天帝比例矩形>()?.待提交 == false)
             正文区.sizeDelta = new Vector2(0, Mathf.Max(570, 来源正文.preferredHeight + 24));
         else 正文区.sizeDelta = new Vector2(796, Mathf.Max(570, 来源正文.preferredHeight + 24));
         来源层.SetAsLastSibling(); 来源层.gameObject.SetActive(true);
+    }
+    void 建来源分组卡(天帝道纹 网)
+    {
+        for(int i=来源卡内容.childCount-1;i>=0;i--)
+        {
+            var 子=来源卡内容.GetChild(i);
+            if(子!=来源正文.transform)
+            {
+                子.gameObject.SetActive(false);
+                if(Application.isPlaying)Destroy(子.gameObject);else DestroyImmediate(子.gameObject);
+            }
+        }
+        float y=12;
+        Text 正文字(RectTransform 父,string 文,float x,float 顶,float w,float h,int 字号)
+        {
+            var t=文字(父,文,x,顶,w,h,字号,TextAnchor.MiddleLeft);
+            天帝双端页面布局.固定(t.rectTransform,x,顶,w,h);t.font=字体;t.fontStyle=FontStyle.Normal;
+            t.resizeTextForBestFit=false;t.color=天帝剪纸界面皮肤.墨;t.verticalOverflow=VerticalWrapMode.Truncate;return t;
+        }
+        foreach(var 属性 in 天帝道纹属性.当前属性)
+        {
+            bool 本路=天帝道纹属性.分组(属性)==道纹属性分组.形态||天帝道纹属性.分组(属性)==道纹属性分组.元素;
+            double 值=本路?网.弹槽加成[当前预览通路][(int)属性]:网.生效加成[(int)属性];if(值<=0)continue;
+            var 标签=底(来源卡内容,"来源分组-"+属性,12,y,774,46,Color.white);
+            天帝双端页面布局.固定(标签,12,y,774,46);天帝辅助页山水.纸(标签.GetComponent<Image>(),"墨绿按钮","剪纸界面/墨绿按钮",false);
+            var 标签文=正文字(标签,(本路?天帝道纹.通路名称(当前预览通路):"全局")+" · "+天帝道纹属性.词条名称(属性)+" "+天帝道纹属性.数值文字(属性,值),62,0,650,46,21);标签文.color=new Color(.99f,.97f,.88f);
+            y+=56;
+            foreach(var 项 in 网.已放置)
+            {
+                var 纹=项.Value;if(纹.是顺序功能||!纹.生效||本路&&!网.弹槽道纹[当前预览通路].Contains(纹.编号))continue;
+                double 数=0;foreach(var 词 in 网.读取有效词条(纹))if(词.属性==属性)数+=Math.Max(0,词.实际数值);if(数<=0)continue;
+                var 卡=底(来源卡内容,"来源道纹卡-"+纹.编号+"-"+属性,12,y,774,128,Color.white);
+                天帝双端页面布局.固定(卡,12,y,774,128);天帝辅助页山水.轻纸(卡.GetComponent<Image>());
+                var 图区=区块(卡,"来源道纹图标",20,26,70,70);天帝双端页面布局.固定(图区,20,26,70,70);
+                var 图=图区.gameObject.AddComponent<天帝道纹绘图>();图.单纹模式=true;图.单纹半径=30;图.单纹=纹;图.数据=网;图.raycastTarget=false;图.构筑美术=true;
+                var 短字=正文字(图区,天帝道纹美术.单字(纹),0,0,70,70,24);短字.alignment=TextAnchor.MiddleCenter;天帝道纹单字.绑定(短字,图区);
+                正文字(卡,纹.名称+" #"+纹.编号,112,12,636,38,22);
+                int 口=0;for(int d=0;d<6;d++)if(纹.有接口(d))口++;
+                正文字(卡,纹.品阶+" · 接口 "+口+"/6 · 第"+天帝道纹.格权重(项.Key)+"圈",112,52,636,32,18);
+                正文字(卡,"来源词条："+天帝道纹属性.词条名称(属性)+" "+天帝道纹属性.数值文字(属性,数),112,88,636,32,19);
+                y+=140;
+            }
+            y+=12;
+        }
+        if(y>12)
+        {
+            正文字(来源卡内容,"完整链路与机制说明",24,y,750,42,21);y+=54;
+        }
+        天帝双端页面布局.固定(来源正文.rectTransform,24,y,750,600);来源正文.font=字体;来源正文.fontStyle=FontStyle.Normal;
+        float 高=Mathf.Max(100,来源正文.preferredHeight+24);天帝双端页面布局.固定(来源正文.rectTransform,24,y,750,高);
+        天帝双端页面布局.固定(来源卡内容,0,0,802,Mathf.Max(510,y+高+16));
     }
 }
 

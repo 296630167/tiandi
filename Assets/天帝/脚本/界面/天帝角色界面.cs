@@ -29,7 +29,7 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
         姓名 = 字文(框, "角色名字", "", 32, 108, 284, 58, 28, 墨);
         姓名.resizeTextForBestFit = true; 姓名.resizeTextMinSize = 16; 姓名.resizeTextMaxSize = 28;
         状态 = 字文(框, "角色等级", "", 32, 162, 284, 58, 19, 次墨);
-        var 立绘 = 图(框, "角色立绘", 54, 216, 240, 252, Color.white, 天帝美术资源.当前?.获取("CH01")); 立绘.preserveAspect = true;
+        var 立绘 = 图(框, "角色立绘", 54, 216, 240, 252, Color.white, 天帝剪纸界面皮肤.素材("角色纸雕") ?? 天帝美术资源.当前?.获取("CH01")); 立绘.preserveAspect = true;
         字文(框, "天赋标题", "本命天赋", 32, 484, 284, 32, 19, 次墨);
         var 天赋 = 网.天赋;
         字文(框, "天赋名称", 天赋?.名称 ?? "未选择", 32, 522, 284, 42, 28, 青);
@@ -49,6 +49,14 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
             天帝响应布局.比例(框, .025f, .025f, .95f, .95f);
             var 正文口 = 天帝响应布局.滚动正文(正文);
             var 身份口 = 天帝响应布局.滚动列(框, "角色身份信息", 32, 108, 284, 656);
+            if(天帝剪纸界面皮肤.已启用)
+            {
+                foreach(var 口 in new[]{正文口,身份口})
+                {
+                    var 衬=口.GetComponent<Image>()??口.gameObject.AddComponent<Image>();
+                    衬.sprite=天帝剪纸界面皮肤.素材("素纸");衬.type=Image.Type.Sliced;衬.color=new Color(1,1,1,.96f);
+                }
+            }
             var 重排身份 = 天帝双端页面布局.重排正文(身份口.GetComponent<ScrollRect>().content);
             var 页签列 = new RectTransform[页签.Length]; for (int i = 0; i < 页签.Length; i++) 页签列[i] = (RectTransform)页签[i].transform;
             var 页签口 = 天帝双端页面布局.横列(框, "角色页签视口", 页签列, 126);
@@ -64,6 +72,26 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
                 重排身份(); 正文.GetComponent<天帝正文排版>()?.更新?.Invoke();
             });
         }
+        if (天帝剪纸界面皮肤.已启用 && !天帝移动适配.启用)
+        {
+            void 衬纸(string 名,float x,float y,float w,float h)
+            {
+                var 衬=图(框,名,x,y,w,h,Color.white,天帝剪纸界面皮肤.素材("卡片纸框"));
+                衬.type=Image.Type.Sliced;衬.pixelsPerUnitMultiplier=2;衬.raycastTarget=false;衬.transform.SetAsFirstSibling();
+            }
+            衬纸("角色资料衬纸",166,122,178,414);
+            衬纸("角色正文衬纸",360,174,984,592);
+            衬纸("天赋说明衬纸",24,632,302,130);
+            天帝双端页面布局.固定(立绘.rectTransform,8,122,156,510);
+            天帝双端页面布局.固定(姓名.rectTransform,174,126,160,54);
+            天帝双端页面布局.固定(状态.rectTransform,174,184,160,88);
+            天帝双端页面布局.区域(框,"天赋标题",174,292,160,34);
+            天帝双端页面布局.区域(框,"天赋名称",174,334,160,44);
+            天帝双端页面布局.区域(框,"天赋效果",174,392,160,122);
+            天帝双端页面布局.区域(框,"天赋说明",32,636,284,112);
+        }
+        天帝剪纸界面皮肤.装配(根,"角色",框);
+        装配山水角色册(框);
         显示页(0); 订阅();
     }
 
@@ -77,9 +105,10 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
     void OnDestroy() { OnDisable(); }
     public void 刷新()
     {
-        if (人 == null || 网 == null) return;
+        if (this == null) { if (人 != null) 人.属性改变 -= 刷新; 已订阅 = false; return; }
+        if (人 == null || 网 == null || 姓名 == null || 状态 == null || 评语 == null) return;
         姓名.text = 人.名字;
-        状态.text = "等级 " + 人.等级 + "  ·  技能点 " + 网.技能点 + "\n" + (人.等级 >= 天帝数值.玩家上限 ? "等级已满" : "经验 " + 网.当前经验 + " / " + 网.升级所需经验);
+        状态.text = "等级 " + 人.等级 + (天帝剪纸界面皮肤.已启用&&!天帝移动适配.启用?"\n技能点 ":"  ·  技能点 ") + 网.技能点 + "\n" + (人.等级 >= 天帝数值.玩家上限 ? "等级已满" : "经验 " + 网.当前经验 + " / " + 网.升级所需经验);
         评语.text = 天帝实力评语.读取(网, 人);
         foreach (var 更新 in 更新项) 更新();
         刷新属性说明();
@@ -101,6 +130,7 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
         if (页 == 0) 属性页(); else if (页 == 1) 进阶页(); else if (页 == 2) 技能页(); else 道纹页();
         刷新();
         if (天帝移动适配.启用) 天帝双端页面布局.重排正文(正文)();
+        装配山水角色正文(页);
     }
     static string 数(double 值) => 值.ToString("0.##");
     void 绑定(Text 文, Func<string> 取值) { 更新项.Add(() => 文.text = 取值()); }
@@ -111,6 +141,7 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
         字文(正文, "标签-" + 名, 名, x, y, 宽 * .42f, 42, 重点 ? 22 : 20, 重点 ? 墨 : 次墨);
         var 文 = 字文(正文, "数值-" + 名, "", x + 宽 * .42f, y, 宽 * .58f, 42, 重点 ? 26 : 21, 重点 ? 天帝道纹美术.强调 : 墨);
         文.fontStyle = 重点 ? FontStyle.Bold : FontStyle.Normal;
+        文.resizeTextForBestFit=true;文.resizeTextMinSize=天帝移动适配.启用?14:16;文.resizeTextMaxSize=重点?26:21;
         文.alignment = TextAnchor.MiddleRight; 绑定(文, 值);
         图(正文, "行线", x, y + 46, 宽, 1, new Color(.83f, .87f, .81f));
         绑定属性说明(名, x, y, 宽, 47);
@@ -151,7 +182,7 @@ public sealed partial class 天帝角色界面 : MonoBehaviour
     }
     void 技能页()
     {
-        字文(正文, "技能名称", "自动灵力弹", 0, 0, 420, 42, 27, 墨);
+        字文(正文, "技能名称", "道纹技能 · 手动施放", 0, 0, 420, 42, 27, 墨);
         var 参数 = 字文(正文, "技能参数", "", 0, 56, 952, 70, 22, 墨);
         绑定(参数, () => { var p = 普攻参数.读取(网, 人); return p.顺序计划 != null ? "第一通路按顺序执行 · 首发 " + p.数量 + " 枚 · " + 数(p.间隔) + " 秒/次\n各弹伤害与后续形态独立计算，详见道纹画布的加成来源。" : "第一通路伤害 " + 数(p.伤害) + "（普通 " + 数(p.普通伤害) + " + 五行 " + 数(p.五行额外伤害) + "）   ·   攻击间隔 " + 数(p.间隔) + " 秒\n已解封 " + 网.开放通路数 + " / 参与射击 " + 网.射击通路数 + " 路 · 各路形态与伤害见道纹画布。"; });
         字文(正文, "形态列", "形态", 0, 142, 180, 34, 19, 次墨);

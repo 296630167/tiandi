@@ -5,6 +5,7 @@ using UnityEngine;
 
 public enum 道纹属性 { 力量, 速度, 智力, 血量, 灵力, 分裂, 数量, 连锁, 弧度, 范围, 金, 木, 水, 火, 土, 冰, 雷, 时间, 空间, 防御, 护盾, 攻速, 移速 }
 public enum 道纹分类 { 属性, 天赋, 分叉, 功能, 特性, 转化 }
+public enum 道纹解锁结果 { 成功, 超出范围, 已解锁, 技能点不足, 缺少相邻解锁格 }
 public enum 道纹功能 { 旧版, 齐射, 分裂, 连锁, 增大, 缩小, 加速, 减速, 穿透,
     扇射, 环射, 十字, 背射, 折返, 回旋, 波动, 弹墙, 跃迁, 延时, 停驻, 蓄势, 爆破, 震荡, 拖尾, 击退, 牵引, 束缚, 烙印, 陨落,
     光束, 刃波, 地刺, 剑雨, 旋刃, 灵鞭, 飞轮, 游龙, 灵网, 地雷 }
@@ -169,7 +170,8 @@ public sealed class 道纹实例
 
 public sealed partial class 天帝道纹
 {
-    public const int 边长 = 100;
+    public const int 边长 = 31;
+    public const int 最小坐标 = -(边长 / 2), 最大坐标 = 最小坐标 + 边长 - 1;
     public const float 半径 = 40;
     public static readonly Vector2Int[] 邻向 = { new Vector2Int(1, 0), new Vector2Int(0, 1), new Vector2Int(-1, 1), new Vector2Int(-1, 0), new Vector2Int(0, -1), new Vector2Int(1, -1) };
     public static readonly string[] 方向名 = { "右", "右上", "左上", "左", "左下", "右下" };
@@ -194,9 +196,20 @@ public sealed partial class 天帝道纹
     public int 已解锁格数 => 解锁格.Count;
     public event Action 状态改变;
     public bool 格已解锁(Vector2Int 格) => 解锁格.Contains(格);
+    /// <summary>判断目标格六个方向是否至少有一格已经解锁。中心格本身不参与这个判断。</summary>
+    public bool 有已解锁邻格(Vector2Int 格)
+    {
+        if (!在范围(格) || 格 == Vector2Int.zero) return false;
+        for (int d = 0; d < 邻向.Length; d++)
+            if (解锁格.Contains(格 + 邻向[d])) return true;
+        return false;
+    }
+    /// <summary>判断目标格当前是否满足实时解锁条件，不修改技能点或画布。</summary>
+    public bool 可解锁格子(Vector2Int 格)
+        => 在范围(格) && !格已解锁(格) && 技能点 > 0 && 有已解锁邻格(格);
     public 道纹存档数据 导出存档()
     {
-        var 数据 = new 道纹存档数据 { 天赋编号 = 天赋?.编号 ?? -1, 玩家等级 = 玩家等级, 技能点 = 技能点, 当前经验 = 当前经验, 迁移前等级 = 迁移前等级 };
+        var 数据 = new 道纹存档数据 { 画布边长 = 边长, 天赋编号 = 天赋?.编号 ?? -1, 玩家等级 = 玩家等级, 技能点 = 技能点, 当前经验 = 当前经验, 迁移前等级 = 迁移前等级 };
         数据.解锁格.AddRange(解锁格);
         数据.解锁格.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
         foreach (var 纹 in 道纹)
@@ -211,8 +224,11 @@ public sealed partial class 天帝道纹
     }
     public static 天帝道纹 读取存档(道纹存档数据 数据)
     {
+        // 缺少尺寸字段的是旧100×100存档；先完整校验，再缩小，不能把损坏数据当作迁移。
+        bool 旧画布 = 数据 != null && 数据.画布边长 == 0;
         if (数据 == null || 天帝天赋.获取(数据.天赋编号) == null || 数据.玩家等级 < 1 || 数据.技能点 < 0 ||
-            数据.解锁格 == null || 数据.解锁格.Count < 1 || 数据.解锁格.Count > 边长 * 边长 || 数据.道纹 == null)
+            (!旧画布 && 数据.画布边长 != 边长) ||
+            数据.解锁格 == null || 数据.解锁格.Count < 1 || 数据.解锁格.Count > (旧画布 ? 10000 : 边长 * 边长) || 数据.道纹 == null)
             throw new System.IO.InvalidDataException("画布数据不完整");
         var 网 = new 天帝道纹(Environment.TickCount, 天帝天赋.获取(数据.天赋编号));
         if (数据.当前经验 < 0) throw new System.IO.InvalidDataException("经验不能为负");
@@ -221,7 +237,7 @@ public sealed partial class 天帝道纹
         网.当前经验 = 网.玩家等级 >= 天帝数值.玩家上限 ? 0 : 数据.当前经验;
         if (网.玩家等级 < 天帝数值.玩家上限 && 网.当前经验 >= 网.升级所需经验) throw new System.IO.InvalidDataException("未结算的经验无效");
         foreach (var 格 in 数据.解锁格)
-            if (!在范围(格) || !网.解锁格.Add(格)) throw new System.IO.InvalidDataException("解锁格无效或重复");
+            if (!(旧画布 ? 在旧画布范围(格) : 在范围(格)) || !网.解锁格.Add(格)) throw new System.IO.InvalidDataException("解锁格无效或重复");
         if (!网.格已解锁(Vector2Int.zero)) throw new System.IO.InvalidDataException("缺少中心格");
         var 编号 = new HashSet<int>();
         foreach (var 值 in 数据.道纹)
@@ -261,13 +277,30 @@ public sealed partial class 天帝道纹
             网.道纹.Add(纹);
         }
         网.读取布局方案(数据.布局方案);
+        if (旧画布)
+        {
+            int 退点 = 网.解锁格.RemoveWhere(格 => !在范围(格));
+            if (网.技能点 > int.MaxValue - 退点) throw new System.IO.InvalidDataException("画布迁移技能点溢出");
+            网.技能点 += 退点;
+            foreach (var 纹 in 网.道纹)
+                if (纹.格子.HasValue && !在范围(纹.格子.Value))
+                { 网.已放置.Remove(纹.格子.Value); 纹.格子 = null; }
+        }
         网.重算(); return 网;
     }
-    public bool 解锁格子(Vector2Int 格)
+    /// <summary>
+    /// 尝试花费一点技能点解锁格子。新解锁格必须和已有解锁区域相邻；读取旧存档时仍保留存档中的合法格子，
+    /// 这样不会因为新增的实时限制破坏旧布局。
+    /// </summary>
+    public 道纹解锁结果 尝试解锁格子(Vector2Int 格)
     {
-        if (!在范围(格) || 格已解锁(格) || 技能点 < 1) return false;
-        解锁格.Add(格); 技能点--; 状态改变?.Invoke(); return true;
+        if (!在范围(格)) return 道纹解锁结果.超出范围;
+        if (格已解锁(格)) return 道纹解锁结果.已解锁;
+        if (技能点 < 1) return 道纹解锁结果.技能点不足;
+        if (!有已解锁邻格(格)) return 道纹解锁结果.缺少相邻解锁格;
+        解锁格.Add(格); 技能点--; 状态改变?.Invoke(); return 道纹解锁结果.成功;
     }
+    public bool 解锁格子(Vector2Int 格) => 尝试解锁格子(格) == 道纹解锁结果.成功;
 
     public static 道纹实例 创建源纹(int 编号)
     {
@@ -324,7 +357,8 @@ public sealed partial class 天帝道纹
         if (新级 != 原级) 设置玩家等级(新级); else 状态改变?.Invoke();
         return 新级 - 原级;
     }
-    public static bool 在范围(Vector2Int 格) => 格.x >= -50 && 格.x < 50 && 格.y >= -50 && 格.y < 50;
+    public static bool 在范围(Vector2Int 格) => 格.x >= 最小坐标 && 格.x <= 最大坐标 && 格.y >= 最小坐标 && 格.y <= 最大坐标;
+    internal static bool 在旧画布范围(Vector2Int 格) => 格.x >= -50 && 格.x < 50 && 格.y >= -50 && 格.y < 50;
     public static Vector2 格位置(Vector2Int 格) => new Vector2(Mathf.Sqrt(3) * 半径 * (格.x + 格.y * 0.5f), 1.5f * 半径 * 格.y);
     public static Vector2Int 位置格(Vector2 点)
     {

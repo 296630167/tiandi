@@ -40,13 +40,24 @@ public sealed class 天帝拾取提示 : IDisposable
     }
     void 文(RectTransform 父, string 内容, float y, float 高度, int 字号, Color 色)
     {
-        var 字 = 创建区(父, "文字", 16, y, 宽 - 32, 高度).gameObject.AddComponent<Text>();
+        float 内边=16;
+        var 字 = 创建区(父, "文字", 内边, y, 宽 - 内边*2, 高度).gameObject.AddComponent<Text>();
         字.font = 字体; 字.text = 内容; 字.fontSize = 字号; 字.color = 色;
         字.alignment = TextAnchor.MiddleLeft; 字.raycastTarget = false;
         字.horizontalOverflow = HorizontalWrapMode.Wrap; 字.verticalOverflow = VerticalWrapMode.Truncate;
+        if(天帝剪纸界面皮肤.已启用)
+        {
+            // 纸雕按钮两端花饰与上下边线不能占用文字区；按实际条目比例适配双端。
+            bool 标题=y==0;
+            // 中文行框含上下空白；两行的字形中心约在32%和70%，保留足够行框防止小屏裁字。
+            天帝响应布局.比例(字.rectTransform,.18f,标题?.03f:.42f,.64f,标题?.58f:.55f);
+            字.fontSize=标题?18:14;
+            字.resizeTextForBestFit=true;字.resizeTextMinSize=8;字.resizeTextMaxSize=字.fontSize;
+            return;
+        }
         if (紧凑)
         {
-            天帝响应布局.比例(字.rectTransform, 16 / 宽, y / 高, (宽 - 32) / 宽, 高度 / 高);
+            天帝响应布局.比例(字.rectTransform, 内边 / 宽, y / 高, (宽 - 内边*2) / 宽, 高度 / 高);
             天帝响应布局.字号(字);
         }
     }
@@ -69,8 +80,11 @@ public sealed class 天帝拾取提示 : IDisposable
         string 说明 = 天帝通货.定义[(int)种类].说明;
         // 长说明只作用途摘要，完整规则在改造页展示。
         int 分隔 = 说明.IndexOf('；'); if (分隔 >= 0) 说明 = 说明.Substring(0, 分隔);
-        if (种类 == 通货种类.问天石) 说明 = "普通道纹随机升至优秀～史诗";
-        等待.Enqueue(new 快照 { 标题 = "获得 <color=#FFD16B>" + 种类 + " ×" + 数量 + "</color>", 详情 = "道纹改造通货  |  " + 说明 });
+        if (种类 == 通货种类.问天石) 说明 = "普通道纹随机升阶";
+        else if(种类==通货种类.易纹砂)说明="重抽所选词条";
+        else if(种类==通货种类.重铸石)说明="重抽全部词条";
+        else if(种类==通货种类.添蕴砂)说明="增加一条词条";
+        等待.Enqueue(new 快照 { 标题 = "获得 <color=#FFD16B>" + 种类 + " ×" + 数量 + "</color>", 详情 = "用于改造  |  " + 说明 });
         尝试入场();
     }
     public void 加入灵石(int 数量)
@@ -87,6 +101,8 @@ public sealed class 天帝拾取提示 : IDisposable
             if (显示[i] != null) continue;
             var 快 = 等待.Dequeue(); var 区 = 创建区(根, "拾取条目", 起始点, i * 行距, 宽, 高);
             var 底 = 区.gameObject.AddComponent<Image>(); 底.color = new Color(.025f, .07f, .07f, .88f); 底.raycastTarget = false;
+            if (天帝剪纸界面皮肤.已启用) { 底.sprite = 天帝剪纸界面皮肤.素材("墨绿按钮"); 底.type = Image.Type.Simple; 底.color = new Color(1,1,1,.94f); }
+            else if (天帝青绿皮肤.已启用) { 底.sprite = 天帝青绿皮肤.获取("QLUI_深青面板"); 底.type = Image.Type.Sliced; 底.pixelsPerUnitMultiplier = 2; 底.color = new Color(1,1,1,.94f); }
             var 组 = 区.gameObject.AddComponent<CanvasGroup>(); 组.alpha = 0; 组.interactable = 组.blocksRaycasts = false;
             文(区, 快.标题, 0, 紧凑 ? 30 : 32, 紧凑 ? 18 : 20, new Color(.94f, .94f, .89f));
             文(区, 快.详情, 紧凑 ? 30 : 32, 紧凑 ? 24 : 26, 紧凑 ? 15 : 17, new Color(.68f, .82f, .79f));

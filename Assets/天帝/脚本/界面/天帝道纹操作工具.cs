@@ -59,23 +59,27 @@ public sealed partial class 天帝道纹界面
         拖转键.gameObject.SetActive(拖动中);
         int 未接 = 0; foreach (var 纹 in 数据.道纹) if (纹.格子.HasValue && !纹.生效) 未接++;
         定位键.interactable = 未接 > 0 && !拖动中;
-        定位文字.text = 天帝移动适配.启用 ? "未接通 " + 未接 : "未接通 " + 未接 + " · 定位";
+        定位文字.text = 天帝移动适配.启用||山水构筑 ? "未接通 " + 未接 : "未接通 " + 未接 + " · 定位";
         foreach (var 键 in new[] { 定位键, 撤销键, 拖转键 }) 键.GetComponentInChildren<Text>().color = 键.interactable ? 文字色 : 天帝道纹美术.次文;
+        if(山水构筑)foreach(var 键 in new[]{定位键,撤销键,拖转键})天帝图三四山水素材.按钮(键);
     }
     public void 聚焦解锁区域()
     {
         if (画布 == null) return; 取消拖动();
         Vector2 最小 = new Vector2(float.MaxValue, float.MaxValue), 最大 = new Vector2(float.MinValue, float.MinValue);
-        foreach (var 格 in 数据.所有解锁格) { var 点 = 天帝道纹.格位置(格); 最小 = Vector2.Min(最小, 点); 最大 = Vector2.Max(最大, 点); }
+        foreach (var 格 in 数据.所有解锁格) { var 点 = 画布.格位置(格); 最小 = Vector2.Min(最小, 点); 最大 = Vector2.Max(最大, 点); }
         var 区 = 画布.rectTransform.rect; float 宽 = 区.width > 1 ? 区.width : 1070, 高 = 区.height > 1 ? 区.height : 535;
-        var 尺寸 = 最大 - 最小 + Vector2.one * 天帝道纹.半径 * 4;
-        画布.缩放 = Mathf.Clamp(Mathf.Min((宽 - 100) / 尺寸.x, (高 - 90) / 尺寸.y), .08f, 1.25f);
-        画布.平移 = -(最小 + 最大) * .5f * 画布.缩放; 限制平移(); 画布.SetVerticesDirty(); 更新标签();
+        if (画布.轻透画布) { 宽 = 悬浮画布尺寸.x; 高 = 悬浮画布尺寸.y; }
+        var 尺寸 = 最大 - 最小 + Vector2.one * 天帝道纹.半径 * 画布.格间距 * 4;
+        // 手机工作区只有208单位高，不能沿用PC的90单位留白而默认退成色块总览。
+        float 横留白 = 天帝移动适配.启用 ? 32 : 100, 纵留白 = 天帝移动适配.启用 ? 24 : 90;
+        画布.缩放 = Mathf.Clamp(Mathf.Min((宽 - 横留白) / 尺寸.x, (高 - 纵留白) / 尺寸.y), .08f, 1.25f);
+        画布.平移 = -(最小 + 最大) * .5f * 画布.缩放 + (画布.轻透画布 ? 悬浮画布中心 : Vector2.zero); 限制平移(); 画布.SetVerticesDirty(); 更新标签();
     }
     public void 回到源点() { if (画布 == null) return; 取消拖动(); 定位格子(Vector2Int.zero); }
     public void 定位格子(Vector2Int 格)
     {
-        画布.缩放 = 1.1f; 画布.平移 = -天帝道纹.格位置(格) * 画布.缩放; 限制平移(); 画布.SetVerticesDirty(); 更新标签();
+        画布.缩放 = 1.1f; 画布.平移 = -画布.格位置(格) * 画布.缩放 + (画布.轻透画布 ? 悬浮画布中心 : Vector2.zero); 限制平移(); 画布.SetVerticesDirty(); 更新标签();
     }
     public bool 定位未接通()
     {
@@ -172,15 +176,18 @@ public sealed partial class 天帝道纹界面
         方案层 = 区块(根, "布局方案层", 0, 0, 1600, 900);
         var 遮 = 底(方案层, "布局遮罩", 0, 0, 1600, 900, new Color(0, 0, 0, .75f)); 遮.GetComponent<Image>().raycastTarget = true;
         var 框 = 底(方案层, "布局方案面板", 300, 80, 1000, 740, new Color(.035f, .065f, .078f)); 框.GetComponent<Image>().raycastTarget = true;
-        文字(框, "我的布局方案", 28, 16, 680, 42, 28, TextAnchor.MiddleLeft);
-        按钮(框, "关闭", 840, 18, 132, 40, 关闭筛选);
-        文字(框, "保存三个布局 · 保留实际道纹的词条、品阶和接口形状", 28, 70, 940, 32, 18, TextAnchor.MiddleLeft);
+        天帝辅助页山水.纸(框.GetComponent<Image>(),"弹窗纸框");
+        var 标题=文字(框, "我的布局方案", 190, 76, 620, 70, 32, TextAnchor.MiddleCenter);标题.fontStyle=FontStyle.Normal;
+        按钮(框, "关闭", 840, 82, 132, 48, 关闭筛选);
+        文字(框, "保存三个布局 · 保留实际道纹的词条、品阶和接口形状", 40, 142, 920, 44, 18, TextAnchor.MiddleLeft);
         for (int i = 0; i < 天帝道纹.方案槽数; i++)
         {
-            int 槽 = i; var 行 = 底(框, "方案槽-" + (i + 1), 28, 120 + i * 152, 944, 136, new Color(.07f, .12f, .14f));
+            int 槽 = i; var 行 = 底(框, "方案槽-" + (i + 1), 28, 192 + i * 136, 944, 124, new Color(.07f, .12f, .14f));
+            天帝辅助页山水.轻纸(行.GetComponent<Image>());
             方案行.Add(行.GetComponent<Image>());
             文字(行, "方案 " + (i + 1), 16, 10, 110, 40, 21, TextAnchor.MiddleLeft);
             var 输入区 = 底(行, "方案名称", 130, 12, 372, 38, new Color(.035f, .065f, .078f)); 输入区.GetComponent<Image>().raycastTarget = true;
+            输入区.GetComponent<Image>().sprite=null;输入区.GetComponent<Image>().color=new Color(.93f,.92f,.82f,.7f);
             var 名字 = 文字(输入区, "", 12, 0, 348, 38, 19, TextAnchor.MiddleLeft);
             var 输入 = 输入区.gameObject.AddComponent<InputField>(); 输入.textComponent = 名字; 输入.targetGraphic = 输入区.GetComponent<Image>(); 输入.characterLimit = 20; 输入.lineType = InputField.LineType.SingleLine;
             方案名称输入.Add(输入);
@@ -188,7 +195,7 @@ public sealed partial class 天帝道纹界面
             方案载入键.Add(按钮(行, "检查 / 载入", 730, 10, 196, 42, () => 准备载入方案(槽)));
             var 描述 = 文字(行, "", 16, 68, 910, 52, 17, TextAnchor.UpperLeft); 描述.verticalOverflow = VerticalWrapMode.Truncate; 方案说明.Add(描述);
         }
-        方案提示 = 文字(框, "", 28, 592, 944, 70, 19, TextAnchor.UpperLeft); 方案提示.verticalOverflow = VerticalWrapMode.Truncate;
+        方案提示 = 文字(框, "", 40, 606, 920, 62, 18, TextAnchor.UpperLeft); 方案提示.verticalOverflow = VerticalWrapMode.Truncate;
         取消方案键 = 按钮(框, "取消方案选择", 28, 675, 190, 42, () =>
         { 待载入方案 = 待覆盖方案 = -1; 确认方案键.interactable = false; 刷新方案窗口(); 方案提示.text = "已取消 · 当前布局与已保存方案未改变。"; });
         确认方案键 = 按钮(框, "应用已检查的方案", 644, 675, 328, 42, () =>
@@ -198,9 +205,11 @@ public sealed partial class 天帝道纹界面
             方案提示.text = 成功 ? "方案已载入 · 关闭后可查看连接；撤销上一步可恢复原布局。" : "未应用：" + 原因;
             待载入方案 = -1; 确认方案键.interactable = false; 刷新方案窗口();
         });
+        foreach(var 键 in 框.GetComponentsInChildren<Button>(true))天帝辅助页山水.按钮(键,键==确认方案键);
+        foreach(var 文 in 框.GetComponentsInChildren<Text>(true)){文.fontStyle=FontStyle.Normal;文.color=天帝剪纸界面皮肤.墨;}
         if(天帝移动适配.启用)
         {
-            var 口=天帝响应布局.滚动列(框,"方案槽列表",28,120,944,440);
+            var 口=天帝响应布局.滚动列(框,"方案槽列表",28,192,944,404);
             var 内容=口.GetComponent<ScrollRect>().content;天帝响应布局.动态(内容);
             天帝双端页面布局.移动页(框,面板=>
             {
@@ -232,11 +241,12 @@ public sealed partial class 天帝道纹界面
         for (int i = 0; i < 方案名称输入.Count; i++)
         {
             var 方案 = 数据.布局方案[i]; if (更新名称) 方案名称输入[i].SetTextWithoutNotify(方案.已保存 ? 方案.名称 : "布局 " + (i + 1));
-            天帝界面美术.选项(方案行[i], i == 待载入方案 || i == 待覆盖方案);
+            天帝辅助页山水.轻纸(方案行[i], i == 待载入方案 || i == 待覆盖方案);
             bool 覆盖 = i == 待覆盖方案;
-            天帝界面美术.按钮(方案保存键[i], 覆盖);
+            天帝辅助页山水.按钮(方案保存键[i], true);
             方案保存键[i].GetComponentInChildren<Text>().text = 覆盖 ? "确认覆盖" : "保存当前";
             bool 有效 = 数据.检查布局方案(i, out var 原因); 方案载入键[i].interactable = 方案.已保存;
+            天帝辅助页山水.按钮(方案载入键[i]);
             方案说明[i].text = 覆盖 ? "待覆盖「" + 方案.名称 + "」 · 确认后替换为当前画布" : !方案.已保存 ? "空槽 · 将当前画布保存到此处" : (i == 待载入方案 ? "等待应用 · " : "") + "摆放 " + 方案.摆放.Count + " 枚 · " + (有效 ? "可以载入" : "暂不可用：" + 原因);
             方案说明[i].color = !方案.已保存 || 有效 ? 文字色 : new Color(1, .56f, .45f);
         }
@@ -245,6 +255,7 @@ public sealed partial class 天帝道纹界面
         var 应用字=确认方案键.GetComponentInChildren<Text>();
         应用字.text = 待载入方案 >= 0 ? "应用「" + 数据.布局方案[待载入方案].名称 + "」" : "选择方案后应用";
         应用字.resizeTextForBestFit=true;应用字.resizeTextMinSize=16;应用字.resizeTextMaxSize=19;
+        foreach(var 键 in 方案层.GetComponentsInChildren<Button>(true))天帝辅助页山水.按钮(键,键==确认方案键||方案保存键.Contains(键));
     }
     void 保存当前方案(int 槽)
     {

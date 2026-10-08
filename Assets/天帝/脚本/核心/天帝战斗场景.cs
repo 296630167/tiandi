@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public sealed class 天帝战斗场景 : MonoBehaviour
+public sealed partial class 天帝战斗场景 : MonoBehaviour
 {
     public Material 地图材质;
     [Tooltip("青岚原固定大图；配置后使用按该图描绘的通行边界，不再生成随机迷宫。")]
@@ -29,10 +29,17 @@ public sealed class 天帝战斗场景 : MonoBehaviour
     Mesh 战斗网格;
     Mesh 电光网格;
     Material 电光材质;
+    Material 战斗演出材质;
+    天帝纹理特效 特效,特效地面;
+    天帝纹理特效 敌方危险描边;
     readonly 几何 电光几何 = new 几何();
     readonly 几何 战斗几何 = new 几何();
     bool 已显示死亡;
     int 已播升级次数;
+    Vector2 平滑输入;
+    float 脚步等待;
+    float 受击镜头秒,受击镜头冷却,受击镜头力度;
+    Vector2 受击镜头方向;
     readonly HashSet<战斗敌人> 已播登场 = new HashSet<战斗敌人>();
     readonly List<Mesh> 网格资源 = new List<Mesh>();
     public void 初始化(天帝游戏 游戏)
@@ -42,7 +49,7 @@ public sealed class 天帝战斗场景 : MonoBehaviour
         this.游戏 = 游戏;
         显示移动区域 = false; 显示边界线 = true;
         if (游戏.美术 == null || 游戏.美术.青岚原生存大图 == null || 游戏.美术.青岚原生存通行图 == null) throw new System.InvalidOperationException("青岚原生存大图与通行图未接入。");
-        地图 = new 天帝战斗地图(System.Environment.TickCount, false, false, 游戏.美术.青岚原生存通行图, 游戏.当前地图等级, true); 玩家位置 = 地图.出生位置;
+        地图 = new 天帝战斗地图(System.BitConverter.ToInt32(System.Guid.NewGuid().ToByteArray(),0), false, false, 游戏.美术.青岚原生存通行图, 游戏.当前地图等级, true); 玩家位置 = 地图.出生位置;
         bool 使用大图 = 地图.生存大图 || 地图.长卷布局 || 地图.固定图片布局 && 地图大图 != null;
         var 当前大图 = 地图.生存大图 ? 游戏.美术.青岚原生存大图 : 地图.长卷布局 ? 游戏.美术.青岚原长卷 : 地图大图;
         var 地面 = new 几何();
@@ -90,6 +97,7 @@ public sealed class 天帝战斗场景 : MonoBehaviour
             背景材质 = new Material(游戏.美术 != null ? 游戏.美术.立绘着色器 : Shader.Find("天帝/静态立绘"));
             建发光边界();
         }
+        建随机战场美术();
         // 首波选点就要读取真实视野，不能等生成敌人之后才创建相机。
         var 相机物 = new GameObject("战斗俯视相机", typeof(Camera)); 相机物.transform.SetParent(transform, false);
         俯视相机 = 相机物.GetComponent<Camera>(); 俯视相机.orthographic = true;
@@ -103,12 +111,21 @@ public sealed class 天帝战斗场景 : MonoBehaviour
         游戏.主角属性.设置当前资源(游戏.主角属性.血量, 游戏.主角属性.灵力, 游戏.主角属性.灵气护盾);
         战斗 = new 天帝战斗系统(地图, 游戏.道纹数据, 游戏.主角属性, 游戏.当前战斗难度, 游戏.通货数据, 游戏.当前地图等级, 读取战斗视野, 游戏.宝盒数据);
         战斗.敌人死亡 += 敌人死亡;
-        战斗.伤害分项反馈 += 命中反馈;
+        战斗.受击表现反馈 += 命中反馈;
+        战斗.战术.技能演出释放+=敌技声音;
         战斗.射击释放 += 射击声音;
         战斗.掉落.获得道纹 += 道纹声音;
         战斗.通货掉落.获得通货 += 通货声音;
         战斗.灵石掉落.获得灵石 += 灵石声音;
-        战斗网格 = 建物("敌人与灵矢动态网格", 战斗几何, transform).GetComponent<MeshFilter>().sharedMesh;
+        var 战斗物 = 建物("敌人与灵矢动态网格", 战斗几何, transform);
+        战斗演出材质 = new Material(Shader.Find("天帝/战斗预警"));
+        战斗物.GetComponent<MeshRenderer>().sharedMaterial = 战斗演出材质;
+        战斗网格 = 战斗物.GetComponent<MeshFilter>().sharedMesh;
+        战斗网格.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        特效地面=new 天帝纹理特效(transform,-10001);
+        // 只将敌方危险边界放到单位/树冠上方，填色仍贴地，避免整块红色盖住战斗。
+        敌方危险描边=new 天帝纹理特效(transform,19001);
+        特效=new 天帝纹理特效(transform);
         战斗网格.MarkDynamic(); 更新战斗绘制();
         电光材质 = new Material(Shader.Find("天帝/电光"));
         var 电光物 = 建物("闪电箭与跳链余辉", 电光几何, transform);
@@ -202,19 +219,31 @@ public sealed class 天帝战斗场景 : MonoBehaviour
     }
     void Update()
     {
-        if (游戏 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || !Application.isFocused) return;
+        if (游戏 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || 游戏.界面.新手指引冻结战斗 || !Application.isFocused)
+        { 平滑输入=Vector2.zero; if (!输入已冻结) 游戏?.界面?.取消战斗手势(); 输入已冻结=true; return; }
+        输入已冻结=false;
+        读取主动操作();
         var 输入 = 天帝战斗输入.读取(游戏.界面);
         if (输入.切换调试区域) 显示边界线 = !显示边界线;
-        移动一步(输入.方向, 输入.跑步, Time.deltaTime);
+        平滑输入=天帝战斗润色.推进输入(平滑输入,输入.方向,Time.deltaTime);
+        移动一步(平滑输入, 输入.跑步, Time.deltaTime);
         战斗一步(Time.deltaTime);
     }
     public void 战斗一步(float 秒)
     {
-        if (战斗 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停) return;
-        战斗.推进(玩家位置, 秒);
+        if (战斗 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || 游戏.界面.新手指引冻结战斗) return;
+        受击镜头秒=Mathf.Max(0,受击镜头秒-秒);受击镜头冷却=Mathf.Max(0,受击镜头冷却-秒);
+        if (float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0) return;
+        float 剩余 = Mathf.Min(秒, .25f);
+        while (剩余 > .000001f)
+        {
+            float 步 = Mathf.Min(.025f, 剩余);
+            推进闪避位移(步); 战斗.推进(玩家位置, 步); 剩余 -= 步;
+        }
+        游戏.界面.推进战斗操作反馈(Mathf.Min(秒, .25f));
         foreach (var 敌 in 战斗.敌人) if (敌.已生成 && 敌.布点.级别 != 战斗敌人级别.普通 && 已播登场.Add(敌)) 天帝声音.提示("ZD04_强敌登场");
         if (战斗.本局升级次数 > 已播升级次数) { 已播升级次数 = 战斗.本局升级次数; 天帝声音.提示("ZD06_升级"); }
-        美术?.更新(战斗, 玩家位置, 秒); 更新战斗绘制();
+        美术?.更新(战斗, 玩家位置, 秒); 更新随机障碍遮挡(秒); 更新战斗绘制();
         游戏.界面.更新战斗状态();
         游戏.界面.更新战斗目标();
         if (战斗.玩家死亡 && !已显示死亡) { 已显示死亡 = true; 天帝声音.提示("ZD08_失败"); 主角.localScale = Vector3.one * .65f; 游戏.界面.显示战斗失败(); }
@@ -223,15 +252,25 @@ public sealed class 天帝战斗场景 : MonoBehaviour
     {
         if (敌.布点.级别 == 战斗敌人级别.王级) 通知王级击败(敌.布点);
     }
-    void 命中反馈(Vector2 位置, 战斗伤害明细 明细, bool 玩家受伤)
-    { if (明细.合计 > 0) 天帝声音.提示(玩家受伤 ? "ZD03_受伤" : "ZD02_命中"); 游戏.界面.显示伤害飘字(位置, 明细, 玩家受伤); 美术?.命中(位置, 玩家受伤); }
+    void 命中反馈(战斗受击反馈 击)
+    {
+        if(击.明细.合计<=0)return;
+        天帝声音.提示命中(击);游戏.界面.显示伤害飘字(击.位置,击.明细,击.玩家受伤,击.标记,击.重击);
+        美术?.命中(击);
+        if(受击镜头冷却<=0&&(击.玩家受伤&&!击.仅护盾||击.暴击||击.破盾))
+        {
+            受击镜头秒=天帝受击表现.取("camera_seconds");受击镜头冷却=天帝受击表现.取("camera_interval");
+            受击镜头方向=击.方向;受击镜头力度=击.玩家受伤?1: .6f;
+        }
+    }
     void 射击声音(Vector2 _) { 天帝声音.提示("ZD01_灵力弹"); }
+    void 敌技声音(战斗敌人 e,敌技能 s)=>天帝声音.提示敌技(e,s,玩家位置);
     void 道纹声音(道纹实例 _) { 天帝声音.提示("ZD05_拾取"); }
     void 通货声音(通货种类 _, int 数) { 天帝声音.提示("ZD05_拾取"); }
     void 灵石声音(int _) { 天帝声音.提示("ZD05_拾取"); }
     void 更新战斗绘制()
     {
-        战斗几何.清空();
+        战斗几何.清空();特效.清空();特效地面.清空();敌方危险描边.清空();
         foreach (var 敌 in 战斗.敌人)
         {
             if (!敌.已生成) continue;
@@ -256,14 +295,14 @@ public sealed class 天帝战斗场景 : MonoBehaviour
                 {
                     float 盾宽 = 宽 * Mathf.Clamp01(敌.护盾量 / (敌.最大血量 * 天帝敌种配置.取("support.shield_fraction")));
                     战斗几何.方块(中 + Vector2.up * .16f + Vector2.left * (宽 - 盾宽) / 2, .18f, new Vector2(盾宽, .1f), new Color(.42f, .86f, 1));
-                    战斗几何.环(敌.位置, .18f, 半径 + .2f, new Color(.42f, .86f, 1, .7f));
+                    特效地面.圈(天帝纹理特效.预警环,敌.位置,半径+.2f,new Color(.42f,.86f,1,.7f));
                 }
             }
-            if (敌.存活 && 敌.登场剩余秒 > 0) 战斗几何.环(敌.位置, .17f, 半径 + .55f, new Color(1f, .75f, .25f, .7f));
+            if (敌.存活 && 敌.登场剩余秒 > 0) 特效地面.圈(天帝纹理特效.冲击环,敌.位置,半径+.55f,new Color(1f,.75f,.25f,.7f));
             if (敌.存活 && (敌.行动 == 敌人行动.搜索 || 敌.行动 == 敌人行动.归巢))
                 战斗几何.圆(敌.位置 + Vector2.up * (半径 + .22f), .19f, .13f, 敌.行动 == 敌人行动.搜索 ? new Color(1, .8f, .3f) : new Color(.4f, .7f, 1), 6);
             if (敌.行动 == 敌人行动.蓄力 && 敌.技能编号 > 0) 画敌预警(敌);
-            if (敌.形态提示秒 > 0) 战斗几何.环(敌.位置, .2f, 2 + (1 - 敌.形态提示秒) * 3, new Color(.95f, .8f, .4f, .8f));
+            if (敌.形态提示秒 > 0) 特效地面.圈(天帝纹理特效.冲击环,敌.位置,2+(1-敌.形态提示秒)*3,new Color(.95f,.8f,.4f,.8f));
         }
         画敌术();
         foreach (var 物 in 战斗.掉落.地面)
@@ -309,31 +348,28 @@ public sealed class 天帝战斗场景 : MonoBehaviour
             {
                 var f = 矢.执行段.功能;
                 float 预警半径 = 天帝顺序道纹.扩展数值(f == 道纹功能.陨落 ? "fall_radius" : f == 道纹功能.烙印 ? "mark_radius" : f == 道纹功能.震荡 ? "pulse_radius" : "trail_radius");
-                战斗几何.环(矢.位置,.23f,预警半径,new Color(.9f,.7f,.25f,.8f));
-                战斗几何.环(矢.位置,.24f,预警半径*(1-矢.等待秒/矢.等待总秒),new Color(.4f,.9f,.8f));
-                if (f == 道纹功能.陨落) 战斗几何.线(矢.位置+Vector2.up*(矢.等待秒/矢.等待总秒*4),矢.位置,.25f,.08f,new Color(.7f,.9f,.8f));
+                画预警圈(矢.位置,预警半径,Mathf.Clamp01(1-矢.等待秒/Mathf.Max(.001f,矢.等待总秒)),new Color(.9f,.7f,.25f,.8f));
+                if (f == 道纹功能.陨落) 特效.线(天帝纹理特效.尾迹,矢.位置+Vector2.up*(矢.等待秒/Mathf.Max(.001f,矢.等待总秒)*4),矢.位置,.2f,new Color(.7f,.9f,.8f));
                 continue;
             }
             float r = (矢.子矢 ? .12f : .22f) * 矢.参数.体型倍率;
-            战斗几何.圆(矢.位置, .2f, r + .03f, new Color(.16f, .18f, .16f), 7);
-            战斗几何.圆(矢.位置, .21f, r, 天帝道纹绘图.通路颜色[矢.参数.通路], 7);
-            战斗几何.圆(矢.位置 + new Vector2(-r * .25f, r * .25f), .22f, r * .4f, new Color(.76f, .78f, .70f), 5);
+            特效.弹(玩家弹图(矢.参数),矢.位置,矢.方向,r,new Color(1,1,1,天帝战斗润色.取("friendly_alpha")));
         }
-        foreach (var e in 战斗.功能地面效果) { 战斗几何.圆(e.位置,.17f,e.半径,new Color(.25f,.75f,.6f,.16f),16); 战斗几何.环(e.位置,.18f,e.半径,new Color(.35f,.85f,.65f,.5f)); }
-        foreach (var e in 战斗.攻击形态效果) 天帝攻击形态绘制.画(e,
-            (a,b,w,c)=>战斗几何.线(a,b,.24f,w,c), (p,r,c)=>战斗几何.环(p,.24f,r,c));
+        foreach (var e in 战斗.功能地面效果) { 特效地面.圈(天帝纹理特效.危险区,e.位置,e.半径,new Color(.25f,.75f,.6f,.3f)); 特效地面.圈(天帝纹理特效.预警环,e.位置,e.半径,new Color(.35f,.85f,.65f,.65f)); }
+        画独立形态();
         foreach(var e in 战斗.特性效果列表)
         {
             var c=e.召唤?new Color(.45f,.83f,.38f,.8f):e.诱饵?new Color(.55f,.8f,1,.55f):new Color(.63f,.78f,.42f,.75f);
-            if(e.护体)天帝攻击形态绘制.画护体(e,(a,b,w,color)=>战斗几何.线(a,b,.25f,w,color));
-            else if(e.土垒){var side=new Vector2(-e.方向.y,e.方向.x);战斗几何.线(e.位置-side*e.半径,e.位置+side*e.半径,.25f,.6f,c);}
-            else if(e.召唤||e.诱饵)战斗几何.圆(e.位置,.25f,.5f,c,6);
-            else 战斗几何.环(e.位置,.25f,e.半径,c);
+            if(e.护体)天帝攻击形态绘制.画护体(e,(a,b,w,color)=>特效.线(天帝纹理特效.尾迹,a,b,w,color));
+            else if(e.土垒){var side=new Vector2(-e.方向.y,e.方向.x);特效.线(天帝纹理特效.尾迹,e.位置-side*e.半径,e.位置+side*e.半径,.6f,c);}
+            else if(e.召唤||e.诱饵)特效.圈(天帝纹理特效.爆闪,e.位置,.5f,c);
+            else 特效地面.圈(天帝纹理特效.预警环,e.位置,e.半径,c);
         }
-        foreach (var 敌 in 战斗.敌人) if (敌.存活 && 敌.束缚剩余秒 > 0) 战斗几何.环(敌.位置,.26f,.8f,new Color(.55f,.45f,.9f));
-        foreach (var 圈 in 战斗.光圈) 战斗几何.环(圈.位置, .18f, 圈.半径 * (1.15f - 圈.剩余秒), 圈.敌方 ? new Color(.95f, .25f, .14f) : new Color(.42f, .84f, .86f));
+        foreach (var 敌 in 战斗.敌人) if (敌.存活 && 敌.束缚剩余秒 > 0) 特效地面.圈(天帝纹理特效.预警环,敌.位置,.8f,new Color(.55f,.45f,.9f));
+        foreach (var 圈 in 战斗.光圈) 特效地面.圈(天帝纹理特效.冲击环,圈.位置,圈.半径 * (1.15f - 圈.剩余秒),圈.敌方 ? new Color(.95f,.25f,.14f) : new Color(.42f,.84f,.86f));
         战斗网格.Clear(); 战斗网格.SetVertices(战斗几何.顶点); 战斗网格.SetColors(战斗几何.颜色); 战斗网格.SetTriangles(战斗几何.索引, 0); 战斗网格.RecalculateBounds();
         更新电光();
+        特效地面.提交();特效.提交();敌方危险描边.提交();
     }
     static Color 敌术色(敌技能 s)
     {
@@ -352,25 +388,33 @@ public sealed class 天帝战斗场景 : MonoBehaviour
     void 画敌预警(战斗敌人 e)
     {
         var s = 敌技能.读取(e.技能编号); var 色 = 敌术色(s);
+        float 进度 = Mathf.Clamp01(1 - e.蓄力 / Mathf.Max(.01f, e.蓄力总秒));
+        if(!s.辅助)
+        {
+            // 敌方危险使用统一暖红边缘；保留少量五行色，避免与友方青玉混淆。
+            色=Color.Lerp(new Color(1,.34f,.16f,.9f),色,.25f);
+            色.a=.75f+Mathf.Abs(Mathf.Sin(进度*Mathf.PI*3))*天帝战斗润色.取("enemy_warning_pulse");
+        }
         if (s.辅助)
         {
-            战斗几何.环(e.位置, .19f, .8f, 色);
+            特效地面.圈(天帝纹理特效.预警环,e.位置,.8f,色);
             foreach (var a in e.辅助目标) if (a.存活)
-            { 战斗几何.线(e.位置, a.位置, .18f, .05f, 色); 战斗几何.环(a.位置, .19f, .7f, 色); }
+            { 特效地面.线(天帝纹理特效.尾迹,e.位置,a.位置,.08f,色); 特效地面.圈(天帝纹理特效.预警环,a.位置,.7f,色); }
             return;
         }
         switch (s.类型)
         {
-            case 敌技能类型.单击: 战斗几何.环(e.攻击落点, .18f, e.攻击范围, 色); break;
+            case 敌技能类型.单击: 画分层预警圈(e.攻击落点, e.攻击范围, 进度, 色, true); break;
             case 敌技能类型.扇面: case 敌技能类型.归潮:
-                战斗几何.扇(e.位置, e.锁定方向, e.物种 == 14 && s.类型 == 敌技能类型.扇面 ? 天帝敌种配置.取("boss.fan_range") : s.距离,
-                    e.物种 == 14 && s.类型 == 敌技能类型.扇面 ? 天帝敌种配置.取("boss.fan_angle") : s.宽度, 色); break;
-            case 敌技能类型.自周: 战斗几何.环(e.位置, .18f, e.本次攻击范围, 色); break;
+                float 半径 = e.物种 == 14 && s.类型 == 敌技能类型.扇面 ? 天帝敌种配置.取("boss.fan_range") : s.距离;
+                float 角度 = e.物种 == 14 && s.类型 == 敌技能类型.扇面 ? 天帝敌种配置.取("boss.fan_angle") : s.宽度;
+                画分层预警扇(e.位置,e.锁定方向,半径,角度,进度,色,true); break;
+            case 敌技能类型.自周: 画分层预警圈(e.位置, e.本次攻击范围, 进度, 色,true); break;
             case 敌技能类型.投掷: case 敌技能类型.跳跃:
-                战斗几何.环(e.攻击落点, .18f, s.宽度, 色);
-                战斗几何.线(e.位置, e.攻击落点, .18f, .06f, 色); break;
+                画分层预警圈(e.攻击落点, s.宽度, 进度, 色,true);
+                特效地面.线(天帝纹理特效.尾迹,e.位置,e.攻击落点,.06f,色); break;
             case 敌技能类型.冲锋: case 敌技能类型.直线:
-                战斗几何.线(e.位置, s.类型 == 敌技能类型.冲锋 ? e.攻击落点 : e.位置 + e.锁定方向 * s.距离, .18f, s.宽度, 色 * .65f); break;
+                画分层预警线(e.位置, s.类型 == 敌技能类型.冲锋 ? e.攻击落点 : e.位置 + e.锁定方向 * s.距离, s.宽度, 进度, 色,true); break;
             case 敌技能类型.飞弹:
                 int 数 = s.编号 == 4 && e.布点.级别 == 战斗敌人级别.精英 ? (int)天帝敌种配置.取("elite.fan_count") : s.数量;
                 float 间角 = 数 == s.数量 ? s.宽度 : 天帝敌种配置.取("elite.fan_angle");
@@ -379,65 +423,29 @@ public sealed class 天帝战斗场景 : MonoBehaviour
                     float a = Mathf.Atan2(e.锁定方向.y, e.锁定方向.x) + (i - (数 - 1) * .5f) * 间角 * Mathf.Deg2Rad;
                     var 起 = e.位置;
                     if (s.编号 == 18)
-                    { 起 += new Vector2(-e.锁定方向.y, e.锁定方向.x) * (i - 1) * 天帝敌种配置.取("boss.mirror_offset"); 战斗几何.环(起, .19f, .65f, 色); }
-                    战斗几何.线(起, 起 + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s.距离, .18f, .07f, 色);
+                    { 起 += new Vector2(-e.锁定方向.y, e.锁定方向.x) * (i - 1) * 天帝敌种配置.取("boss.mirror_offset"); 特效地面.圈(天帝纹理特效.预警环,起,.65f,色); }
+                    var 终 = 起 + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s.距离;
+                    敌方危险描边.线(天帝纹理特效.尾迹,起,终,.08f,色);
+                    画分层方向箭头(Vector2.Lerp(起, 终, .2f + .65f * 进度), (终 - 起).normalized, .3f, 色,true);
                 }
                 break;
         }
     }
     void 画敌术()
     {
-        foreach (var a in 战斗.战术.敌术)
-        {
-            var 色 = 敌术色(a.技能);
-            if (a.冲击演出)
-            {
-                色.a *= Mathf.Clamp01(1 - a.已过 / a.寿命);
-                if (a.技能.类型 == 敌技能类型.直线) 战斗几何.线(a.位置, a.位置 + a.方向 * a.半径, .2f, a.技能.宽度, 色);
-                else if (a.技能.类型 == 敌技能类型.扇面) 战斗几何.扇(a.位置, a.方向, a.来源.物种 == 14 ? 天帝敌种配置.取("boss.fan_range") : a.半径, a.来源.物种 == 14 ? 天帝敌种配置.取("boss.fan_angle") : a.技能.宽度, 色);
-                else 战斗几何.环(a.位置, .2f, a.半径 * (.8f + .2f * a.已过 / a.寿命), 色);
-            }
-            else if (a.地面) { 战斗几何.圆(a.终点, .17f, a.半径, 色 * .28f, 24); 战斗几何.环(a.终点, .18f, a.半径, 色); }
-            else if (a.二段 || a.跃击) 战斗几何.环(a.终点, .19f, a.半径, 色);
-            else if (a.位移) 战斗几何.线(a.起点, a.位置, .19f, .18f, 色);
-            else
-            {
-                var 点 = a.位置;
-                if (a.技能.类型 == 敌技能类型.投掷) 点 += Vector2.up * Mathf.Sin(Mathf.Clamp01(a.已过 / a.寿命) * Mathf.PI) * 1.5f;
-                战斗几何.圆(点, .22f, .23f, 色, 8);
-                战斗几何.线(点 - a.方向 * .45f, 点, .21f, .10f, 色);
-                if (a.技能.类型 == 敌技能类型.投掷) 战斗几何.环(a.终点, .18f, a.半径, 色);
-            }
-        }
-        foreach (var a in 战斗.战术.辅助线)
-        {
-            var 色 = a.盾 ? new Color(.5f, .9f, 1) : new Color(.4f, 1, .55f);
-            战斗几何.线(a.起, a.终, .2f, .12f, 色);
-            战斗几何.环(a.终, .21f, .7f + (.5f - a.剩余), 色);
-            if (!a.盾) { 战斗几何.方块(a.终 + Vector2.up, .22f, new Vector2(.45f, .12f), 色); 战斗几何.方块(a.终 + Vector2.up, .22f, new Vector2(.12f, .45f), 色); }
-        }
+        画生成敌术();
     }
     void 更新电光()
     {
         if (电光网格 == null) return;
         电光几何.清空();
-        int 弹体绘制数 = 0;
-        foreach (var 矢 in 战斗.灵矢)
-        {
-            if (弹体绘制数++ >= 天帝数值.弹体上限) break;
-            Vector2 尾 = 矢.位置 - 矢.方向 * .45f * 矢.参数.体型倍率;
-            电光几何.线(尾, 矢.位置, .29f, .06f * 矢.参数.体型倍率, new Color(.68f, .72f, .64f, .3f));
-        }
+        foreach(var 弧 in 战斗.电弧)
+            画电弧(弧.起点,弧.终点,弧.种子,Mathf.Clamp01(弧.剩余秒/Mathf.Max(.001f,弧.寿命)),弧.跳链);
         foreach (var 圈 in 战斗.光圈)
         {
             if (圈.敌方) continue;
             float a = Mathf.Clamp01(圈.剩余秒 / .18f), r = .22f + (1-a)*.85f;
-            电光几何.环(圈.位置,.33f,r,new Color(.67f,.72f,.59f,a*.5f));
-            for(int i=0;i<6;i++)
-            {
-                float 角=i*Mathf.PI/3; var 向=new Vector2(Mathf.Cos(角),Mathf.Sin(角));
-                电光几何.线(圈.位置+向*r*.65f,圈.位置+向*r,.34f,.035f,new Color(.72f,.75f,.64f,a));
-            }
+            特效.圈(天帝纹理特效.爆闪,圈.位置,r,new Color(.72f,.9f,.8f,a),.3f);
         }
         电光网格.Clear(); 电光网格.SetVertices(电光几何.顶点); 电光网格.SetColors(电光几何.颜色); 电光网格.SetTriangles(电光几何.索引,0); 电光网格.RecalculateBounds();
     }
@@ -450,23 +458,23 @@ public sealed class 天帝战斗场景 : MonoBehaviour
         {
             Vector2 点=Vector2.Lerp(起,终,i/(float)节);
             if(i<节) 点+=垂*Mathf.Sin(种*1.37f+i*8.71f)*(跳链?.23f:.09f);
-            电光几何.线(前,点,.29f,跳链?.22f:.15f,new Color(.05f,.35f,1,强*.24f));
-            电光几何.线(前,点,.30f,.075f,new Color(.16f,.72f,1,强*.6f));
-            电光几何.线(前,点,.31f,.027f,new Color(.8f,.96f,1,强));
-            if(跳链 && i%3==0) 电光几何.线(点,点+垂*.38f+向.normalized*.3f,.30f,.03f,new Color(.2f,.7f,1,强*.45f));
+            特效.线(天帝纹理特效.尾迹,前,点,跳链?.22f:.15f,new Color(.3f,.75f,1,强),.3f);
             前=点;
         }
     }
     public void 移动一步(Vector2 方向, bool 跑步, float 秒)
     {
-        if (地图 == null || 游戏 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || (战斗 != null && 战斗.玩家死亡) || float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0) return;
+        if (地图 == null || 游戏 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || 游戏.界面.新手指引冻结战斗 || (战斗 != null && 战斗.玩家死亡) || 闪避剩余 > 0 || float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0) return;
         float 速度 = 跑步 ? 游戏.主角属性.跑步速度 : 游戏.主角属性.移动速度;
         // 当前主角速度配置为0；仅在场景使用预览值，不写回角色数据。
         if (速度 <= 0) 速度 = 天帝天赋效果.移动速度(游戏.当前天赋, 跑步 ? 预览跑步速度 : 预览移动速度);
         var 原位置 = 玩家位置;
-        玩家位置 = 地图.移动(玩家位置, 方向, 速度 * (战斗?.战术.玩家移速倍率 ?? 1) * Mathf.Min(秒, 0.25f));
+        玩家位置 = 地图.移动(玩家位置, 方向, 速度 * 地图.地形移速(玩家位置) * (战斗?.战术.玩家移速倍率 ?? 1) * Mathf.Min(秒, 0.25f));
         主角.position = new Vector3(玩家位置.x, 0, 玩家位置.y);
         美术?.移动反馈(方向, 跑步);
+        脚步等待=Mathf.Max(0,脚步等待-秒);
+        if((玩家位置-原位置).sqrMagnitude>.00001f&&脚步等待<=0)
+        {天帝声音.提示("润色_跑步");脚步等待=天帝战斗润色.取("footstep_interval")*(跑步?.8f:1);}
         if ((美术 == null || !美术.可用) && 方向.sqrMagnitude > 0.001f) 主角.rotation = Quaternion.Euler(0, Mathf.Atan2(方向.x, 方向.y) * Mathf.Rad2Deg, 0);
         游戏.界面.更新战斗位置(玩家位置, 地图.所在格(玩家位置));
     }
@@ -490,6 +498,12 @@ public sealed class 天帝战斗场景 : MonoBehaviour
             y = Mathf.Clamp(y + Mathf.Sin(Time.time * 91) * 幅, -Mathf.Max(0, 地图.半高 - 半高), Mathf.Max(0, 地图.半高 - 半高));
         }
         俯视相机.transform.position = new Vector3(x, 45, y);
+        if(受击镜头秒>0)
+        {
+            var 偏=受击镜头方向*天帝受击表现.回弹(受击镜头秒,天帝受击表现.取("camera_seconds"))*天帝受击表现.取("camera_distance")*受击镜头力度;
+            俯视相机.transform.position=new Vector3(Mathf.Clamp(x+偏.x,-Mathf.Max(0,地图.半宽-半宽),Mathf.Max(0,地图.半宽-半宽)),45,
+                Mathf.Clamp(y+偏.y,-Mathf.Max(0,地图.半高-半高),Mathf.Max(0,地图.半高-半高)));
+        }
     }
     GameObject 建物(string 名, 几何 数据, Transform 父)
     {
@@ -499,9 +513,13 @@ public sealed class 天帝战斗场景 : MonoBehaviour
     }
     void OnDestroy()
     {
+        独立形态特效?.Dispose();
+        if(战斗!=null)战斗.战术.技能演出释放-=敌技声音;
         if (战斗 != null) { 战斗.射击释放 -= 射击声音; 战斗.掉落.获得道纹 -= 道纹声音; 战斗.通货掉落.获得通货 -= 通货声音; 战斗.灵石掉落.获得灵石 -= 灵石声音; }
-        美术?.Dispose(); if (战斗 != null) { 战斗.清理特性战斗(); 战斗.战术.清理(); 战斗.敌人死亡 -= 敌人死亡; 战斗.伤害分项反馈 -= 命中反馈; }
+        美术?.Dispose(); if (战斗 != null) { 战斗.清理特性战斗(); 战斗.战术.清理(); 战斗.敌人死亡 -= 敌人死亡; 战斗.受击表现反馈 -= 命中反馈; }
         foreach (var 网 in 网格资源) if (网 != null) Destroy(网); if (电光材质 != null) Destroy(电光材质);
+        if (战斗演出材质 != null) Destroy(战斗演出材质);
+        特效?.Dispose();特效地面?.Dispose();敌方危险描边?.Dispose();
         if (背景材质 != null) Destroy(背景材质);
         if (边界材质 != null) Destroy(边界材质);
     }

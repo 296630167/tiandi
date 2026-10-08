@@ -36,8 +36,10 @@ public sealed class 天帝敌人战术
     readonly Func<Rect> 视野;
     readonly float 初始生命和;
     readonly List<战斗敌术> 效果 = new List<战斗敌术>(48);
+    readonly List<战斗敌术> 冲击 = new List<战斗敌术>(48);
     readonly List<辅助光线> 光线 = new List<辅助光线>(16);
     public IReadOnlyList<战斗敌术> 敌术 => 效果;
+    public IReadOnlyList<战斗敌术> 冲击演出 => 冲击;
     public IReadOnlyList<辅助光线> 辅助线 => 光线;
     public float 实际治疗 { get; private set; }
     public float 实际授盾 { get; private set; }
@@ -48,6 +50,8 @@ public sealed class 天帝敌人战术
     public string 王台词 { get; private set; } = "";
     float 台词秒;
     public float 震屏秒 { get; private set; }
+    float 突进协作等待;
+    public event Action<战斗敌人,敌技能> 技能演出释放;
     public Vector2 玩家速度 { get; set; }
     static float A(string 键) => (float)天帝数值.取("map.arena." + 键);
     public Vector2 预判位置(Vector2 玩家, float 秒)
@@ -103,15 +107,22 @@ public sealed class 天帝敌人战术
     public void 受伤(战斗敌人 敌)
     {
         if (敌.行动 != 敌人行动.蓄力 || 敌.技能编号 <= 0 || !敌技能.读取(敌.技能编号).辅助) return;
-        引导打断数++; 敌.行动 = 敌人行动.后摇; 敌.后摇秒 = P("support.interrupt_lockout");
+        引导打断数++; 敌.行动 = 敌人行动.后摇; 敌.后摇秒 = P("support.interrupt_lockout"); 敌.战术决策秒 = 0;
         敌.冷却 = Mathf.Max(敌.冷却, 敌技能.读取(敌.技能编号).周期); 敌.蓄力 = 0; 敌.辅助目标.Clear();
     }
-    int 下一技(战斗敌人 e)
+    int 下一技(战斗敌人 e, Vector2 玩家)
     {
         bool 精 = e.布点.级别 == 战斗敌人级别.精英;
         if (e.物种 == 14)
         {
             int n = e.已攻击次数 % 3;
+            // 保留形态轮换；每组三击中的第二击按距离选择，避免近身仍向远处空放。
+            if (n == 1)
+            {
+                float d = Vector2.Distance(e.位置, 玩家);
+                if (d < P("movement.boss_close")) return e.形态 == 2 ? 2 : e.形态 == 3 ? 11 : 16;
+                if (d > P("movement.boss_far")) return e.形态 <= 2 ? 15 : e.形态 == 3 ? 5 : 18;
+            }
             switch (e.形态)
             {
                 case 1: return n == 0 ? 1 : n == 1 ? 15 : 16;
@@ -131,6 +142,7 @@ public sealed class 天帝敌人战术
     }
     bool 预警许可(战斗敌人 e, 敌技能 s)
     {
+        if((s.类型==敌技能类型.冲锋||s.类型==敌技能类型.跳跃)&&突进协作等待>0)return false;
         if (s.类型 == 敌技能类型.单击) return true;
         return 蓄力数 < 成长上限("casts") && (!s.大招 || 大招数 < 成长上限("heavy"));
     }
@@ -138,6 +150,8 @@ public sealed class 天帝敌人战术
     bool 有效落点(Vector2 起, Vector2 终) => 地图.可站立(终, P("movement.body_radius")) && 寻路.无遮挡(起, 终, P("movement.body_radius"));
     public void 推进敌(战斗敌人 e, Vector2 玩家, float dt, Action<战斗敌人, Vector2, float> 移动)
     {
+        if (dt <= 0 || !e.存活) return;
+        e.战术决策秒 = Mathf.Max(0, e.战术决策秒 - dt);
         e.突袭冷却 = Mathf.Max(0, e.突袭冷却 - dt);
         bool 位移中 = false; foreach (var a in 效果) if (a.来源 == e && a.位移) { 位移中 = true; break; }
         if (e.物种 == 14 && e.显示形态 != e.形态 && !位移中)
@@ -160,13 +174,15 @@ public sealed class 天帝敌人战术
                 var s = 敌技能.读取(e.技能编号);
                 if (视内(e, 玩家)) 释放(e, 玩家);
                 e.行动 = 敌人行动.后摇; e.后摇秒 = s.后摇 * (float)天帝数值.敌战术成长(e.地图档位, "recovery_end") + (s.类型 == 敌技能类型.冲锋 || s.类型 == 敌技能类型.跳跃 ? s.速度 : 0);
+                if(s.大招&&(e.物种==14||e.布点.级别!=战斗敌人级别.普通))
+                    e.后摇秒+=P(e.物种==14?"boss.opening_seconds":"boss.elite_opening_seconds");
                 e.已攻击次数++;
             }
             return;
         }
         if (e.行动 == 敌人行动.后摇)
         { e.后摇秒 -= dt; if (e.后摇秒 <= 0) e.行动 = 敌人行动.追击; return; }
-        int id = 下一技(e);
+        int id = 下一技(e, 玩家);
         float 当前距 = Vector2.Distance(e.位置, 玩家);
         bool 反风筝突袭 = 地图.生存大图 && e.地图档位 >= A("charge_unlock") && (e.物种 == 0 || 天帝敌种配置.角色(e.物种) == 2) &&
             e.突袭冷却 <= 0 && 当前距 > e.攻击范围 && 当前距 <= 敌技能.读取(9).距离 - P("movement.range_margin");
@@ -176,10 +192,28 @@ public sealed class 天帝敌人战术
         { id = 1; 技 = 敌技能.读取(id); }
         if (技.辅助)
         {
-            e.辅助目标.Clear();
-            foreach (var a in 敌人) if (辅助合法(e, a, 技)) e.辅助目标.Add(a);
-            e.辅助目标.Sort((a,b) => { int n = (a.血量 / a.最大血量).CompareTo(b.血量 / b.最大血量); return n != 0 ? n : a.序号.CompareTo(b.序号); });
-            if (e.辅助目标.Count > 技.数量) e.辅助目标.RemoveRange(技.数量, e.辅助目标.Count - 技.数量);
+            if (e.战术决策秒 <= 0 || (e.冷却 <= 0 && e.辅助目标.Count == 0))
+            {
+                e.辅助目标.Clear(); e.掩护队友 = null; e.战术站位 = e.位置;
+                float 最近 = float.MaxValue;
+                foreach (var a in 敌人)
+                {
+                    if (辅助合法(e, a, 技)) e.辅助目标.Add(a);
+                    if (a == e || !a.存活 || a.登场剩余秒 > 0 || 天帝敌种配置.角色(a.物种) != 0) continue;
+                    float d = (a.位置 - e.位置).sqrMagnitude;
+                    if (d < 最近) { 最近 = d; e.掩护队友 = a; }
+                }
+                e.辅助目标.Sort((a,b) => {
+                    // 治疗优先濒危者；授盾优先正在顶线的近战/机动与精英。
+                    float 分(战斗敌人 x)=>技.类型==敌技能类型.治疗?x.血量/x.最大血量:
+                        (天帝敌种配置.角色(x.物种)==0||天帝敌种配置.角色(x.物种)==2?-.5f:0)+
+                        (x.布点.级别==战斗敌人级别.精英?-.25f:0)+(x.血量/x.最大血量<天帝战斗润色.取("support_focus_health")?-.2f:0);
+                    int n=分(a).CompareTo(分(b));return n!=0?n:a.序号.CompareTo(b.序号);
+                });
+                if (e.辅助目标.Count > 技.数量) e.辅助目标.RemoveRange(技.数量, e.辅助目标.Count - 技.数量);
+                e.战术决策秒 = P("movement.decision_seconds");
+            }
+            for (int i = e.辅助目标.Count - 1; i >= 0; i--) if (!辅助合法(e, e.辅助目标[i], 技)) e.辅助目标.RemoveAt(i);
             if (e.辅助目标.Count == 0) { id = e.物种 == 7 ? 1 : 7; 技 = 敌技能.读取(id); }
         }
         float 距 = Vector2.Distance(e.位置, 玩家);
@@ -214,6 +248,7 @@ public sealed class 天帝敌人战术
             e.蓄力 = 技.前摇; if (id == 1) e.蓄力 = (float)天帝数值.敌参数(e.布点.级别, "windup");
             if (id != 1) e.蓄力 = Mathf.Max(P(e.物种 == 14 ? "growth.boss_windup_min" : "growth.windup_min"), e.蓄力 * (float)天帝数值.敌战术成长(e.地图档位, "windup_end"));
             e.蓄力总秒 = e.蓄力;
+            if(技.类型==敌技能类型.冲锋||技.类型==敌技能类型.跳跃)突进协作等待=天帝战斗润色.取("charge_stagger");
             if (反风筝突袭) e.突袭冷却 = A("charge_period");
             e.冷却 = Mathf.Max(Mathf.Max(技.周期, e.攻击间隔) * e.战术周期倍率, e.蓄力 + 技.后摇);
             if (技.类型 != 敌技能类型.单击) 蓄力数++; if (技.大招) 大招数++;
@@ -230,16 +265,104 @@ public sealed class 天帝敌人战术
             e.停步秒 += dt; if (e.停步秒 < P("movement.stand_seconds")) return;
             e.停步秒 = e.退步秒 = 0;
         }
-        if (可攻击 && (!地图.生存大图 || 远程)) return;
+        // 冷却期间移动而非原地排队；所有站位仍由原寻路、分离和控制模块落实。
+        int 角色 = 天帝敌种配置.角色(e.物种);
+        if (视内(e, 玩家) && (角色 >= 3 || (可攻击 && (远程 || 角色 == 2))))
+        {
+            if (角色 >= 3 && e.掩护队友 != null && e.掩护队友.存活)
+            {
+                Vector2 后 = (e.掩护队友.位置 - 玩家).normalized;
+                Vector2 点 = e.掩护队友.位置 + 后 * P("movement.support_cover");
+                if (有效落点(e.位置, 点)) { 移动(e, 点, dt); return; }
+            }
+            if (e.战术决策秒 <= 0)
+            {
+                Vector2 径 = (e.位置 - 玩家).normalized;
+                if (径.sqrMagnitude < .1f) 径 = Vector2.right;
+                Vector2 侧 = new Vector2(-径.y, 径.x) * ((e.序号 + e.已攻击次数) % 2 == 0 ? 1 : -1);
+                float 半径 = Mathf.Min(P("movement.preferred_range"), Mathf.Max(1, 起手距离 - P("movement.approach_margin")));
+                Vector2 点 = 玩家 + 径 * 半径 + 侧 * P("movement.orbit_step");
+                if (!有效落点(e.位置, 点)) 点 = 玩家 + 径 * 半径 - 侧 * P("movement.orbit_step");
+                e.战术站位 = 有效落点(e.位置, 点) ? 点 : e.位置;
+                e.战术决策秒 = P("movement.decision_seconds");
+            }
+            移动(e, e.战术站位, dt); return;
+        }
+        if (可攻击 && !地图.生存大图) return;
         float 站距 = 技.辅助 ? P("movement.assist_range") : 远程 ? P("movement.preferred_range") : Mathf.Min(e.攻击范围 - P("movement.approach_margin"), P("movement.melee_stand"));
         Vector2 终 = 远程 ? 玩家 : 追击目标(e, 玩家);
-        if (距 < P("movement.ring_distance") && (!地图.生存大图 || 玩家速度.sqrMagnitude < .25f))
+        if(地图.生存大图&&!可攻击)
+        {
+            if(e.战术决策秒<=0)
+            {
+                e.战术站位=选择地形站位(e,玩家,远程,起手距离,站距);
+                e.战术决策秒=P("movement.decision_seconds")*(1+((uint)(地图.种子^e.序号)&7)/7f*P("movement.decision_jitter"));
+            }
+            终=地图.可站立(e.战术站位)?e.战术站位:玩家;
+        }
+        if (!地图.生存大图 && 距 < P("movement.ring_distance"))
         {
             float 角 = (e.序号 % 8) * Mathf.PI / 4;
             var 点 = 玩家 + new Vector2(Mathf.Cos(角), Mathf.Sin(角)) * 站距;
             if (有效落点(玩家, 点)) 终 = 点;
         }
         移动(e, 终, dt);
+    }
+    Vector2 选择地形站位(战斗敌人 e,Vector2 玩家,bool 远程,float 射程,float 站距)
+    {
+        int 角色=天帝敌种配置.角色(e.物种);
+        if(角色>=3&&e.掩护队友!=null&&e.掩护队友.存活)
+        {
+            Vector2 后=(e.掩护队友.位置-玩家).normalized;
+            Vector2 掩护=e.掩护队友.位置+后*P("movement.support_cover");
+            if(地图.可站立(掩护))return 掩护;
+        }
+        Vector2 最佳=玩家;float 分=float.MaxValue;
+        if(角色>=3)
+        {
+            foreach(var b in 地图.随机障碍)
+            {
+                if((b.位置-e.位置).sqrMagnitude>P("movement.cover_search")*P("movement.cover_search"))continue;
+                Vector2 后=(b.位置-玩家).normalized;
+                Vector2 点=b.位置+后*(Mathf.Max(b.半径.x,b.半径.y)+P("movement.cover_gap"));
+                if(!地图.可站立(点)||寻路.无遮挡(玩家,点))continue;
+                float 值=(点-e.位置).sqrMagnitude;if(值<分){最佳=点;分=值;}
+            }
+            if(分<float.MaxValue)return 最佳;
+        }
+        if(!远程)
+        {
+            int 格=(int)P("movement.ring_slots");
+            float 角=(e.序号%格)*Mathf.PI*2/格+((uint)地图.种子%360)*Mathf.Deg2Rad;
+            float r=Mathf.Max(.5f,Mathf.Min(e.攻击范围-P("movement.range_margin")-.05f,站距+e.序号%3*P("movement.ring_variation")));
+            for(int i=0;i<4;i++)
+            {
+                float a=角+(i==0?0:i%2==0?1:-1)*(i+1)*Mathf.PI/格;
+                Vector2 p=玩家+new Vector2(Mathf.Cos(a),Mathf.Sin(a))*r;
+                if(地图.可站立(p)&&寻路.无遮挡(玩家,p))return p;
+            }
+            return 追击目标(e,玩家);
+        }
+        Vector2 径=(e.位置-玩家).normalized;if(径.sqrMagnitude<.01f)径=Vector2.right;
+        float 朝=Mathf.Atan2(径.y,径.x)+(e.序号%2==0?1:-1)*天帝战斗润色.取("crossfire_angle")*Mathf.Deg2Rad,
+            半径=Mathf.Min(P("movement.preferred_range"),Mathf.Max(1,射程-P("movement.approach_margin")));
+        int 样本=(int)P("movement.peek_samples");
+        for(int i=0;i<样本;i++)
+        {
+            float a=朝+(i%2==0?1:-1)*((i+1)/2)*Mathf.PI*2/样本;
+            Vector2 p=玩家+new Vector2(Mathf.Cos(a),Mathf.Sin(a))*半径;
+            if(!地图.可站立(p)||!寻路.无遮挡(p,玩家))continue;
+            float 值=(p-e.位置).sqrMagnitude+(有效落点(e.位置,p)?0:25);
+            if(值<分){分=值;最佳=p;}
+        }
+        if(分<float.MaxValue)return 最佳;
+        // 没有射击角度时先向侧翼出口走，避免一直抵住掩体。
+        for(int i=0;i<2;i++)
+        {
+            Vector2 p=e.位置+new Vector2(-径.y,径.x)*P("movement.peek_step")*(i==0?1:-1);
+            if(有效落点(e.位置,p))return p;
+        }
+        return 玩家;
     }
     double 技倍率(战斗敌人 e, int id)
     {
@@ -253,12 +376,13 @@ public sealed class 天帝敌人战术
             命中 = 命中, 包 = 天帝敌种配置.伤害包(e, s.编号, 技倍率(e, s.编号)), 半径 = s.宽度 };
     void 留冲击(战斗敌人 e, 敌技能 s, Vector2 点, float 半径)
     {
-        if (效果.Count >= 成长上限("projectiles")) return;
-        效果.Add(new 战斗敌术 { 来源 = e, 技能 = s, 位置 = 点, 终点 = 点, 方向 = e.锁定方向, 半径 = 半径, 寿命 = .22f, 冲击演出 = true });
+        if (冲击.Count >= P("presentation.glow_visible_max")) return;
+        冲击.Add(new 战斗敌术 { 来源 = e, 技能 = s, 位置 = 点, 终点 = 点, 方向 = e.锁定方向, 半径 = 半径, 寿命 = P("presentation.impact_seconds"), 冲击演出 = true });
     }
     public void 释放(战斗敌人 e, Vector2 玩家)
     {
         var s = 敌技能.读取(e.技能编号); 技能释放数++; 技能统计[s.编号]++;
+        技能演出释放?.Invoke(e,s);
         if (e.物种 == 14 && e.地图档位 >= P("growth.shake_unlock") && s.大招) 震屏秒 = P("growth.shake_seconds");
         if (s.辅助) { 完成辅助(e, s); return; }
         if (效果.Count >= 成长上限("projectiles") && (s.类型 == 敌技能类型.飞弹 || s.类型 == 敌技能类型.投掷 || s.类型 == 敌技能类型.冲锋 || s.类型 == 敌技能类型.跳跃)) return;
@@ -326,7 +450,7 @@ public sealed class 天帝敌人战术
             else { a.护盾量 = Mathf.Max(0, 量); a.盾剩余 = P("support.shield_duration"); a.累计授盾 += Mathf.Max(0, 量); 实际授盾 += Mathf.Max(0, 量); }
             if (量 > 0) 光线.Add(new 辅助光线 { 起 = e.位置, 终 = a.位置, 盾 = !治 });
         }
-        e.辅助目标.Clear();
+        e.辅助目标.Clear(); e.战术决策秒 = 0;
     }
     void 控制(bool 根)
     {
@@ -340,6 +464,7 @@ public sealed class 天帝敌人战术
     }
     public void 推进效果(Vector2 主目标, float dt)
     {
+        突进协作等待=Mathf.Max(0,突进协作等待-dt);
         if(特性免疫?.Invoke()==true)减速剩余=0;
         bool 受控 = 减速剩余 > 0 || 束缚剩余 > 0;
         台词秒 = Mathf.Max(0, 台词秒 - dt); if (台词秒 <= 0) 王台词 = "";
@@ -352,6 +477,7 @@ public sealed class 天帝敌人战术
             if (e.护盾量 > 0) { e.盾剩余 -= dt; if (e.盾剩余 <= 0) { e.护盾量 = 0; e.盾禁用 = P("support.shield_lockout"); } }
         }
         for (int i = 光线.Count - 1; i >= 0; i--) { 光线[i].剩余 -= dt; if (光线[i].剩余 <= 0) 光线.RemoveAt(i); }
+        for (int i = 冲击.Count - 1; i >= 0; i--) { 冲击[i].已过 += dt; if (冲击[i].已过 >= 冲击[i].寿命) 冲击.RemoveAt(i); }
         for (int i = 效果.Count - 1; i >= 0; i--)
         {
             var a = 效果[i]; var s = a.技能;
@@ -443,9 +569,9 @@ public sealed class 天帝敌人战术
     }
     public void 清理()
     {
-        效果.Clear(); 光线.Clear(); 减速剩余 = 束缚剩余 = 控制免疫 = 0;
+        效果.Clear(); 冲击.Clear(); 光线.Clear(); 减速剩余 = 束缚剩余 = 控制免疫 = 0;
         王台词 = ""; 台词秒 = 震屏秒 = 0;
-        foreach (var e in 敌人) { e.辅助目标.Clear(); e.跳跃高度 = 0; }
+        foreach (var e in 敌人) { e.辅助目标.Clear(); e.跳跃高度 = 0; e.战术决策秒 = 0; e.掩护队友 = null; e.战术站位 = e.位置; }
     }
     public static float 线距(Vector2 点, Vector2 起, Vector2 终)
     { var d = 终 - 起; float t = d.sqrMagnitude <= .00001f ? 0 : Mathf.Clamp01(Vector2.Dot(点 - 起, d) / d.sqrMagnitude); return Vector2.Distance(点, 起 + d * t); }

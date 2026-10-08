@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public sealed partial class 天帝道纹回收界面 : MonoBehaviour
 {
-    const int 最大卡数=12;
+    const int 最大卡数=9;
     int 每页=>天帝移动适配.启用?6:最大卡数;
     天帝道纹 数据;天帝宝盒 钱;Font 字体;Action 关闭;
     readonly HashSet<道纹实例> 选择=new HashSet<道纹实例>();
@@ -20,6 +20,7 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
     Text 余额,汇总,总价,提示,页码字,空库存;
     readonly Dropdown[] 筛选下拉=new Dropdown[3];
     RectTransform 详情区,确认层;
+    RectTransform 余额条;
     天帝道纹详情卡 详情;
     Button 卖出,上页,下页;
     int 页,筛阶=-1,筛类型,筛状态;
@@ -37,7 +38,8 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         var 遮=图(根,"回收遮罩",0,0,1600,900,null,new Color(0,0,0,.82f));遮.raycastTarget=true;
         var 框=图(根,"道纹回收窗口",72,34,1456,832,"一级面板").rectTransform;
         字文(框,"道纹回收",32,18,620,58,34);
-        余额=字文(框,"",960,24,296,40,22);余额.alignment=TextAnchor.MiddleRight;
+        余额条=图(框,"回收灵石纸签",960,22,296,56,"确认按钮").rectTransform;
+        余额=字文(余额条,"",16,0,264,56,22);余额.name="回收灵石余额";余额.alignment=TextAnchor.MiddleCenter;
         键(框,"关闭回收","关闭",1276,22,148,56,关闭);
         字文(框,"处理闲置道纹，换回少量灵石。锁定、已放置与布局方案使用的道纹受到保护。",32,82,1300,34,19,天帝道纹美术.次文);
         var 品阶项=new List<string>{"全部品阶"};for(int i=0;i<8;i++)品阶项.Add(((道纹品阶)i).ToString());
@@ -50,13 +52,15 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         键(框,"清空回收选择","清空选择",968,131,134,38,()=>{选择.Clear();刷新();});
         for(int i=0;i<每页;i++)
         {
-            int 槽=i;var b=键(框,"回收道纹-"+i,"",32+i%4*235,192+i/4*155,219,139,()=>查看(槽));卡[i]=b;b.transition=Selectable.Transition.None;
+            int 槽=i;var b=键(框,"回收道纹-"+i,"",32+i%3*314,192+i/3*155,298,139,()=>查看(槽));卡[i]=b;b.transition=Selectable.Transition.None;
             var r=(RectTransform)b.transform;
             var 区=区块(r,"回收图标",8,13,72,78);图标[i]=区.gameObject.AddComponent<天帝道纹绘图>();图标[i].单纹模式=true;图标[i].单纹半径=30;图标[i].raycastTarget=false;
+            图标[i].数据=数据;
             图短名[i]=字文(区,"",6,0,60,78,22);图短名[i].alignment=TextAnchor.MiddleCenter;图短名[i].fontStyle=FontStyle.Bold;
-            卡名[i]=字文(r,"",89,10,82,58,19);
-            卡价[i]=字文(r,"",89,72,119,30,18,new Color(.91f,.80f,.52f));
-            卡状态[i]=字文(r,"",48,107,162,28,16,天帝道纹美术.次文);
+            天帝道纹单字.绑定(图短名[i], 区);
+            卡名[i]=字文(r,"",89,10,160,58,19);
+            卡价[i]=字文(r,"",89,72,190,30,18,new Color(.91f,.80f,.52f));
+            卡状态[i]=字文(r,"",48,107,239,28,16,天帝道纹美术.次文);
             var 勾选区=图(r,"回收复选框-"+i,8,101,38,36,null,Color.clear);勾选区.raycastTarget=true;
             var 复选框=勾选区.gameObject.AddComponent<Toggle>();回收勾选[i]=复选框;
             var 方框=图(勾选区.rectTransform,"复选框底",4,4,28,28,"小信息框");方框.raycastTarget=false;
@@ -70,16 +74,20 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         详情区=区块(框,"回收道纹详情",992,191,432,540);
         var 实际区=区块(详情区,"回收详情卡",0,0,460,550);实际区.localScale=Vector3.one*(432f/460);
         详情=实际区.gameObject.AddComponent<天帝道纹详情卡>();详情.初始化(字体);
+        详情.设置数据(数据);
         空库存=字文(框,"",96,344,788,104,23,天帝道纹美术.次文);空库存.alignment=TextAnchor.MiddleCenter;
         字文(框,"点击卡片查看详情，勾选复选框加入回收。",32,671,690,32,18,天帝道纹美术.次文);
         页码字=字文(框,"",780,668,100,38,18);页码字.alignment=TextAnchor.MiddleCenter;
         上页=键(框,"回收上一页","‹",714,668,52,38,()=>{页--;刷新();});
         下页=键(框,"回收下一页","›",886,668,52,38,()=>{页++;刷新();});
-        var 底=图(框,"回收结算面板",32,726,1392,82,"二级面板").rectTransform;
+        var 底=图(框,"回收结算面板",32,726,1392,82,天帝青绿皮肤.已启用?"小信息框":"二级面板").rectTransform;
         汇总=字文(底,"",20,6,240,36,21);
         总价=字文(底,"",294,4,790,40,26);总价.fontStyle=FontStyle.Bold;
         提示=字文(底,"先勾选不再需要的道纹。回收确认后无法撤销。",20,43,950,28,17,天帝道纹美术.次文);
         卖出=键(底,"预览回收","一键回收",1110,15,258,54,打开确认,true);
+        天帝剪纸界面皮肤.装配(根,"回收",框);
+        if (天帝剪纸界面皮肤.已启用) 余额.color=天帝道纹美术.浅字;
+        装配山水回收(根,框,底,实际区);
         布局手机(框,底,实际区);
         数据.状态改变+=刷新;钱.余额改变+=刷新;刷新();
     }
@@ -87,26 +95,27 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
     {
         if(!天帝移动适配.启用)return;
         var 列表口=天帝双端页面布局.滚动组(框,"回收卡片列表",32,192,940,465);
+        详情.填满父区域=true;
         天帝双端页面布局.移动页(框,面板=>
         {
             float 宽=面板.rect.width,高=面板.rect.height,左宽=宽*.62f;
             天帝双端页面布局.页头(面板,"关闭回收");
-            天帝双端页面布局.固定(余额.rectTransform,164,4,宽-332,40);余额.fontSize=15;
+            天帝双端页面布局.固定(余额条,164,4,宽-332,56);
+            天帝响应布局.比例(余额.rectTransform,.06f,0,.88f,1);余额.fontSize=15;
             float 条件宽=(宽-28)/3;
             for(int i=0;i<3;i++)天帝双端页面布局.固定((RectTransform)筛选下拉[i].transform,8+i*(条件宽+6),天帝双端页面布局.页头高度,条件宽,44);
             string[] 批选名={"一键选中","回收范围设置","清空回收选择"};
             for(int i=0;i<3;i++)天帝双端页面布局.按键(面板.Find(批选名[i]) as RectTransform,8+i*(条件宽+6),118,条件宽);
             天帝双端页面布局.固定(列表口,8,168,左宽-16,高-282);
-            var 内容=列表口.GetComponent<ScrollRect>().content;内容.sizeDelta=new Vector2(0,3*146);
+            var 内容=列表口.GetComponent<ScrollRect>().content;内容.sizeDelta=new Vector2(0,每页*66);
             for(int i=0;i<每页;i++)
             {
-                float 卡宽=(左宽-22)/2;
-                var r=(RectTransform)卡[i].transform;天帝双端页面布局.固定(r,i%2*(卡宽+6),i/2*146,卡宽,140);
-                天帝双端页面布局.固定(图标[i].rectTransform,6,8,48,50);
-                天帝双端页面布局.固定(卡名[i].rectTransform,6,58,卡宽-12,36);卡名[i].fontSize=14;
-                天帝双端页面布局.固定(卡价[i].rectTransform,60,6,卡宽-112,48);卡价[i].fontSize=14;
-                天帝双端页面布局.固定(卡状态[i].rectTransform,52,106,卡宽-58,30);卡状态[i].fontSize=14;
-                天帝双端页面布局.固定((RectTransform)回收勾选[i].transform,4,96,44,44);
+                float 卡宽=左宽-16;
+                var r=(RectTransform)卡[i].transform;天帝双端页面布局.固定(r,0,i*66,卡宽,60);
+                天帝双端页面布局.固定(图标[i].rectTransform,52,6,40,44);
+                天帝双端页面布局.固定(卡名[i].rectTransform,100,4,卡宽-152,52);卡名[i].fontSize=14;
+                卡价[i].gameObject.SetActive(false);卡状态[i].gameObject.SetActive(false);
+                天帝双端页面布局.固定((RectTransform)回收勾选[i].transform,4,8,44,44);
             }
             天帝双端页面布局.固定(详情区,左宽,168,宽-左宽-8,高-246);
             天帝响应布局.比例(详情卡,0,0,1,1);
@@ -145,8 +154,8 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
             var 纹=显示项(i);卡[i].gameObject.SetActive(纹!=null);if(纹==null)continue;
             bool 可=数据.可回收(纹,out string 原因),选=选择.Contains(纹);
             图标[i].单纹=纹;图标[i].SetVerticesDirty();
-            图短名[i].text=天帝美术资源.有道纹图标(纹)?"":纹.短名;
-            天帝界面美术.选项((Image)卡[i].targetGraphic,false);
+            图短名[i].text=天帝道纹美术.单字(纹);
+            天帝界面美术.选项((Image)卡[i].targetGraphic,选,!可);
             回收勾选[i].SetIsOnWithoutNotify(选);回收勾选[i].interactable=可&&!操作框已打开;
             锁按钮[i].设置(纹);锁按钮[i].GetComponent<Button>().interactable=!操作框已打开;
             卡名[i].text=(纹.分类==道纹分类.分叉?"分叉":纹.短名)+(天帝移动适配.启用?" · ":"\n")+天帝道纹品阶.彩色品阶文字(纹.品阶);
@@ -162,6 +171,7 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         if(焦点==null||!数据.道纹.Contains(焦点))焦点=列表.FirstOrDefault();
         if(焦点!=null){详情.设置(焦点,数据.可回收(焦点,out string 原因)?"回收价 "+天帝数值.道纹回收价(焦点)+" 灵石":原因);详情.gameObject.SetActive(true);}
         else 详情.gameObject.SetActive(false);
+        刷新山水回收();
     }
     void 打开确认()
     {
@@ -171,13 +181,15 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         var 根=(RectTransform)transform;确认层=区块(根,"回收确认层",0,0,1600,900);
         var 遮=图(确认层,"回收确认遮罩",0,0,1600,900,null,new Color(0,0,0,.70f));遮.raycastTarget=true;
         var 框=图(确认层,"回收确认面板",370,224,860,452,"一级面板").rectTransform;
-        字文(框,"确认回收这 "+待售.Count+" 枚道纹？",40,24,780,58,31);
-        字文(框,"可获得 "+预期价+" 灵石",40,100,780,48,28,new Color(.93f,.81f,.52f));
-        var 品阶=待售.GroupBy(x=>x.品阶).Select(x=>x.Key+" ×"+x.Count());
-        字文(框,string.Join("  ·  ",品阶),40,164,780,82,21);
-        字文(框,"只处理本次勾选的道纹。确认后从背包移除，无法撤销。",40,262,780,48,20,天帝道纹美术.次文);
+        字文(框,"确认回收",40,24,780,58,31).name="回收确认标题";
+        字文(框,"确认回收这 "+待售.Count+" 枚道纹？",40,86,780,48,28).name="回收确认数量";
+        字文(框,"可获得 "+预期价+" 灵石",40,136,780,48,26).name="回收确认收益";
+        var 品阶=待售.GroupBy(x=>x.品阶).OrderBy(x=>x.Key).Select(x=>x.Key+" ×"+x.Count());
+        字文(框,string.Join("  ·  ",品阶),40,192,780,52,21).name="回收确认品阶";
+        字文(框,"只处理本次勾选的道纹。确认后从背包移除，无法撤销。",40,262,780,48,20,天帝道纹美术.次文).name="回收不可撤销";
         键(框,"取消回收","取消",94,350,280,60,关闭确认);
         键(框,"确认回收","确认回收",486,350,280,60,确认,true);
+        if(山水回收)装配山水确认(框);
         if(天帝移动适配.启用)
         {
             var 口=天帝双端页面布局.滚动组(框,"回收确认正文",40,24,780,300);

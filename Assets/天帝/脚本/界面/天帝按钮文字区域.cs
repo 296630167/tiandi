@@ -40,6 +40,10 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
 
     Rect 素材纸面(Sprite 图)
     {
+        if (天帝剪纸界面皮肤.已启用 && (图 == 天帝剪纸界面皮肤.素材("墨绿按钮") || 图 == 天帝剪纸界面皮肤.素材("暖纸按钮") || 图 == 天帝剪纸界面皮肤.素材("朱红按钮")))
+            return Rect.MinMaxRect(.08f,0,.92f,1);
+        if (天帝青绿皮肤.已启用)
+            return Rect.MinMaxRect(导航 ? .34f : .08f, .12f, .92f, .88f);
         if (图 != null && 图 == 天帝道纹美术.获取("按钮")) return Rect.MinMaxRect(.25f, .24f, .75f, .76f);
         if (图 != null && (图 == 天帝道纹美术.获取("确认按钮") || 图 == 天帝道纹美术.获取("取消按钮") || 图 == 天帝道纹美术.获取("返回按钮") || 图 == 天帝道纹美术.获取("选中按钮")))
             return Rect.MinMaxRect(.22f, .24f, .78f, .76f);
@@ -62,7 +66,17 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
     {
         var r = 背景.rectTransform.rect; var 纸 = 素材纸面(图);
         if (图 != null && 图 == 天帝道纹美术.获取("小信息框"))
+        {
+            if(天帝青绿皮肤.已启用)
+            {
+                if(图.border==Vector4.zero)return Rect.MinMaxRect(r.xMin+2,r.yMin,r.xMax-2,r.yMax);
+                float 纸单位=Mathf.Max(.001f,背景.pixelsPerUnit*倍率);
+                float x=Mathf.Min(r.width*.18f,图.border.x/纸单位+1);
+                float y=Mathf.Min(r.height*.18f,图.border.y/纸单位+1);
+                return Rect.MinMaxRect(r.xMin+x,r.yMin+y,r.xMax-x,r.yMax-y);
+            }
             return Rect.MinMaxRect(r.xMin + (导航 ? r.width * .34f : Mathf.Min(4, r.width * .04f)), r.yMin, r.xMax - Mathf.Min(4, r.width * .04f), r.yMax);
+        }
         if (图 == null || 类型 != Image.Type.Sliced || 图.border == Vector4.zero)
             return Rect.MinMaxRect(r.xMin + r.width * 纸.xMin, r.yMin + r.height * 纸.yMin, r.xMin + r.width * 纸.xMax, r.yMin + r.height * 纸.yMax);
         float 单位 = 背景.pixelsPerUnit * 倍率; var 边 = 图.border; var 源 = 图.rect.size;
@@ -89,7 +103,7 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
             r.anchoredPosition -= Vector2.Scale(差, Vector2.one - r.pivot); r.sizeDelta += 差;
             var d = r.GetComponent<天帝比例矩形>(); if (d != null && d.待提交) d.参考尺寸 = r.rect.size;
             var 图 = 天帝道纹美术.获取("按钮");
-            if (图 != null) { 背景.sprite = 图; 背景.type = Image.Type.Sliced; 背景.pixelsPerUnitMultiplier = 2; 背景.color = Color.white; }
+            if (图 != null) { 背景.sprite = 图; 背景.type = 天帝剪纸界面皮肤.已启用?Image.Type.Simple:Image.Type.Sliced; 背景.pixelsPerUnitMultiplier = 2; 背景.color = Color.white; }
             foreach (var 文 in 文字) { 文.text = "关闭"; 文.fontSize = 22; 文.color = 天帝道纹美术.正文; }
             记录素材();
         }
@@ -110,7 +124,7 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
         if (窄)
         {
             简图 = 天帝道纹美术.获取("小信息框");
-            if (简图 != null) { 背景.sprite = 简图; 背景.type = Image.Type.Sliced; 背景.pixelsPerUnitMultiplier = 2; 简化 = true; }
+            if (简图 != null) { 背景.sprite = 简图; 背景.type = Image.Type.Sliced; 背景.pixelsPerUnitMultiplier = 天帝青绿皮肤.已启用 ? 4 : 2; 简化 = true; }
         }
         else if (简化) { 背景.sprite = 原图; 背景.type = 原类型; 背景.pixelsPerUnitMultiplier = 原倍率; 简化 = false; }
         纯色区域 = 简化 ? 避开图标(换算(简图, 背景.type, 背景.pixelsPerUnitMultiplier)) : 区;
@@ -120,6 +134,12 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
             var 标签区 = 纯色区域;
             标签区.xMin += 2; 标签区.xMax -= 2;
             if (背景.sprite != 天帝道纹美术.获取("小信息框")) { 标签区.yMin += 2; 标签区.yMax -= 2; }
+            bool 青绿小纸面=天帝青绿皮肤.已启用 && 背景.sprite==天帝道纹美术.获取("小信息框");
+            if(青绿小纸面)
+            {
+                // UGUI的字体行框包含上下空白，比实际字形高；行框可以借用空白，字形仍受纯色区验收。
+                标签区.yMin=背景.rectTransform.rect.yMin;标签区.yMax=背景.rectTransform.rect.yMax;
+            }
             if (控件 is Dropdown 下拉)
             {
                 if (文 == 下拉.captionText) 标签区.xMax -= 24;
@@ -130,6 +150,7 @@ public sealed class 天帝按钮文字区域 : MonoBehaviour
             文.alignment = 导航 ? TextAnchor.MiddleLeft : TextAnchor.MiddleCenter;
             文.horizontalOverflow = HorizontalWrapMode.Wrap; 文.verticalOverflow = VerticalWrapMode.Truncate;
             文.resizeTextForBestFit = true; 文.resizeTextMinSize = 14; 文.resizeTextMaxSize = Mathf.Max(14, 文.fontSize);
+            if(青绿小纸面) 文.resizeTextMaxSize=Mathf.Min(文.resizeTextMaxSize,Mathf.Max(14,Mathf.FloorToInt(纯色区域.height*.8f)));
             if (简化) 文.color = 天帝道纹美术.纸面文字(文.color);
         }
         上次签名 = 签名();

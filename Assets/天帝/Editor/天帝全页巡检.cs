@@ -170,7 +170,7 @@ public static class 天帝全页巡检
         点("道纹回收");yield return 拍("10c道纹回收");
         检查("回收阻止其他页面与入图",!游戏.进入战斗()&&!游戏.选择地图等级(游戏.当前地图等级==1?2:1));游戏.界面.显示角色();游戏.界面.显示设置();检查("回收互斥",!游戏.界面.角色已打开&&!游戏.界面.设置已打开);
         var 回收=游戏.界面.回收页;
-        int 槽=Enumerable.Range(0,12).FirstOrDefault(i=>游戏.道纹数据.可回收(回收.显示项(i),out _));var 卖纹=回收.显示项(槽);
+        int 槽=Enumerable.Range(0,9).FirstOrDefault(i=>游戏.道纹数据.可回收(回收.显示项(i),out _));var 卖纹=回收.显示项(槽);
         if(游戏.道纹数据.可回收(卖纹,out _))
         {
             int 钱=游戏.宝盒数据.灵石,价=天帝数值.道纹回收价(卖纹),数=游戏.道纹数据.道纹.Count;
@@ -180,7 +180,7 @@ public static class 天帝全页巡检
             yield return new WaitForSecondsRealtime(1.2f);var 存=new 天帝存档().读取();检查("自动保存回收余额与删除",存!=null&&存.灵石==预期余额&&存.无限灵石==无限&&存.画布.道纹.Count==数-1);
             yield return 拍("10e回收结果");
         }
-        var 翻=回收.GetComponentsInChildren<Button>().First(x=>x.name=="回收下一页");if(翻.interactable){点("回收下一页");yield return 拍("10f回收翻页与保护");}点("回收筛选-3");yield return 拍("10g回收品阶筛选");点("关闭回收");
+        var 翻=回收.GetComponentsInChildren<Button>().First(x=>x.name=="回收下一页");if(翻.interactable){点("回收下一页");yield return 拍("10f回收翻页与保护");}回收.GetComponentsInChildren<Dropdown>().Single(x=>x.name=="回收品阶筛选").value=(int)道纹品阶.稀有+1;yield return 拍("10g回收品阶筛选");点("关闭回收");
         游戏.界面.显示设置();yield return 拍("11主页设置");游戏.界面.关闭设置();
         点("作弊码");yield return 拍("11b作弊码输入");点("关闭");
         var 等级菜单=游戏.GetComponentInChildren<Dropdown>();ExecuteEvents.Execute(等级菜单.gameObject,new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left},ExecuteEvents.pointerClickHandler);yield return new WaitForSecondsRealtime(.22f);yield return 拍("12地图等级");游戏.界面.关闭等级下拉();yield return new WaitForSecondsRealtime(.22f);
@@ -326,14 +326,15 @@ public static class 天帝全页巡检
         int 单价=天帝数值.道纹回收价(ui.显示项(0));勾("回收复选框-0");检查("勾选累计总回收灵石",ui.选中数量==1&&ui.总回收灵石==单价);yield return 拍("32回收六词条详情");
         勾("回收复选框-0");检查("取消勾选总价归零",ui.选中数量==0&&ui.总回收灵石==0);勾("回收复选框-0");
         点("清空回收选择");检查("清空选择同步复选框和总价",ui.选中数量==0&&ui.总回收灵石==0&&!ui.GetComponentsInChildren<Toggle>().First(x=>x.name=="回收复选框-0").isOn);
-        点("选本页");点("回收下一页");点("选本页");检查("跨页保留24枚选择",ui.选中数量==24);
-        var 要售=Enumerable.Range(0,24).Select(i=>w.道纹.Where(x=>w.可回收(x,out _)).OrderBy(x=>x.编号).ElementAt(i)).ToArray();int 收益=要售.Sum(天帝数值.道纹回收价);
+        ui.设置显示条件(-1,0,3);
+        for(int i=0;i<9;i++)勾("回收复选框-"+i);点("回收下一页");for(int i=0;i<9;i++)勾("回收复选框-"+i);检查("跨页保留18枚选择",ui.选中数量==18);
+        var 要售=Enumerable.Range(0,18).Select(i=>w.道纹.Where(x=>w.可回收(x,out _)).OrderBy(x=>x.编号).ElementAt(i)).ToArray();int 收益=要售.Sum(天帝数值.道纹回收价);
         检查("跨页累计总回收灵石",ui.总回收灵石==收益);yield return 拍("32b跨页回收总价");
-        点("预览回收");yield return 拍("33跨页多品阶回收确认");点("取消回收");检查("批量取消保留选择与金额",ui.选中数量==24&&ui.总回收灵石==收益&&w.道纹.Count==37&&b.灵石==500);
-        点("预览回收");yield return 拍("34批量确认重开");点("确认回收");检查("跨页只支付一次且删除24枚",b.灵石==500+收益&&w.道纹.Count==13&&ui.选中数量==0&&ui.总回收灵石==0&&要售.All(x=>!w.道纹.Contains(x)));
+        点("预览回收");yield return 拍("33跨页多品阶回收确认");点("取消回收");检查("批量取消保留选择与金额",ui.选中数量==18&&ui.总回收灵石==收益&&w.道纹.Count==37&&b.灵石==500);
+        点("预览回收");yield return 拍("34批量确认重开");点("确认回收");检查("跨页只支付一次且删除18枚",b.灵石==500+收益&&w.道纹.Count==19&&ui.选中数量==0&&ui.总回收灵石==0&&要售.All(x=>!w.道纹.Contains(x)));
         yield return 拍("35批量回收结果");
-        var 下一=ui.GetComponentsInChildren<Button>().First(x=>x.name=="回收下一页");if(下一.interactable)点("回收下一页");
-        var 保护=Enumerable.Range(0,12).First(i=>ui.显示项(i)!=null&&!w.可回收(ui.显示项(i),out _));点("回收道纹-"+保护);检查("保护道纹查看详情但无法勾选",ui.选中数量==0);yield return 拍("36回收保护道纹");
+        ui.设置显示条件(-1,0,0);
+        var 保护=Enumerable.Range(0,9).First(i=>ui.显示项(i)!=null&&!w.可回收(ui.显示项(i),out _));点("回收道纹-"+保护);检查("保护道纹查看详情但无法勾选",ui.选中数量==0);yield return 拍("36回收保护道纹");
         var 保护勾=ui.GetComponentsInChildren<Toggle>().First(x=>x.name=="回收复选框-"+保护);检查("保护道纹复选框禁用",!保护勾.interactable&&!保护勾.isOn);
         检查("边界界面未改变玩家库存与余额",原库存==JsonUtility.ToJson(游戏.道纹数据.导出存档())&&原余额==游戏.宝盒数据.灵石);
         根.gameObject.SetActive(false);UnityEngine.Object.Destroy(根.gameObject);

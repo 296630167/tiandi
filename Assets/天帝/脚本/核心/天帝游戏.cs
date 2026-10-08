@@ -28,6 +28,7 @@ public class 天帝游戏 : MonoBehaviour
     public UnityEvent 新玩法开始 = new UnityEvent();
     public 游戏阶段 阶段 { get; private set; }
     public 天帝界面 界面 { get; private set; }
+    public bool 新手指引待完成 { get; private set; }
     public float 音量 { get; private set; }
     public float 音乐音量 { get; private set; }
     public float 音效音量 { get; private set; }
@@ -97,6 +98,11 @@ public class 天帝游戏 : MonoBehaviour
             if (保存等待 <= 0 && !保存进度()) 保存等待 = 5;
         }
         var 键 = Keyboard.current;
+        if (界面?.新手指引已打开 == true)
+        {
+            if (键 != null && 键.escapeKey.wasPressedThisFrame) 界面.跳过新手指引();
+            return;
+        }
         if (天帝移动适配.启用)
         {
             // Android返回键复用触屏返回流程，其余键盘快捷键只属于PC。
@@ -190,7 +196,10 @@ public class 天帝游戏 : MonoBehaviour
         余响计数 = new 天帝余响计数(当前天赋); 当前地图编号 = 数据.地图编号;
         当前地图等级 = Mathf.Clamp(数据.地图等级, 1, 100); 当前战斗难度 = 战斗难度.普通;
         当前进度可保存 = true; 待保存 = false; 订阅角色();
-        阶段 = 游戏阶段.主页; 界面.显示主页(); return true;
+        新手指引待完成 = 数据.新手指引待完成;
+        阶段 = 游戏阶段.主页; 界面.显示主页();
+        if (新手指引待完成) 界面.显示修行指引();
+        return true;
     }
     void 进入源道纹选择()
     {
@@ -227,7 +236,9 @@ public class 天帝游戏 : MonoBehaviour
         序章.释放保留画面();
         阶段 = 游戏阶段.主页; 界面.显示主页();
         当前进度可保存 = true; 标记待保存();
+        新手指引待完成 = true;
         if (!保存进度()) 界面.显示消息(存档提示);
+        else 界面.显示修行指引();
         return true;
     }
     public void 开始新玩法()
@@ -336,11 +347,16 @@ public class 天帝游戏 : MonoBehaviour
         if (宝盒数据 != null) 宝盒数据.余额改变 -= 标记待保存;
     }
     void 标记待保存() { if (!当前进度可保存) return; if (!待保存) 保存等待 = .6f; 待保存 = true; }
+    public void 完成新手指引()
+    {
+        if (!新手指引待完成) return;
+        新手指引待完成 = false; 标记待保存();
+    }
     public bool 保存进度()
     {
         if (!当前进度可保存 || 道纹数据 == null || 通货数据 == null || 宝盒数据 == null || 主角属性 == null) return true;
         if (!待保存 && 当前存档 != null) return true;
-        var 数据 = new 天帝存档数据 { 序章已完成 = true, 主角 = 主角属性.导出配置(), 画布 = 道纹数据.导出存档(),
+        var 数据 = new 天帝存档数据 { 序章已完成 = true, 新手指引待完成 = 新手指引待完成, 主角 = 主角属性.导出配置(), 画布 = 道纹数据.导出存档(),
             通货 = 通货数据.导出库存(), 无限通货 = 通货数据.无限通货, 灵石 = 宝盒数据.灵石, 无限灵石 = 宝盒数据.无限灵石, 地图编号 = 当前地图编号, 地图等级 = 当前地图等级, 难度 = 当前战斗难度 };
         if (!存档.保存(数据)) { 界面?.更新存档状态(存档提示); return false; }
         当前存档 = 数据; 待保存 = false; 界面?.更新存档状态(""); return true;
@@ -379,6 +395,7 @@ public class 天帝游戏 : MonoBehaviour
     public void 保存设置() => PlayerPrefs.Save();
     public void 触屏返回()
     {
+        if (界面.新手指引已打开) { 界面.跳过新手指引(); return; }
         if (界面.关闭等级下拉()) return;
         if (界面.作弊码已打开) 界面.关闭作弊码();
         else if (界面.确认已打开) 界面.关闭确认();

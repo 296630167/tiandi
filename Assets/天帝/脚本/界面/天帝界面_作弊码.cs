@@ -8,6 +8,7 @@ public partial class 天帝界面
     public void 显示作弊码()
     {
         if (游戏.阶段 != 游戏阶段.主页 || 确认已打开 || 设置已打开 || 地图已打开 || 角色已打开 || 图鉴已打开 || 宝盒已打开 || 回收已打开) return;
+        if (天帝剪纸界面皮肤.已启用) { 显示山水作弊码(); return; }
         关闭等级下拉(); 作弊码已打开 = 确认已打开 = true;
         foreach (var 控件 in 页面.GetComponentsInChildren<Selectable>()) 控件.interactable = false;
         var 遮 = 图(弹层, "作弊码遮罩", 0, 0, 1600, 900, new Color(.02f, .04f, .04f, .68f)); 遮.raycastTarget = true;

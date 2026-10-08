@@ -1,0 +1,281 @@
+{
+  "project_id": "9a4dd81a-f6cc-4948-b3b9-47df257e033c",
+  "model": "remote default; response unspecified; not Image2.5",
+  "remote_result": "C:\\Users\\123\\Documents\\ChatGPT\\杂谈\\天帝\\output\\青绿岩彩全UI\\素材结果.json",
+  "assets": [
+    {
+      "name": "主页背景",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_主页净背景_20261007023014.png",
+      "process": "remote original",
+      "sha256": "c3f1f8fa56f3c2673ccb68040bc5ef2805ee767090179374bac65fd238eb2296"
+    },
+    {
+      "name": "页面背景",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_页面净背景_20261007023014.png",
+      "process": "remote original",
+      "sha256": "2608a82115ce8dfe7a231c4b40421ca69178f52d499b75bcf56deda08084fd78"
+    },
+    {
+      "name": "浅纸面板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_浅纸面板_20261007023014.png",
+      "process": "trim transparent margin;512px",
+      "sha256": "04a04989f11130fa1dc519c9cec87343a5304316af8a7e23bd90a069685dc9b0"
+    },
+    {
+      "name": "深青面板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_深青面板_20261007023014.png",
+      "process": "trim transparent margin;512px",
+      "sha256": "0ec37071d6691a1582297c3b10fffb09f4523e82547338c0de1f06b344b0c8f7"
+    },
+    {
+      "name": "画布内衬",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_浅纸面板_20261007023014.png",
+      "process": "same generated paper",
+      "sha256": "04a04989f11130fa1dc519c9cec87343a5304316af8a7e23bd90a069685dc9b0"
+    },
+    {
+      "name": "小信息纸面",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_浅纸面板_20261007023014.png",
+      "process": "generated quiet center only;compact controls have no ornamental perimeter",
+      "sha256": "62e1fb47cb703c3bb1ff4f50011f3d70de597369d3afd2810e52d53f56e2e10b"
+    },
+    {
+      "name": "浅纸按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 1; largest component;trim",
+      "sha256": "76ddd088b8aedd2adc13144469fbb914092d71df04d83b323fa370d6545d7e8f"
+    },
+    {
+      "name": "深青按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 2; largest component;trim",
+      "sha256": "bb4c947ef1317569e9ba438fd97b7b49e7fb377dcb898a0622f334ca37e550cf"
+    },
+    {
+      "name": "选中按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 3; largest component;trim",
+      "sha256": "6670e46da22042089d91c1fc8a1f38b7c2f34f9efbd20484b0f5101ac21bc114"
+    },
+    {
+      "name": "禁用按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 4; largest component;trim",
+      "sha256": "c1bea7e8f7596eb1ed43d964f3c3cab645dd687733687788c9e5ea99a43e70eb"
+    },
+    {
+      "name": "浅纸页签",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 5; largest component;trim",
+      "sha256": "6c874a2a5e23775a8599825997943e7e7504a02613184a209d2213b5901ad06b"
+    },
+    {
+      "name": "深青页签",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 6; largest component;trim",
+      "sha256": "24693859f330cedddf1024b53bf80f9ab02a99e9e0d150447c6b06f7cd1a3114"
+    },
+    {
+      "name": "输入框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 7; largest component;trim",
+      "sha256": "f73cbcd1c983d7545072dae64e406360204bb3b1adde0581ae0b7318f9a8494d"
+    },
+    {
+      "name": "图标按钮底",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_按钮组件表_20261007023014.png",
+      "process": "2x4 sheet cell 8; largest component;trim",
+      "sha256": "f4f592c3a5763abbdf12b26a81a4a00e1e3839668c8b29363f718d99ad46a517"
+    },
+    {
+      "name": "图标角色",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 1;trim;equal224px extent;256px canvas",
+      "sha256": "87c19dc36e283a42db2f37f3ee9f46ddbe47012700b7a1924739eb3b1059d88c"
+    },
+    {
+      "name": "图标道纹",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 2;trim;equal224px extent;256px canvas",
+      "sha256": "3bacec130ef880ab2d61ff845fb23b49e69768762c420a3901d1b65feb8f40da"
+    },
+    {
+      "name": "图标道纹改造",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 3;trim;equal224px extent;256px canvas",
+      "sha256": "af461d25c98ede08426c65d7e60eafd6f2feaec925f5e2ce2166716c8b8f7af6"
+    },
+    {
+      "name": "图标道纹图鉴",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 4;trim;equal224px extent;256px canvas",
+      "sha256": "54f548a92d4d4f68c89c71c8eef0378802857eac8da0e03c72c4e84f1e9c4969"
+    },
+    {
+      "name": "图标宝盒",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 5;trim;equal224px extent;256px canvas",
+      "sha256": "199ce6171783fea9f62a5dde5aeea7832dd61e8d955c3d4ef0ad34ccf5e515fb"
+    },
+    {
+      "name": "图标道纹回收",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 6;trim;equal224px extent;256px canvas",
+      "sha256": "3e9b263a6c3192b7779635f7a7aa93008fd3df2eee46e1a4b1a65b825e9e0440"
+    },
+    {
+      "name": "图标作弊码",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 7;trim;equal224px extent;256px canvas",
+      "sha256": "13c76686b0827ce55ea65712f74e9c0abc2ef610e36ab18cff490cf18c9a85b8"
+    },
+    {
+      "name": "图标设置",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 8;trim;equal224px extent;256px canvas",
+      "sha256": "62134e4ad0354753c10c6154dad0ca933e2907f15658f6ffade3e28264790135"
+    },
+    {
+      "name": "图标灵石",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 9;trim;equal224px extent;256px canvas",
+      "sha256": "855efb393b5e0cb519d74575fb37fc8767b8aad3f9f49d1c3a5351cae98a8168"
+    },
+    {
+      "name": "图标角饰",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 sheet cell 12;trim;equal224px extent;256px canvas",
+      "sha256": "11538a900ae60a55285193bf5cd778c9cf81942d74b2ac04ce00ad358db7a8f1"
+    },
+    {
+      "name": "地图卡框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_浅纸面板_20261007023014.png",
+      "process": "generated perimeter;transparent center",
+      "sha256": "11658cc1d5dd69c460e0245bdec25676f82e7726e358687ea55faadb5d85e86d"
+    },
+    {
+      "name": "分割线",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_深青面板_20261007023014.png",
+      "process": "generated top edge;512x4",
+      "sha256": "29426121b6d460ce30f5f513e08cc78ab434c42b3ae2da3174af41205331fbc2"
+    },
+    {
+      "name": "底部渐隐",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_深青面板_20261007023014.png",
+      "process": "generated material;top alpha0 bottom235",
+      "sha256": "05bf1dd6f462d709d3ac37f47c9532a34c1d860f4f5411a32b15c92cda8fa5e9"
+    },
+    {
+      "name": "主页阴影",
+      "source": "C:\\Users\\123\\Documents\\ChatGPT\\杂谈\\天帝\\Assets\\天帝\\美术\\界面\\敦煌彩绘\\主页落地阴影.png",
+      "process": "existing generated shadow unchanged",
+      "sha256": "ce9f0aa504254bc7a6fdcc534017a9b8beaed77d9f6f4b9b7b14f5920eb99b93"
+    },
+    {
+      "name": "道纹底板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 1;trim;equal224px extent;256px canvas",
+      "sha256": "55a6964b732170e31402664fbfb16f0a41f62f3f34b7d61037b8aaa3662c7539"
+    },
+    {
+      "name": "源纹底板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 2;trim;equal224px extent;256px canvas",
+      "sha256": "5fb8dc3f2b93856973271beee55eb75e3ad95349cc59df26de378dc9c2c2cbb0"
+    },
+    {
+      "name": "选中六边框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 3;trim;equal224px extent;256px canvas",
+      "sha256": "aa1b38f3abf47d677201afb85826635d7d2493f5c6e02c544d93d434bc7ecac5"
+    },
+    {
+      "name": "品质框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 sheet cell3 intact selected frame reused;white RGB preserves alpha",
+      "sha256": "e8e3bb2a699e1571a89198fc85ab99a6819c3da67ce620e8575fbcd4763c36ab"
+    },
+    {
+      "name": "图标锁定",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 navigation sheet cell10;verified lock icon",
+      "sha256": "352d819d1d821ac40d32a5be0112a3df3533d895265b90b5c790c2d68747493a"
+    },
+    {
+      "name": "图标解锁",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+      "process": "4x3 navigation sheet cell10;verified lock icon;50% alpha unlock state",
+      "sha256": "26a70bc534419dbe4e21fb1960eb0e1b8cb7820dbb5dd818f20770baf78a222c"
+    },
+    {
+      "name": "图标勾选",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 7;trim;equal224px extent;256px canvas",
+      "sha256": "79b4964d73fbe5b8f6e488d0c271deecaa89c4a41033dd9d95b3d8ddf9902820"
+    },
+    {
+      "name": "空槽框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 sheet cell3 intact selected frame reused",
+      "sha256": "aa1b38f3abf47d677201afb85826635d7d2493f5c6e02c544d93d434bc7ecac5"
+    },
+    {
+      "name": "可替换",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 9;trim;equal224px extent;256px canvas",
+      "sha256": "a17c66065dfe970c487a21bbf22e644bceed9947e737f91aeb80b8d1e3c0d117"
+    },
+    {
+      "name": "图标关闭",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 10;trim;equal224px extent;256px canvas",
+      "sha256": "a2064dfb039040e1a8f8125ea4b127f48f83e645e556e8cd9e384dfe2f939974"
+    },
+    {
+      "name": "返回图标",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 11;trim;equal224px extent;256px canvas",
+      "sha256": "979064a9b567d5b0c46a1972a05ae4fcd9f778043000f202baac27fbadbdf388"
+    },
+    {
+      "name": "旋转图标",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 12;trim;equal224px extent;256px canvas",
+      "sha256": "07bf1a2b0bf195b63029fb78a8d2cc6f92594431b928de41bbc8d524a0ea68a8"
+    },
+    {
+      "name": "源点图标",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 13;trim;equal224px extent;256px canvas",
+      "sha256": "2a93a363d1892fbd12e72bdb64b58628e858664a34d7309b4ae78d0d028dc883"
+    },
+    {
+      "name": "撤销图标",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 14;trim;equal224px extent;256px canvas",
+      "sha256": "441a542e5d39c701cda09292fe9756cb5525dc554db854feb3c1ed177b8e00b3"
+    },
+    {
+      "name": "下拉图标",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 15;trim;equal224px extent;256px canvas",
+      "sha256": "b5af29f38dd5e73f1f3bf20c470ea775d85e0186627cb62fdaca8f9026f1f410"
+    },
+    {
+      "name": "槽位分割线",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+      "process": "4x4 cell 16;trim;equal224px extent;256px canvas",
+      "sha256": "f4de07d9e85141d6426457cc310830c4ffd418d0608ad8f5fbea079b1796d88e"
+    },
+    {
+      "name": "构筑道纹图集",
+      "source": [
+        "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_道纹槽位状态表_20261007024150.png",
+        "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_导航图标表_20261007023014.png",
+        "C:\\Users\\123\\Documents\\ChatGPT\\杂谈\\天帝\\Assets\\天帝\\美术\\界面\\敦煌彩绘\\构筑道纹图集.png"
+      ],
+      "process": "new generated UI cells0-15;cells4/5 from navigation lock;original symbols16-63 preserved;white mesh texel",
+      "sha256": "ee498f6494b27fc7906041002af8d2e80c43d3983eda75f0a17763dd070bb921"
+    }
+  ]
+}

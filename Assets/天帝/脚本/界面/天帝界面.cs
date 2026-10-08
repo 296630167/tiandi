@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -9,6 +10,13 @@ public partial class 天帝界面
 {
     readonly 天帝游戏 游戏;
     readonly GameObject 根;
+    readonly Canvas 界面画布;
+    readonly CanvasScaler 画布缩放;
+    readonly 天帝响应布局 响应布局;
+    bool 适配待刷新 = true, 上次移动平台;
+    int 上次布局修订 = -1;
+    Vector2 上次布局尺寸;
+    public int 适配排版次数 { get; private set; }
     readonly RectTransform 安全区;
     readonly RectTransform 设计区;
     readonly RectTransform[] 留边 = new RectTransform[4];
@@ -18,6 +26,8 @@ public partial class 天帝界面
     readonly Text 存档状态字;
     Text 战斗坐标;
     Text 战斗目标;
+    string 移动目标上次文本;
+    float 移动目标显示截止;
     Text 战斗波次;
     Text 战斗血量, 战斗配置字;
     Text 主页实力字, 主页构筑字, 主页灵石字;
@@ -30,7 +40,7 @@ public partial class 天帝界面
     readonly List<飘字> 伤害字池 = new List<飘字>();
     readonly System.Text.StringBuilder 伤害文案缓冲 = new System.Text.StringBuilder(256);
     int 伤害飘字序号;
-    sealed class 飘字 { public Text 字; public CanvasGroup 组; public Outline 描边; public Vector2 位置; public float 剩余, 横移; }
+    sealed class 飘字 { public Text 字; public CanvasGroup 组; public Outline 描边; public Vector2 位置; public float 剩余, 横移, 起高, 弹幅; }
     Button 战斗离开;
     天帝地图预览 战斗小地图;
     public bool 地图已打开 { get; private set; }
@@ -80,12 +90,13 @@ public partial class 天帝界面
         this.游戏 = 游戏;
         根 = new GameObject("天帝界面", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         根.transform.SetParent(游戏.transform, false);
+        界面画布 = 根.GetComponent<Canvas>(); 画布缩放 = 根.GetComponent<CanvasScaler>();
         根.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
         var 适配 = 根.GetComponent<CanvasScaler>();
-        适配.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        适配.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         适配.referenceResolution = 天帝移动适配.固定分辨率;
-        适配.scaleFactor = 天帝移动适配.显示比例(天帝移动适配.有效安全区(天帝移动适配.安全区, 天帝移动适配.屏幕尺寸));
-        根.AddComponent<天帝响应布局>();
+        适配.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        响应布局 = 根.AddComponent<天帝响应布局>();
         for (int i = 0; i < 留边.Length; i++)
         {
             留边[i] = 铺满((RectTransform)根.transform, "1080p留边" + i);
@@ -94,7 +105,7 @@ public partial class 天帝界面
         安全区 = 铺满((RectTransform)根.transform, "安全区");
         安全区.gameObject.AddComponent<RectMask2D>();
         var 底 = 铺满(安全区, "背景").gameObject.AddComponent<Image>();
-        底.sprite = 游戏.主页背景; 底.color = 游戏.主页背景 != null ? Color.white : 纸; 底.raycastTarget = false;
+        底.sprite = 天帝青绿皮肤.获取("BG01") ?? 游戏.主页背景; 底.color = 底.sprite != null ? Color.white : 纸; 底.raycastTarget = false;
         var 背景比例 = 底.gameObject.AddComponent<AspectRatioFitter>(); 背景比例.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent; 背景比例.aspectRatio = 16f / 9;
         页面背景 = 底;
         设计区 = 铺满(安全区, "设计区"); 天帝响应布局.登记(设计区, new Vector2(1600, 900));
@@ -138,6 +149,7 @@ public partial class 天帝界面
     }
     void 清空(RectTransform 层)
     {
+        适配待刷新 = true;
         for (int i = 层.childCount - 1; i >= 0; i--)
         { var 物 = 层.GetChild(i).gameObject; 物.SetActive(false); 删除界面对象(物); }
     }
@@ -145,15 +157,16 @@ public partial class 天帝界面
     { if (Application.isPlaying) UnityEngine.Object.Destroy(物); else UnityEngine.Object.DestroyImmediate(物); }
     void 换页(bool 保留序章画面 = false)
     {
+        清理剪纸主页();
         作弊码已打开 = false;
         清理主页选图();
         清理拾取提示();
         清理战斗界面();
-        页面背景.sprite = 游戏.主页背景; 页面背景.color = 游戏.主页背景 != null ? Color.white : 纸;
+        页面背景.sprite = 天帝青绿皮肤.获取("BG01") ?? 游戏.主页背景; 页面背景.color = 页面背景.sprite != null ? Color.white : 纸;
         if (!保留序章画面 && 序章全屏媒体 != null) { 序章全屏媒体.gameObject.SetActive(false); 删除界面对象(序章全屏媒体.gameObject); 序章全屏媒体 = null; }
         var 旧排版 = 页面.GetComponent<天帝移动排版>(); if (旧排版 != null) 旧排版.排版 = null;
         清空(页面); 清空(弹层); 设置已打开 = 确认已打开 = 地图已打开 = 角色已打开 = 图鉴已打开 = 宝盒已打开 = 回收已打开 = false; 角色页 = null; 图鉴页 = null; 回收页 = null; 宝盒概率层 = null; 页面背景.enabled = !保留序章画面;
-        战斗小地图 = null; 战斗坐标 = null; 战斗目标 = 战斗波次 = null; 战斗离开 = null; 战斗摇杆 = null; 触控跑步 = false;
+        战斗小地图 = null; 战斗坐标 = null; 战斗目标 = 战斗波次 = null; 移动目标上次文本 = null; 移动目标显示截止 = 0; 战斗离开 = null; 战斗摇杆 = null; 触控跑步 = false;
         战斗血量 = 战斗配置字 = null; 战斗血条 = null; 伤害字池.Clear();
         掉落提示 = null;
         序章字卡 = null; 序章标题 = 序章正文 = null;
@@ -166,6 +179,7 @@ public partial class 天帝界面
     }
     public void 显示标题()
     {
+        if (显示剪纸标题()) return;
         换页(); var 标题 = 字(页面, 天帝游戏.全名.Replace("到我为", "\n到我为"), 220, 240, 1160, 230, 64, 墨);
         天帝界面美术.标题(标题);
         var 描边 = 标题.gameObject.AddComponent<Outline>(); 描边.effectColor = new Color(.94f, .94f, .85f, .8f); 描边.effectDistance = new Vector2(1, -1);
@@ -197,6 +211,7 @@ public partial class 天帝界面
     }
     void 显示确认(string 标题, string 正文, string 确认文字, Action 确认, float 高度 = 420)
     {
+        if (天帝剪纸界面皮肤.已启用) { 显示山水确认(标题, 正文, 确认文字, 确认, 高度); return; }
         if (确认已打开 || 设置已打开 || 地图已打开 || 角色已打开 || 图鉴已打开 || 宝盒已打开 || 回收已打开) return;
         确认已打开 = true;
         foreach (var 控件 in 页面.GetComponentsInChildren<Selectable>()) 控件.interactable = false;
@@ -245,6 +260,8 @@ public partial class 天帝界面
     { 存档状态字.text = 提示; 存档状态字.gameObject.SetActive(!string.IsNullOrEmpty(提示)); }
     public void 显示主页()
     {
+        if (天帝首两页山水素材.已启用) { 显示剪纸主页(); return; }
+        if (天帝青绿皮肤.已启用) { 显示青绿主页(); return; }
         换页();
         主页面板(页面, "主页导航留白", "导航留白", 0, 28, 384, 760);
         var 阴影 = 游戏.美术?.获取("DWUI_主页落地阴影");
@@ -257,12 +274,6 @@ public partial class 天帝界面
             主页人物.sizeDelta = new Vector2(800,800); 主页人物.pivot = new Vector2(.5f,48f/512);
             主页人物.anchoredPosition = new Vector2(800,-700); 主页人物.localScale = Vector3.one;
         }
-        var 身份底 = 主页面板(页面, "道纹实力评语", "实力卷轴", 378, 695, 668, 156).rectTransform;
-        主页实力字 = 主页字(身份底, "", 84, 25, 500, 68, 27, 主页石青字, true);
-        主页实力字.verticalOverflow = VerticalWrapMode.Truncate;
-        主页构筑字 = 主页字(身份底, "", 84, 94, 500, 30, 17, 主页灰墨);
-        主页构筑字.resizeTextForBestFit = true; 主页构筑字.resizeTextMinSize = 13; 主页构筑字.resizeTextMaxSize = 17;
-        更新主页实力();
         var 设置键 = 主页按钮(页面, "设置", "设置按钮", 1400, 24, 172, 56, 显示设置, 25, 天帝道纹美术.浅字);
         var 设置字 = 设置键.GetComponentInChildren<Text>(); 设置字.rectTransform.anchoredPosition = new Vector2(57, 0); 设置字.rectTransform.sizeDelta = new Vector2(91, 52);
         主页面板((RectTransform)设置键.transform, "设置图标", "图标设置", 30, 15, 26, 26);
@@ -313,6 +324,7 @@ public partial class 天帝界面
     }
     public void 显示宝盒()
     {
+        if (天帝剪纸界面皮肤.已启用) { 显示山水宝盒(); return; }
         if (游戏.阶段 != 游戏阶段.主页 || 游戏.宝盒数据 == null || 设置已打开 || 地图已打开 || 确认已打开 || 角色已打开 || 图鉴已打开 || 宝盒已打开 || 回收已打开) return;
         if (!ReferenceEquals(日志所属宝盒, 游戏.宝盒数据)) { 宝盒日志.Clear(); 日志所属宝盒 = 游戏.宝盒数据; }
         宝盒已打开 = true;
@@ -329,8 +341,8 @@ public partial class 天帝界面
         var 名称 = new[] { "属性宝盒", "功能宝盒", "分叉宝盒" };
         var 说明 = new[]
         {
-            "基础属性 · 生命与防御 · 攻速与移速\n金 · 木 · 水 · 火 · 土",
-            "固定稀有 · " + 天帝顺序道纹.功能数量 + "种单功能 · 等概率\n齐射/分裂：3口 · 连锁：2口\n其余功能：随机1～2口",
+            "初次构筑可先选属性盒\n随机属性增益 · 需接通源纹",
+            "改变攻击形态，未必增加伤害\n" + 天帝顺序道纹.功能数量 + "种等概率 · 固定稀有\n单次消耗500灵石，先看功能详情",
             "固定普通品阶 · 无词条\n3–6接口，专门传导与分流"
         };
         var 结果框 = 图(框, "宝盒结果衬底", 42, 126, 1160, 84, new Color(.08f, .15f, .16f)).rectTransform;
@@ -375,6 +387,7 @@ public partial class 天帝界面
         天帝响应布局.动态(详情框);
         var 详情卡 = 详情框.gameObject.AddComponent<天帝道纹详情卡>();
         详情卡.初始化(游戏.默认字体);
+        详情卡.设置数据(游戏.道纹数据);
         Action<宝盒记录, bool> 添加日志 = (记录, 滚至底部) =>
         {
             int 行号 = 内容.childCount - 1;
@@ -443,6 +456,28 @@ public partial class 天帝界面
             }, true);
         }
         更新余额();
+        if (天帝剪纸界面皮肤.已启用)
+        {
+            foreach (string 名 in 名称)
+            {
+                var 卡 = 框.Find(名) as RectTransform;
+                var 插画 = 图(卡,"剪纸宝盒插画",72,8,232,98,Color.white,天帝剪纸界面皮肤.素材(名+"插画"));插画.preserveAspect=true;
+                foreach (Transform 子 in 卡)
+                    if (子.GetComponent<Text>() is Text 文 && 文.text == 名)
+                        天帝双端页面布局.固定(文.rectTransform,22,105,332,42);
+                var 说明字 = 卡.GetComponentsInChildren<Text>().First(文 => 文.text == 说明[Array.IndexOf(名称,名)]);
+                天帝双端页面布局.固定(说明字.rectTransform,22,146,332,80); 说明字.fontSize=17;
+                天帝双端页面布局.固定(卡.Find("宝盒概率-"+Array.IndexOf(名称,名)) as RectTransform,22,232,158,36);
+                foreach (Transform 子 in 卡)
+                    if (子.GetComponent<Text>() is Text 文 && 文.text.EndsWith("灵石 / 次"))
+                    { 天帝双端页面布局.固定(文.rectTransform,190,232,170,36); 文.fontSize=19; }
+                天帝双端页面布局.固定(卡.Find("抽取") as RectTransform,22,280,332,48);
+                卡.sizeDelta=new Vector2(376,346);
+            }
+            天帝双端页面布局.固定(日志框,42,596,1160,182);
+            天帝双端页面布局.固定(视口,18,54,1124,106);
+            天帝剪纸界面皮肤.装配(弹层,"宝盒",框);
+        }
         if (天帝移动适配.启用)
         {
             var 正文口 = 天帝双端页面布局.滚动组(框, "手机宝盒正文", 42, 126, 1160, 652);
@@ -487,6 +522,7 @@ public partial class 天帝界面
     }
     public void 更新主页实力()
     {
+        刷新剪纸数值();
         if (主页实力字 != null) 主页实力字.text = 天帝实力评语.读取(游戏.道纹数据, 游戏.主角属性);
         if (主页构筑字 != null) 主页构筑字.text = 天帝移动适配.启用
             ? "生效 " + (游戏.道纹数据?.生效数 ?? 0) + " 枚 · 射击 " + (游戏.道纹数据?.射击通路数 ?? 1) + " 路"
@@ -508,14 +544,17 @@ public partial class 天帝界面
             Vector2 屏 = 游戏.战斗场景.俯视相机.WorldToScreenPoint(new Vector3(浮.位置.x, .3f, 浮.位置.y));
             RectTransformUtility.ScreenPointToLocalPointInRectangle(页面, 屏, null, out var 点);
             点.x += 浮.横移;
-            点.y += 48 + (1 - 浮.剩余 / .7f) * 40;
+            float 进度=1-浮.剩余/.7f;
+            点.y += 48 + 浮.起高 + 进度 * 40;
             浮.字.rectTransform.anchoredPosition = 点;
+            float 弹=1+浮.弹幅*Mathf.Sin(Mathf.Clamp01(进度/.3f)*Mathf.PI)*(1-进度);
+            浮.字.rectTransform.localScale=Vector3.one*弹;
             浮.组.alpha = Mathf.Min(1, 浮.剩余 * 3);
         }
     }
     public void 显示伤害飘字(Vector2 位置, float 伤害, bool 玩家受伤)
         => 显示伤害飘字(位置, new 战斗伤害明细(伤害), 玩家受伤);
-    public void 显示伤害飘字(Vector2 位置, 战斗伤害明细 明细, bool 玩家受伤)
+    public void 显示伤害飘字(Vector2 位置, 战斗伤害明细 明细, bool 玩家受伤, string 标记="", bool 重击=false)
     {
         if (游戏.阶段 != 游戏阶段.战斗 || !天帝数值.有限(明细.合计) || 明细.合计 <= 0) return;
         飘字 空 = null; foreach (var 浮 in 伤害字池) if (浮.剩余 <= 0) { 空 = 浮; break; }
@@ -536,15 +575,19 @@ public partial class 天帝界面
         if (空 == null) foreach (var 浮 in 伤害字池) if (空 == null || 浮.剩余 < 空.剩余) 空 = 浮;
         if (空 == null) return;
         空.字.text = 天帝伤害显示.文本(明细, 伤害文案缓冲);
+        if(!string.IsNullOrEmpty(标记))空.字.text="<color=#"+(标记=="护盾"||标记=="破盾"?"7BD9FF":玩家受伤?"FF8270":"FFE39A")+">"+标记+"</color>\n"+空.字.text;
         int 行数 = 1; foreach (char 字符 in 空.字.text) if (字符 == '\n') 行数++;
         空.字.fontSize = 行数 > 3 ? 18 : 22;
         空.字.rectTransform.sizeDelta = new Vector2(232, 空.字.preferredHeight + 8);
         空.位置 = 位置; 空.剩余 = .7f; 空.横移 = (伤害飘字序号++ % 3 - 1) * 24;
+        空.起高=(伤害飘字序号%3)*14;空.弹幅=天帝受击表现.取("text_pop")*(重击?1.5f:1);
+        空.字.rectTransform.localScale=Vector3.one;
         空.组.alpha = 1; 空.描边.effectColor = 玩家受伤 ? new Color(.28f, .035f, .025f, .95f) : new Color(.02f, .04f, .025f, .95f);
         空.字.gameObject.SetActive(true);
     }
     public void 显示战斗失败()
     {
+        if (天帝剪纸界面皮肤.已启用) { 显示山水失败(); return; }
         关闭战斗暂停();
         清空(弹层); 触控跑步 = false;
         if (战斗摇杆 != null) 战斗摇杆.gameObject.SetActive(false);
@@ -575,11 +618,25 @@ public partial class 天帝界面
         bool 可离开 = 游戏.战斗场景 != null && 游戏.战斗场景.可离开;
         if (战斗离开 != null) 战斗离开.gameObject.SetActive(游戏.阶段 == 游戏阶段.战斗);
         var 战 = 游戏.战斗场景?.战斗;
-        if (战斗目标 != null) 战斗目标.text = 战?.玩家死亡 == true ? "身陨此地 · 返回主页重新构筑" : 可离开 ? "狼王已败 · 可以返回主页"
+        string 文本 = 战?.玩家死亡 == true ? "身陨此地 · 返回主页重新构筑" : 可离开 ? "狼王已败 · 可以返回主页"
             : !string.IsNullOrEmpty(战?.战术.王台词) ? "狼王：「" + 战.战术.王台词 + "」"
             : 游戏.战斗场景?.地图.生存大图 == true ? (战.BOSS已出现 ? "狼王来袭·避开技能预警" : "四面兽潮·保持移动\n清剿 " + (战.敌人损伤比例 * 100).ToString("0") + "% · 80%时狼王现身")
             : 游戏.战斗场景?.地图.横向区域 == true ? "向东探索·清营地\n跨桥前行·战BOSS"
             : 战 != null && 战.BOSS已出现 ? 战.刷新阶段 + "\n避开技能预警 · 留意形态转换" : 战?.刷新阶段 + "\n清剿 " + ((战?.敌人损伤比例 ?? 0) * 100).ToString("0") + "% · 80%时狼王现身";
+        if (战斗目标 != null)
+        {
+            战斗目标.text = 文本;
+            if (天帝移动适配.启用)
+            {
+                if (文本 != 移动目标上次文本)
+                {
+                    移动目标上次文本 = 文本;
+                    移动目标显示截止 = Time.unscaledTime + (战?.玩家死亡 == true || 可离开 ? 8f : 3.5f);
+                }
+                战斗目标.gameObject.SetActive(Time.unscaledTime < 移动目标显示截止);
+            }
+            else 战斗目标.gameObject.SetActive(true);
+        }
     }
     public void 更新战斗位置(Vector2 位置, Vector2Int 格)
     {
@@ -694,6 +751,7 @@ public partial class 天帝界面
     public void 更新字幕显示() { if (序章字卡 != null) 序章字卡.gameObject.SetActive(序章有字幕 && 游戏.字幕开启); }
     public void 显示设置()
     {
+        if (天帝剪纸界面皮肤.已启用) { 显示山水设置(); return; }
         if ((游戏.阶段 != 游戏阶段.主页 && 游戏.阶段 != 游戏阶段.标题) || 设置已打开 || 地图已打开 || 确认已打开 || 角色已打开 || 图鉴已打开 || 宝盒已打开 || 回收已打开) return;
         设置已打开 = true;
         foreach (var 键 in 页面.GetComponentsInChildren<Button>()) 键.interactable = false;
@@ -728,6 +786,7 @@ public partial class 天帝界面
                 重排();
             });
         }
+        天帝剪纸界面皮肤.装配(弹层,"设置",框);
     }
     void 音量滑条(RectTransform 父, string 名称, float y, float 初值, Action<float> 设置)
     {
@@ -735,19 +794,35 @@ public partial class 天帝界面
         数字.alignment = TextAnchor.MiddleLeft;
         var 滑区 = 区块(父, 名称, 75, y + 43, 650, 46);
         var 热区 = 滑区.gameObject.AddComponent<Image>(); 热区.color = Color.clear; 热区.raycastTarget = true;
-        图(滑区, "底", 0, 17, 650, 8, new Color(0.78f, 0.81f, 0.74f));
+        var 轨 = 图(滑区, "底", 0, 17, 650, 8, new Color(0.78f, 0.81f, 0.74f));
         var 填区 = 区块(滑区, "填充区", 0, 17, 650, 8);
-        var 填 = 图(填区, "填充", 0, 0, 650, 8, 墨);
+        var 填 = 图(填区, "填充", 0, 0, 650, 8, 天帝剪纸界面皮肤.已启用 ? 天帝剪纸界面皮肤.朱红 : 墨);
         填.rectTransform.anchorMin = Vector2.zero; 填.rectTransform.anchorMax = Vector2.one;
         填.rectTransform.offsetMin = 填.rectTransform.offsetMax = Vector2.zero;
         var 柄区 = 区块(滑区, "手柄区", 0, 0, 650, 46);
         var 柄 = 图(柄区, "手柄", 0, 0, 22, 28, 天帝道纹美术.强调); 柄.raycastTarget = true;
         柄.rectTransform.anchorMin = 柄.rectTransform.anchorMax = 柄.rectTransform.pivot = new Vector2(0.5f, 0.5f);
         柄.rectTransform.anchoredPosition = Vector2.zero;
+        天帝响应布局.动态(柄.rectTransform);
+        if (天帝剪纸界面皮肤.已启用)
+        {
+            柄.sprite=天帝剪纸界面皮肤.素材("音量纸雕滑块");柄.color=Color.white;
+            柄.rectTransform.sizeDelta=new Vector2(28,28);柄.preserveAspect=true;
+        }
         var 滑 = 滑区.gameObject.AddComponent<Slider>(); 滑.minValue = 0; 滑.maxValue = 1;
         滑.fillRect = 填.rectTransform; 滑.handleRect = 柄.rectTransform; 滑.targetGraphic = 柄;
         滑.SetValueWithoutNotify(初值);
-        滑.onValueChanged.AddListener(值 => { 设置(值); 数字.text = 名称 + "  " + Mathf.RoundToInt(值 * 100) + "%"; });
+        bool 剪纸横行=天帝剪纸界面皮肤.已启用&&!天帝移动适配.启用;
+        if(剪纸横行)
+        {
+            字(父,名称,75,y,180,64,24,墨).alignment=TextAnchor.MiddleLeft;
+            天帝双端页面布局.固定(数字.rectTransform,660,y,95,64);数字.text=Mathf.RoundToInt(初值*100)+"%";数字.alignment=TextAnchor.MiddleRight;
+            天帝双端页面布局.固定(滑区,260,y,390,64);
+            天帝双端页面布局.固定(轨.rectTransform,10,29,370,6);
+            天帝双端页面布局.固定(填区,10,29,370,6);
+            天帝双端页面布局.固定(柄区,10,0,370,64);
+        }
+        滑.onValueChanged.AddListener(值 => { 设置(值); 数字.text = (剪纸横行 ? "" : 名称+"  ") + Mathf.RoundToInt(值 * 100) + "%"; });
     }
     public void 关闭设置()
     {
@@ -769,9 +844,20 @@ public partial class 天帝界面
         var 区 = 天帝移动适配.有效安全区(天帝移动适配.安全区, 尺寸);
         if (尺寸.x == 0 || 尺寸.y == 0) return;
         var 视口 = 天帝移动适配.横屏视口(区);
-        根.GetComponent<CanvasScaler>().scaleFactor = 天帝移动适配.显示比例(区);
-        var 画布 = 根.GetComponent<Canvas>();
-        if (画布.renderMode != RenderMode.WorldSpace) 画布.scaleFactor = 天帝移动适配.显示比例(区);
+        更新剪纸主页();
+        if (游戏.战斗场景?.俯视相机 != null)
+        {
+            var 相机区 = new Rect(视口.xMin / 尺寸.x, 视口.yMin / 尺寸.y, 视口.width / 尺寸.x, 视口.height / 尺寸.y);
+            if (游戏.战斗场景.俯视相机.rect != 相机区) 游戏.战斗场景.俯视相机.rect = 相机区;
+        }
+        var 布局尺寸 = 天帝移动适配.布局尺寸;
+        bool 变化 = 区 != 上次安全区 || 尺寸 != 上次尺寸 || 布局尺寸 != 上次布局尺寸 || 上次移动平台 != 天帝移动适配.启用;
+        if (!变化 && !适配待刷新 && 上次布局修订 == 响应布局.修订号) return;
+        适配待刷新 = false; 上次移动平台 = 天帝移动适配.启用; 上次布局尺寸 = 布局尺寸;
+        适配排版次数++;
+        // 与CanvasScaler的Expand结果一致；先同步本帧，避免安全区重排读取上帧画布尺寸。
+        if (界面画布.renderMode != RenderMode.WorldSpace)
+            界面画布.scaleFactor = 天帝移动适配.显示比例(new Rect(0, 0, 尺寸.x, 尺寸.y));
         if (区 != 上次安全区 || 尺寸 != 上次尺寸)
         {
             上次安全区 = 区; 上次尺寸 = 尺寸;
@@ -783,16 +869,26 @@ public partial class 天帝界面
             天帝响应布局.比例(留边[3], 左, 1 - 下, 右 - 左, 下);
             Canvas.ForceUpdateCanvases();
         }
-        var 布局尺寸 = 天帝移动适配.布局尺寸;
         设计区.anchorMin = 设计区.anchorMax = 设计区.pivot = new Vector2(.5f, .5f);
         设计区.anchoredPosition = Vector2.zero; 设计区.sizeDelta = 布局尺寸;
-        设计区.localScale = Vector3.one * (天帝移动适配.固定分辨率.x / 布局尺寸.x);
-        if (游戏.战斗场景?.俯视相机 != null)
-            游戏.战斗场景.俯视相机.rect = new Rect(视口.xMin / 尺寸.x, 视口.yMin / 尺寸.y, 视口.width / 尺寸.x, 视口.height / 尺寸.y);
-        根.GetComponent<天帝响应布局>().提交();
+        设计区.localScale = Vector3.one * 安全区布局比例(布局尺寸);
+        if (战斗界面层 != null) 战斗界面层.localScale = Vector3.one * 安全区布局比例(布局尺寸);
+        响应布局.提交();
         foreach (var 布局 in 根.GetComponentsInChildren<天帝移动排版>()) 布局.更新();
         foreach (var 正文 in 根.GetComponentsInChildren<天帝正文排版>()) 正文.更新?.Invoke();
         更新移动战斗布局();
+        响应布局.提交();
+        // 动态正文与移动页面各自保留LateUpdate；新控件、换页、屏幕/安全区变化才做全树排版。
+        上次布局修订 = 响应布局.修订号;
+    }
+    float 安全区布局比例(Vector2 布局尺寸)
+    {
+        float 比例 = 天帝移动适配.固定分辨率.x / 布局尺寸.x;
+        if (界面画布.renderMode == RenderMode.WorldSpace) return 比例; // 隔离渲染使用独立相机尺寸。
+        var 尺寸 = 天帝移动适配.屏幕尺寸;
+        var 区 = 天帝移动适配.有效安全区(天帝移动适配.安全区, 尺寸);
+        // CanvasScaler适配整屏，页面/HUD仅收缩一次至可用横屏安全区。
+        return 比例 * 天帝移动适配.显示比例(区) / 天帝移动适配.显示比例(new Rect(0, 0, 尺寸.x, 尺寸.y));
     }
     public void 更新拾取提示(float 秒) { if (!战斗已暂停) 拾取列表?.更新(秒); }
     void 清理拾取提示()

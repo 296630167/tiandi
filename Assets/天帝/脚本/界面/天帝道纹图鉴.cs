@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 // 图鉴只读：展示定义与正式随机区间，不创建玩家物品、不写存档。
-public sealed class 天帝道纹图鉴 : MonoBehaviour
+public sealed partial class 天帝道纹图鉴 : MonoBehaviour
 {
     const float 列表宽 = 1320, 文字左 = 148, 文字宽 = 1144;
     static readonly string[] 分类名 = { "天赋道纹", "基础属性", "普通属性", "功能道纹", "五行元素", "分叉道纹", "特性道纹", "转化道纹" };
@@ -40,7 +40,8 @@ public sealed class 天帝道纹图鉴 : MonoBehaviour
             分类按钮[名] = 按钮(框, "图鉴分类-" + 名, 名, 34 + i * 172, 108, 162, 38, () => 定位分类(名));
         }
         字(框, "等级查询标签", "物品等级", 1014, 76, 102, 26, 18, 天帝道纹美术.次文);
-        var 输入底 = 底(框, "物品等级输入", 1118, 70, 82, 38, "二级面板");
+        var 输入底 = 底(框, "物品等级输入", 1118, 70, 82, 38, "小信息框");
+        if(天帝剪纸界面皮肤.已启用)天帝界面美术.选项(输入底.GetComponent<Image>(),false);
         等级输入 = 输入底.gameObject.AddComponent<InputField>(); 等级输入.targetGraphic = 输入底.GetComponent<Image>();
         等级输入.textComponent = 字(输入底, "等级查询文字", "1", 8, 3, 66, 32, 21, 天帝道纹美术.正文);
         等级输入.textComponent.alignment = TextAnchor.MiddleCenter;
@@ -87,11 +88,13 @@ public sealed class 天帝道纹图鉴 : MonoBehaviour
         y += 190;
         var 规则 = 底(内容, "连接机制说明", 0, y, 列表宽, 200, "二级面板");
         字(规则, "连接规则标题", "连接与计算规则", 26, 12, 1240, 40, 23, 天帝道纹美术.强调);
-        var 规则字 = 正文(规则, "连接规则正文", "接口必须相互对接并连通源道纹；线路只能向同圈或外圈传导，未接通的道纹不生效。\n基础与普通属性全局去重；形态与五行按通路分别计算，每枚道纹每路只计一次，跨路共享以白点标记。\n有效通路轮流射击，共用全局攻击间隔；增加通路不会直接倍增攻速。顺序弹继承祖先历史，兄弟独立；特性同次覆盖共享命中历史。\n特性/转化已进入8级以上战斗独立掉落池；冰、雷、时间、空间仍不掉落。", 26, 58, 1266, 18, 天帝道纹美术.次文);
+        var 规则字 = 正文(规则, "连接规则正文", "接口必须相互对接并连通源道纹；线路只能向同圈或外圈传导，未接通的道纹不生效。\n基础与普通属性全局去重；形态与五行按通路分别计算，每枚道纹每路只计一次，跨路共享以白点标记。\n1—6手动释放对应接口，共用全局攻击间隔；增加通路不会直接倍增攻速。顺序弹继承祖先历史，兄弟独立；特性同次覆盖共享命中历史。\n特性/转化已进入8级以上战斗独立掉落池；冰、雷、时间、空间仍不掉落。", 26, 58, 1266, 18, 天帝道纹美术.次文);
         规则.sizeDelta = new Vector2(列表宽, 规则字.rectTransform.sizeDelta.y + 78);
         y += 规则.sizeDelta.y + 8; 内容.sizeDelta = new Vector2(列表宽, Mathf.Max(626, y));
         字(框, "图鉴底注", "单条区间由物品等级决定，品阶控制容量；重复词条相加。查询不改变已拥有道纹。", 34, 799, 1320, 24, 16, 天帝道纹美术.次文);
         创建浮窗(); 更新分类高亮();
+        天帝剪纸界面皮肤.装配(根,"图鉴",框);
+        if (天帝剪纸界面皮肤.已启用 && !天帝移动适配.启用) 建剪纸图鉴(框);
         if (天帝移动适配.启用)
         {
             var 分类列 = new List<RectTransform>();
@@ -227,6 +230,10 @@ public sealed class 天帝道纹图鉴 : MonoBehaviour
     {
         var 图区 = 区(行, "道纹图标", 20, 18, 108, 108); var 图 = 图区.gameObject.AddComponent<天帝道纹绘图>();
         图.单纹模式 = true; 图.单纹 = 示意; 图.构筑美术 = true; 图.单纹半径 = 46; 图.raycastTarget = false;
+        var 标识=字(图区,"道纹单字",天帝道纹美术.单字(示意),0,0,108,108,32,天帝道纹美术.正文);
+        标识.alignment=TextAnchor.MiddleCenter;标识.raycastTarget=false;
+        天帝道纹单字.绑定(标识, 图区);
+        标识.resizeTextForBestFit=true;标识.resizeTextMinSize=18;标识.resizeTextMaxSize=32;
         字(行, "示意标签", "外观示意", 20, 130, 108, 24, 15, 天帝道纹美术.次文).alignment = TextAnchor.MiddleCenter;
     }
     public void 设置查询物品等级(int 等级)
@@ -235,20 +242,24 @@ public sealed class 天帝道纹图鉴 : MonoBehaviour
         foreach (var 项 in 范围列表) 项.文字.text = 范围说明(项.属性, 查询物品等级);
         foreach(var item in 特性查询){item.纹.物品等级=查询物品等级;string c="";if(item.纹.分类==道纹分类.特性)for(int i=0;i<天帝特性道纹.数值(item.纹.特性编号,"condition_count");i++)c+=天帝特性道纹.文本(item.纹.特性编号,"条件."+i+".0")+"≥"+天帝特性道纹.门槛(item.纹,i).ToString("0.##")+"；";item.文.text=item.纹.介绍+"\n普通品阶条件（物品"+查询物品等级+"级）："+c+"\n固定相对两口 · 同名最高激活品阶生效 · 下游功能不被接管";}
         if (天帝移动适配.启用 && 视口 != null && 视口.rect.width < 列表宽) 排版移动正文();
+        if (剪纸详情目标 != null) 展示剪纸详情(剪纸详情目标);
     }
     public bool 定位分类(string 分类)
     {
+        if (剪纸分类行.Count > 0) return 显示剪纸分类(分类);
         if (滚动 == null || !分类位置.TryGetValue(分类, out float 位置)) return false;
         return 定位位置(位置);
     }
     bool 定位位置(float 位置)
     {
+        if (剪纸分类行.Count > 0) { 展示剪纸共通规则(); return true; }
         隐藏详情();
         Canvas.ForceUpdateCanvases(); 滚动.StopMovement();
         滚动.verticalNormalizedPosition = 1 - Mathf.Clamp01(位置 / Mathf.Max(1, 内容.rect.height - 视口.rect.height)); 更新分类高亮(); return true;
     }
     void 更新分类高亮()
     {
+        if (剪纸分类行.Count > 0) return;
         if (滚动 == null || 内容 == null) return;
         float 顶 = Mathf.Max(0, 内容.anchoredPosition.y) + 2; string 当前 = 分类名[0];
         foreach (var 名 in 分类名) if (分类位置.TryGetValue(名, out float 位置) && 顶 >= 位置) 当前 = 名;

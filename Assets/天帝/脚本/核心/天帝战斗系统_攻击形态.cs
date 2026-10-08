@@ -19,6 +19,14 @@ public sealed partial class 天帝战斗系统
     { for (int i = 形态演出.Count - 1; i >= 0; i--) { 形态演出[i].剩余秒 -= dt; if (形态演出[i].剩余秒 <= 0) 形态演出.RemoveAt(i); } }
     void 留形态(道纹功能 f, Vector2 a, Vector2 b, float r, bool warning = false)
     {
+        // 高频驻留形态合并同点显示；命中逻辑与独立投掷物历史保持原样。
+        float 距=天帝战斗润色.取("shape_merge_distance");
+        for(int i=形态演出.Count-1;i>=0;i--)
+        {
+            var e=形态演出[i];
+            if(e.功能==f&&e.预警==warning&&(e.起-a).sqrMagnitude<距*距&&(e.终-b).sqrMagnitude<距*距&&Mathf.Abs(e.半径-r)<.001f)
+            {e.起=a;e.终=b;e.剩余秒=形("visual_seconds");return;}
+        }
         if (形态演出.Count >= 形("visuals_alive")) return;
         形态演出.Add(new 攻击形态演出 { 功能 = f, 起 = a, 终 = b, 半径 = r, 预警 = warning, 剩余秒 = 形("visual_seconds") });
     }
@@ -30,7 +38,7 @@ public sealed partial class 天帝战斗系统
         v.形态命中时刻 = f == 道纹功能.飞轮 ? new Dictionary<int, float>() : null;
         if (f == 道纹功能.剑雨)
         {
-            int t = 找目标(v.位置, 普攻参数.索敌距离, v.命中过);
+            int t = v.目标 >= 0 ? v.目标 : v.释放.手动瞄准 ? -1 : 找目标(v.位置, 普攻参数.索敌距离, v.命中过);
             v.形态锚点 = t >= 0 ? 敌人数据[t].位置 : v.位置 + v.方向 * 4;
         }
         if (f == 道纹功能.旋刃)

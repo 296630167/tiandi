@@ -21,8 +21,18 @@ public sealed class 天帝美术资源 : ScriptableObject
     public 天帝角色帧动画 主角移动动画;
     public Font 主页标题字体;
     public static 天帝美术资源 当前 { get; internal set; }
+    [NonSerialized] System.Collections.Generic.Dictionary<string, Sprite> 独立敌图;
     public Sprite 获取(string 编号)
     {
+        var 青绿图 = 天帝青绿皮肤.获取(编号);
+        if (青绿图 != null) return 青绿图;
+        if (编号.StartsWith("BTV", StringComparison.Ordinal) || 编号.StartsWith("BFX", StringComparison.Ordinal) || 编号.StartsWith("HIT", StringComparison.Ordinal))
+        {
+            if (独立敌图 == null) 独立敌图 = new System.Collections.Generic.Dictionary<string, Sprite>();
+            if (!独立敌图.TryGetValue(编号, out var 独立图))
+            { 独立图 = Resources.Load<Sprite>((编号.StartsWith("HIT",StringComparison.Ordinal)?"受击反馈/":"敌人独立美术/") + 编号); 独立敌图.Add(编号, 独立图); }
+            if (独立图 != null) return 独立图;
+        }
         foreach (var 项 in 图片) if (项.编号 == 编号) return 项.图片;
         return null;
     }

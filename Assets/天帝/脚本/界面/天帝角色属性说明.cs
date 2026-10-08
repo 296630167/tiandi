@@ -33,7 +33,7 @@ public sealed partial class 天帝角色界面
         属性说明正文.lineSpacing = 1.12f;
         说明关闭键 = 按钮(属性浮窗, "关闭属性公式", "关闭", 450, 8, 148, 56, () => 隐藏属性说明());
         说明关闭键.gameObject.SetActive(false);
-        if (天帝移动适配.启用)
+        if (天帝移动适配.启用 || 山水角色册)
         {
             触屏说明视口 = new GameObject("属性说明滚动视口", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(ScrollRect)).GetComponent<RectTransform>();
             触屏说明视口.SetParent(属性浮窗, false); 触屏说明视口.anchorMin = Vector2.zero; 触屏说明视口.anchorMax = Vector2.one;
@@ -66,7 +66,7 @@ public sealed partial class 天帝角色界面
         属性说明正文.rectTransform.sizeDelta = new Vector2(宽 - 44, 680);
         float 正文高 = 属性说明正文.preferredHeight;
         属性说明正文.rectTransform.sizeDelta = new Vector2(宽 - 44, 正文高 + 4);
-        float 高 = 天帝移动适配.启用 ? Mathf.Min(正文高 + 88, 根.rect.height - 24) : 正文高 + 88;
+        float 高 = 天帝移动适配.启用 || 山水角色册 ? Mathf.Min(正文高 + 88, 根.rect.height - 24) : 正文高 + 88;
         属性浮窗.sizeDelta = new Vector2(宽, 高);
         if (触屏说明视口 != null) 属性说明正文.rectTransform.anchoredPosition = Vector2.zero;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(根, 说明指针, 说明相机, out var 点);
@@ -76,6 +76,7 @@ public sealed partial class 天帝角色界面
         x = Mathf.Clamp(x, 12, Mathf.Max(12, 根.rect.width - 宽 - 12));
         y = Mathf.Clamp(y, 12, Mathf.Max(12, 根.rect.height - 高 - 12));
         属性浮窗.anchoredPosition = new Vector2(x, -y);
+        装配山水属性说明();
     }
     public void 隐藏属性说明(string 名 = null)
     {
@@ -126,7 +127,7 @@ public static class 天帝角色属性公式
             case "智力": 简单="提高攻击、灵力、护盾、暴击伤害和抗性。\n每点智力：攻击 +"+系("player.attack_per_intelligence_bonus")+"，基础灵力 +"+系("player.mp_per_intelligence")+"，基础护盾 +"+系("player.shield_per_intelligence_bonus")+"。\n当前智力 "+数(人.智力);break;
             case "攻击力":简单="灵力弹的普通伤害，五行伤害另外叠加。\n来自力量、速度和智力的提升。\n当前攻击 "+数(人.攻击力);break;
             case "血量":简单="生命归零时角色死亡。\n当前 "+数(人.当前血量)+" / "+数(人.血量)+"。\n增加上限不会自动补满。";break;
-            case "灵力":简单="灵力越高，灵力弹飞得越快。\n当前天然普攻不消耗灵力。\n当前 "+数(人.当前灵力)+" / "+数(人.灵力);break;
+            case "灵力":简单="道纹施法每次消耗 "+系("player.skill_mana_cost")+" 灵力。\n战斗每秒回复上限的 "+数(取("player.mana_regen_fraction")*100)+"%，暂停不回复。\n当前 "+数(人.当前灵力)+" / "+数(人.灵力);break;
             case "灵气护盾":简单="先替血量承受伤害。\n当前 "+数(人.当前灵气护盾)+" / "+数(人.灵气护盾)+"。\n增加上限不会自动补满。";break;
             case "防御":简单="减少普通伤害，不减少五行伤害。\n面对同级、无穿透攻击，减伤 "+数((1-天帝数值.防御留存(人.防御,人.等级))*100)+"%。\n当前防御 "+数(人.防御);break;
             case "移动速度":简单="普通移动时每秒走过的距离。\n当前每秒 "+数(人.移动速度)+" 米。\n不改变攻击速度或弹速。";break;
@@ -136,7 +137,7 @@ public static class 天帝角色属性公式
             case "暴击伤害":简单="暴击时造成的伤害倍数。\n当前 "+数(人.暴击倍率)+" 倍，普通命中为1倍。";break;
             case "抗性":简单="减少五行伤害，不减少普通伤害。\n没有抗性穿透时，减少 "+数(人.抗性*100)+"% 的五行伤害。";break;
             case "闪避率":简单="有机会躲过非范围攻击。\n当前闪避机会 "+数(人.闪避率*100)+"%。\n范围技能无法闪避。";break;
-            case "技能急速":简单="用于独立技能的冷却缩减。\n当前自动灵力弹不受它影响。\n当前急速 "+数(人.技能急速);break;
+            case "技能急速":简单="缩短闪避的冷却时间。\n道纹灵力弹的共享间隔由攻速决定。\n当前急速 "+数(人.技能急速);break;
             case "单体 DPS":简单="估算一秒对一个目标造成的伤害。\n假设全部命中、敌人没有减伤。\n当前约 "+数(人.单体期望DPS)+" 伤害/秒。";break;
             case "八目标 DPS":简单="估算一秒对八个目标造成的总伤害。\n假设全部命中、敌人没有减伤。\n当前约 "+数(人.八目标期望DPS)+" 伤害/秒。";break;
             case "纸面战力":简单="综合输出、生存和移动的构筑评分。\n用于比较构筑，不等于实战伤害。\n当前评分 "+数(人.综合战斗力);break;
@@ -217,7 +218,7 @@ public static class 天帝角色属性公式
                 公式 = "最大血量=" + 系("player.hp_base") + "+" + 系("player.hp_level_g") + "×(G−1)+" + 系("player.hp_per_strength") + "×力量+F(A血量," + 系("soft.hp_g") + "×G)";
                 当前 = 数(人.当前血量) + " / " + 数(人.血量) + "\nA血量=" + 数(加(道纹属性.血量)) + "，力量=" + 数(人.力量); break;
             case "灵力":
-                作用 = "灵力资源上限。当前天然普攻不消耗灵力，灵力上限越高，灵力弹飞行越快。";
+                作用 = "灵力资源上限。道纹施法每次消耗" + 系("player.skill_mana_cost") + "灵力，不足时施法失败；每战斗秒回复上限的" + 数(取("player.mana_regen_fraction")*100) + "%。灵力上限仍影响弹速。";
                 公式 = "最大灵力=(" + 系("player.mp_base") + "+" + 系("player.mp_per_intelligence") + "×智力+F(A灵力," + 系("soft.mp_g") + "×G))×灵海倍率\n弹速=min(" + 系("player.projectile_max") + "," + 系("player.projectile_base") + "+" + 系("player.projectile_mp") + "×最大灵力) 米/秒";
                 当前 = 数(人.当前灵力) + " / " + 数(人.灵力) + "\nA灵力=" + 数(加(道纹属性.灵力)) + "，灵海倍率=" + 数(是(天赋种类.灵海) ? 取("talents.mp_multiplier") : 1); break;
             case "灵气护盾":
@@ -229,7 +230,7 @@ public static class 天帝角色属性公式
                 公式 = "防御=(" + 系("player.armor_base") + "+" + 系("player.armor_per_strength_bonus") + "×Δ力+F(A防御," + 系("soft.armor_g") + "×G))×铁骨倍率\n无穿透时：普通伤害留存=max(" + 系("damage.armor_retention_min") + ",K/(K+防御))\nK=" + 系("damage.armor_k_g") + "×G(攻击者等级)，减伤率=1−留存";
                 当前 = 数(人.防御) + "\nA防御=" + 数(加(道纹属性.防御)) + "，铁骨倍率=" + 数(是(天赋种类.铁骨) ? 取("talents.armor_multiplier") : 1) + "\n对同级无穿透攻击减伤 " + 数((1 - 天帝数值.防御留存(人.防御, 人.等级)) * 100) + "%"; break;
             case "攻击速度":
-                作用 = "每秒正常射击次数。所有参与射击通路共用间隔轮流释放，通路数量不会再次倍增射速。";
+                作用 = "每秒正常施法次数。六个手动技能共用释放间隔，通路数量不会再次倍增射速。";
                 公式 = "攻速=min(" + 系("player.aps_max") + "," + 系("player.aps_base") + "×(1+" + 系("player.aps_speed_gain") + "×Δ速/(" + 系("player.aps_speed_k_g") + "×G+Δ速))×(1+F(A攻速," + 系("soft.attack_speed_percent") + ")/100))\n攻击间隔=1/攻速";
                 当前 = 数(人.攻击速度) + " 次/秒，间隔 " + 数(1 / 人.攻击速度) + " 秒\nA攻速=" + 数(加(道纹属性.攻速)) + "（百分比点）"; break;
             case "移动速度":
@@ -253,7 +254,7 @@ public static class 天帝角色属性公式
                 公式 = "抗性=限制在0至" + 系("player.resist_max") + "之间(" + 智力关系("player.resist_int_gain", "player.resist_int_k") + ")\n五行伤害留存=1−限制在0至" + 系("player.resist_max") + "之间(抗性−抗性穿透)";
                 当前 = 数(人.抗性 * 100) + "%"; break;
             case "技能急速":
-                作用 = "由智力产生的技能冷却缩减参数。天然自动灵力弹使用攻击速度，不受此数值加速；当前主角尚无独立冷却技能。";
+                作用 = "由智力产生的技能冷却缩减参数。道纹灵力弹的共享释放间隔使用攻击速度；闪避冷却为1.2/(1+技能急速)秒。";
                 公式 = "急速=限制在0至" + 系("player.haste_max") + "之间(" + 智力关系("player.haste_int_gain", "player.haste_int_k") + ")";
                 当前 = 数(人.技能急速); break;
             case "闪避率":
@@ -262,7 +263,7 @@ public static class 天帝角色属性公式
                 当前 = 数(人.闪避率 * 100) + "%"; break;
             case "单体 DPS":
             case "八目标 DPS":
-                作用 = "满命中且未计算敌人减伤的纸面输出，用于比较构筑。各参与通路轮转，取平均，不将每路输出直接相加。";
+                作用 = "满命中且未计算敌人减伤、灵力断档的纸面输出，用于比较构筑。开放通路取平均；六技能共享间隔，不将每路输出直接相加。";
                 公式 = "DPS=参与通路平均(本路释放伤害×攻速×[1+暴击率×(暴击倍率−1)]×命中权重)×余响系数\n目标预算=" + (名 == "单体 DPS" ? "1" : 系("shape.targets_test")) + "；依次分配根弹、连锁、分裂、溅射，权重为1、" + 系("shape.chain_factor") + "的跳数次方、" + 系("shape.split_factor") + "、" + 系("shape.splash_factor") + "。\n余响系数：余响天赋为1+1/" + 系("talents.echo_every") + "，否则为1。";
                 当前 = 数(名 == "单体 DPS" ? 人.单体期望DPS : 人.八目标期望DPS) + "，参与射击通路 " + 网.射击通路数 + " 路"; break;
             case "纸面战力":

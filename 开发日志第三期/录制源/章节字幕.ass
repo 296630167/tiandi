@@ -1,0 +1,25 @@
+﻿[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Main,Microsoft YaHei,30,&H00E9F3F3,&H000000FF,&H00302316,&H00302316,0,0,0,0,100,100,0,0,1,0,0,2,24,24,13,1
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.50,Main,,0,0,0,,第三期开发日志 · 当前版本实录
+Dialogue: 0,0:00:01.50,0:00:02.50,Main,,0,0,0,,序章 · 从比赛现场到异界
+Dialogue: 0,0:00:02.50,0:00:03.50,Main,,0,0,0,,十三种天赋 · 随机五选一
+Dialogue: 0,0:00:03.50,0:00:05.50,Main,,0,0,0,,剪纸山水主页 · 自选地图等级
+Dialogue: 0,0:00:05.50,0:00:06.50,Main,,0,0,0,,角色 · 属性与当前构筑
+Dialogue: 0,0:00:06.50,0:00:08.00,Main,,0,0,0,,宝盒 · 灵石收集道纹
+Dialogue: 0,0:00:08.00,0:00:11.50,Main,,0,0,0,,白瓷道纹 · 接口连接与实时构筑
+Dialogue: 0,0:00:11.50,0:00:13.50,Main,,0,0,0,,道纹改造 · 十一种通货
+Dialogue: 0,0:00:13.50,0:00:15.00,Main,,0,0,0,,道纹回收 · 批量选择与灵石预览
+Dialogue: 0,0:00:15.00,0:00:18.00,Main,,0,0,0,,图鉴 · 功能、特性与转化
+Dialogue: 0,0:00:18.00,0:00:19.00,Main,,0,0,0,,设置 · 音乐、音效与剧情音量
+Dialogue: 0,0:00:19.00,0:00:20.00,Main,,0,0,0,,青岚原 · 进入前确认挑战
+Dialogue: 0,0:00:20.00,0:00:25.00,Main,,0,0,0,,青岚原实战 · 四面来敌与走位
+Dialogue: 0,0:00:25.00,0:00:31.00,Main,,0,0,0,,实战原速 · 命中反馈与自动拾取
+Dialogue: 0,0:00:31.00,0:00:32.00,Main,,0,0,0,,暂停 · 查看战况与通路参数

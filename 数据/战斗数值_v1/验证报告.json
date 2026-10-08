@@ -1,6 +1,6 @@
 {
   "config_version": "1.1",
-  "config_sha256": "a8a599c613b18232d4c5be106fa411f6ac4c7c66d54691e985215d99111a085f",
+  "config_sha256": "21e400dbbf4742bd024220f5e538ffd375f8c1a57e3fee5f7a7a0691a8f56ff9",
   "passed": [
     {
       "name": "一级普通人保持三基础各5、攻击1、生命60、零护盾",
@@ -122634,7 +122634,23 @@
       "evidence": null
     },
     {
+      "name": "初期增援各参数平滑且十级恢复原节奏",
+      "evidence": null
+    },
+    {
       "name": "反风筝参数仍有可躲预警",
+      "evidence": null
+    },
+    {
+      "name": "随机障碍数量和迭代有界",
+      "evidence": null
+    },
+    {
+      "name": "随机地图安全区与走廊留白",
+      "evidence": null
+    },
+    {
+      "name": "浅滩仅减速且不锁住移动",
       "evidence": null
     },
     {
@@ -123675,6 +123691,18 @@
     },
     {
       "name": "持续区保留逃路且总伤害有限",
+      "evidence": null
+    },
+    {
+      "name": "战术决策低频且换位有限",
+      "evidence": null
+    },
+    {
+      "name": "战斗演出有独立可见预算",
+      "evidence": null
+    },
+    {
+      "name": "预警保留边界并限制填充遮挡",
       "evidence": null
     },
     {

@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-public sealed class 天帝通货界面 : MonoBehaviour
+public sealed partial class 天帝通货界面 : MonoBehaviour
 {
     天帝道纹 数据;
     天帝通货 通货;
@@ -67,20 +67,27 @@ public sealed class 天帝通货界面 : MonoBehaviour
             var 卡 = (RectTransform)通货键[i].transform;
             通货标记[i] = 底(卡, "材料选中标记", 0, 4, 3, 46, 天帝道纹美术.强调).GetComponent<Image>();
             通货标记[i].raycastTarget = false;
-            var 图标 = 区块(卡, "图标", 8, 6, 42, 42).gameObject.AddComponent<RawImage>();
+            var 图标 = 区块(卡, "图标", 10, 10, 34, 34).gameObject.AddComponent<RawImage>();
             图标.texture = 天帝美术资源.当前 != null ? 天帝美术资源.当前.获取("CU" + ((int)种类 + 1).ToString("00"))?.texture : Resources.Load<Texture2D>("通货图标/" + 定义.名称); 图标.raycastTarget = false;
-            名称字[i] = 字(卡, 定义.名称, 62, 0, 106, 32, 20); 名称字[i].fontStyle = FontStyle.Bold;
-            var 用途 = 字(卡, 通货用途(种类), 62, 30, 164, 22, 14); 用途.color = 淡字;
-            数量字[i] = 字(卡, "", 174, 4, 76, 27, 18); 数量字[i].alignment = TextAnchor.MiddleRight;
+            名称字[i] = 字(卡, 定义.名称, 56, 3, 140, 28, 17); 名称字[i].font=字体;名称字[i].fontStyle = FontStyle.Bold;
+            名称字[i].alignment=TextAnchor.MiddleLeft;
+            名称字[i].resizeTextForBestFit=true;名称字[i].resizeTextMinSize=14;名称字[i].resizeTextMaxSize=17;
+            var 用途 = 字(卡, 通货用途(种类), 56, 25, 194, 24, 13); 用途.color = 淡字;
+            用途.font=字体;用途.alignment=TextAnchor.MiddleLeft;
+            用途.resizeTextForBestFit=true;用途.resizeTextMinSize=11;用途.resizeTextMaxSize=13;
+            数量字[i] = 字(卡, "", 198, 7, 52, 22, 16); 数量字[i].alignment = TextAnchor.MiddleRight;
+            数量字[i].resizeTextForBestFit=true;数量字[i].resizeTextMinSize=12;数量字[i].resizeTextMaxSize=16;
             数量字[i].gameObject.name = "数量";
         }
         var 右区 = 底(面板, "道纹详情", 648, 134, 604, 438, new Color(.065f, .115f, .13f));
-        目标按钮 = 键(面板, "选择目标道纹", "选择道纹 · 打开背包", 672, 144, 556, 88, 打开背包);
+        目标按钮 = 键(面板, "选择目标道纹", "点击这里，选择道纹", 672, 144, 556, 88, 打开背包);
         目标提示 = 目标按钮.GetComponentInChildren<Text>();
         目标提示.rectTransform.anchoredPosition = new Vector2(110, -14); 目标提示.rectTransform.sizeDelta = new Vector2(426, 56); 目标提示.fontSize = 23;
         var 图区 = 区块((RectTransform)目标按钮.transform, "目标道纹图标", 2, 2, 84, 76);
         目标图 = 图区.gameObject.AddComponent<天帝道纹绘图>(); 目标图.单纹模式 = true; 目标图.单纹半径 = 32; 目标图.raycastTarget = false;
+        目标图.数据=数据;
         目标图短名=字(图区,"",8,0,68,76,24);目标图短名.alignment=TextAnchor.MiddleCenter;目标图短名.fontStyle=FontStyle.Bold;
+        天帝道纹单字.绑定(目标图短名, 图区);
         目标字 = 字(面板, "", 782, 146, 300, 48, 27); 目标字.fontStyle = FontStyle.Bold;
         更换提示 = 字(面板, "更换目标 ›", 1100, 150, 128, 38, 16); 更换提示.color = 天帝道纹美术.强调;
         分类字 = 字(面板, "", 782, 200, 446, 30, 16);
@@ -141,12 +148,12 @@ public sealed class 天帝通货界面 : MonoBehaviour
                 {
                     var 卡 = (RectTransform)通货键[i].transform;
                     天帝双端页面布局.固定(卡, 8, 8 + i * 74, 材宽, 68);
-                    天帝双端页面布局.区域(卡, "图标", 6, 10, 38, 38);
-                    天帝双端页面布局.固定(名称字[i].rectTransform, 50, 2, 材宽 - 104, 28); 名称字[i].fontSize = 16;
-                    天帝双端页面布局.固定(数量字[i].rectTransform, 材宽 - 52, 2, 46, 28); 数量字[i].fontSize = 15;
+                    天帝双端页面布局.区域(卡, "图标", 10, 14, 34, 38);
+                    天帝双端页面布局.固定(名称字[i].rectTransform, 54, 8, 材宽 - 116, 24); 名称字[i].fontSize = 16;
+                    天帝双端页面布局.固定(数量字[i].rectTransform, 材宽 - 56, 8, 44, 24); 数量字[i].fontSize = 15;
                     foreach (var 文 in 卡.GetComponentsInChildren<Text>())
                         if (文 != 名称字[i] && 文 != 数量字[i] && !string.IsNullOrEmpty(文.text))
-                        { 天帝双端页面布局.固定(文.rectTransform, 50, 30, 材宽 - 56, 36); 文.fontSize = 14; }
+                        { 天帝双端页面布局.固定(文.rectTransform, 54, 34, 材宽 - 66, 26); 文.fontSize = 14; }
                 }
                 分割.gameObject.SetActive(false);
                 天帝双端页面布局.固定(说明名.rectTransform, 8, 830, 材宽, 44);
@@ -155,6 +162,8 @@ public sealed class 天帝通货界面 : MonoBehaviour
                 foreach (Transform 子 in 框) if (子.GetComponent<Text>() is Text 文 && 文.text != "道纹改造") 文.gameObject.SetActive(false);
             });
         }
+        天帝剪纸界面皮肤.装配(根,"改造",面板);
+        装配首两页山水();
         通货.数量改变 += 刷新; 数据.状态改变 += 刷新; 刷新();
     }
     public void 选通货(通货种类 种类)
@@ -252,6 +261,7 @@ public sealed class 天帝通货界面 : MonoBehaviour
             名称字[i].color = 选中 ? 天帝道纹美术.强调 : 可选 ? 天帝道纹美术.正文 : 淡字;
             var 行图 = 通货键[i].GetComponent<Image>();
             天帝道纹美术.应用(行图,"小信息框");
+            if(天帝剪纸界面皮肤.已启用)行图.pixelsPerUnitMultiplier=3;
             行图.color = 选中 ? new Color(.78f, .90f, .86f) : new Color(1f, .99f, .95f, .70f);
             行图.raycastTarget = true; 通货标记[i].enabled = 选中;
         }
@@ -260,7 +270,7 @@ public sealed class 天帝通货界面 : MonoBehaviour
         更换提示.gameObject.SetActive(纹 != null);
         天帝界面美术.选项(目标按钮.GetComponent<Image>(), 纹 == null);
         目标图.单纹 = 纹; 目标图.SetVerticesDirty();
-        目标图短名.text=纹==null||天帝美术资源.有道纹图标(纹)?"":纹.短名;
+        目标图短名.text=天帝道纹美术.单字(纹);
         目标提示.gameObject.SetActive(纹 == null);
         分类字.text = 纹 == null ? "从背包选择要改造的道纹" : 天帝道纹品阶.彩色品阶文字(纹.品阶) + "    物品" + 纹.物品等级 + "级    " + (纹.格子.HasValue ? "已放置" : "未放置") + "    #" + 纹.编号;
         if (背包已打开) 背包.更新选择(纹);
@@ -311,6 +321,7 @@ public sealed class 天帝通货界面 : MonoBehaviour
             ? "保留现有词条和接口，仅补足最低词条。"
             : "属性与功能道纹可改造；分叉、特性与转化道纹不可改造。";
         说明字.text = 定 == null ? (纹 == null ? "先从背包选择道纹，自动选中第一个可用材料。" : "数量为0或不符合当前道纹条件的材料已锁定。") : 定.说明 + "\n" + 限制;
+        刷新山水改造状态();
     }
     RectTransform 底(RectTransform 父, string 名, float x, float y, float w, float h, Color 色)
     {

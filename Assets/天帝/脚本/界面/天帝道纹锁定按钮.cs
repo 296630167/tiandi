@@ -8,26 +8,38 @@ public sealed class 天帝道纹锁定按钮 : MonoBehaviour
     道纹实例 道纹;
     Button 按钮;
     天帝回收锁图标 图标;
+    Image 美术图标;
     public static 天帝道纹锁定按钮 创建(RectTransform 卡,天帝道纹 网)
     {
         var r=new GameObject("道纹回收锁定",typeof(RectTransform)).GetComponent<RectTransform>();r.SetParent(卡,false);
         r.anchorMin=r.anchorMax=r.pivot=new Vector2(1,1);r.anchoredPosition=new Vector2(-4,-4);
         float 边=天帝移动适配.启用?44:32;r.sizeDelta=new Vector2(边,边);
         var 底=r.gameObject.AddComponent<Image>();底.color=new Color(.04f,.09f,.1f,.95f);底.raycastTarget=true;
+        if(天帝青绿皮肤.已启用){底.sprite=天帝青绿皮肤.获取("QLUI_图标按钮底");底.color=Color.white;底.type=Image.Type.Simple;}
         var b=r.gameObject.AddComponent<Button>();b.targetGraphic=底;
         var 图区=new GameObject("锁定图标",typeof(RectTransform)).GetComponent<RectTransform>();图区.SetParent(r,false);
         图区.anchorMin=Vector2.zero;图区.anchorMax=Vector2.one;图区.offsetMin=new Vector2(6,6);图区.offsetMax=new Vector2(-6,-6);
         var 图=图区.gameObject.AddComponent<天帝回收锁图标>();图.raycastTarget=false;
         var 锁=r.gameObject.AddComponent<天帝道纹锁定按钮>();锁.数据=网;锁.按钮=b;锁.图标=图;
+        if(天帝青绿皮肤.已启用)
+        {
+            图.enabled=false;var 美术区=new GameObject("青绿锁图标",typeof(RectTransform)).GetComponent<RectTransform>();美术区.SetParent(图区,false);
+            美术区.anchorMin=Vector2.zero;美术区.anchorMax=Vector2.one;美术区.offsetMin=美术区.offsetMax=Vector2.zero;
+            锁.美术图标=美术区.gameObject.AddComponent<Image>();锁.美术图标.preserveAspect=true;锁.美术图标.raycastTarget=false;
+        }
+        天帝按钮声音.绑定(b);
         b.onClick.AddListener(()=>{if(锁.道纹!=null)网.设置回收锁定(锁.道纹,!锁.道纹.回收锁定);});
         网.状态改变+=锁.刷新;return 锁;
     }
     public void 设置(道纹实例 纹){道纹=纹;刷新();}
     void 刷新()
     {
+        // 从未显示过的库存卡也可能被换页销毁，Unity不会为它派发OnDestroy。
+        if (this == null) { if (数据 != null) 数据.状态改变 -= 刷新; return; }
         bool 可用=道纹!=null&&!道纹.是源纹&&!道纹.是天赋&&数据.道纹.Contains(道纹);
         gameObject.SetActive(可用);if(!可用)return;
         图标.锁住=道纹.回收锁定;图标.color=道纹.回收锁定?new Color(.98f,.82f,.4f):new Color(.68f,.79f,.76f);图标.SetVerticesDirty();
+        if(美术图标!=null){美术图标.sprite=天帝道纹美术.获取(道纹.回收锁定?"锁定":"解锁");美术图标.color=Color.white;}
     }
     void OnDestroy(){if(数据!=null)数据.状态改变-=刷新;}
 }

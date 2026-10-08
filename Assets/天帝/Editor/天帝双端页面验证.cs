@@ -44,6 +44,12 @@ public static class 天帝双端页面验证
                 x.词条.Add(new 道纹词条(i == 0 ? 道纹属性.火 : 道纹属性.水, 5)); x.接口 = i == 0 ? 8 : 16;
                 var p = i == 0 ? new Vector2Int(2, 0) : new Vector2Int(1, 1); 网.解锁格子(p); 网.放置(x, p);
             }
+            // 断开的两枚只用于三色链路渲染与状态验收，不进入玩家存档。
+            for (int i = 0; i < 2; i++)
+            {
+                var 纹 = 出[5 + i]; 纹.接口 = i == 0 ? 1 : 8;
+                var 格 = new Vector2Int(i, 2); 网.解锁格子(格); 网.放置(纹, 格);
+            }
             var 钱 = new 天帝通货(网, 42); var 盒 = new 天帝宝盒(网, 42, 500); 人 = new 天帝主角属性(天帝普攻.主角配置(), 网);
             假游戏 = new GameObject("独立双端模型"); 假游戏.SetActive(false); 假游戏.hideFlags = HideFlags.HideAndDontSave;
             var g = 假游戏.AddComponent<天帝游戏>(); g.默认字体 = 字; g.美术 = 天帝美术资源.当前;
@@ -78,8 +84,43 @@ public static class 天帝双端页面验证
                         适配(尺寸); string 前 = (手机 ? "手机 " : "PC ") + 尺寸 + " " + 名;
                         var 固定区 = (RectTransform)host.transform.Find("安全区");
                         var 设计 = (RectTransform)固定区.Find("设计区");
+                        if (天帝青绿皮肤.已启用 && (名 == "主页" || 名 == "100级主页"))
+                        {
+                            var 立绘 = (RectTransform)设计.Find("页面/主角立绘");
+                            float 中 = 设计.InverseTransformPoint(立绘.TransformPoint(new Vector2(立绘.rect.center.x, 0))).x;
+                            查(前 + "主角位于画面中线", Mathf.Abs(中) < .2f);
+                            foreach (var 键 in 设计.GetComponentsInChildren<Button>())
+                            {
+                                var 图标 = 键.transform.Find("底栏图标-" + 键.name) as RectTransform;
+                                if (图标 == null) continue;
+                                var 标签 = 键.GetComponentInChildren<Text>();
+                                查(前 + "底栏图标文字分离 " + 键.name, !相交(矩形(图标, (RectTransform)键.transform), 文字边框(标签, (RectTransform)键.transform)));
+                            }
+                        }
                         查(前 + "固定1080p画面", Vector2.Distance(固定区.rect.size, 天帝移动适配.固定分辨率) < .2f);
+                        if (天帝青绿皮肤.已启用 && (名 == "道纹" || 名 == "100级道纹"))
+                        {
+                            var 页 = (RectTransform)设计.Find("页面/道纹页面");
+                            var 网格口 = (RectTransform)页.Find("画布视口");
+                            查(前 + "B版大画布铺满工作区", 网格口.rect.width >= 页.rect.width * .97f && 网格口.rect.height >= 页.rect.height * (手机 ? .57f : .83f));
+                            查(前 + "旧画布纸板关闭", !页.Find("画布主面板").gameObject.activeSelf);
+                            var 藏匣 = (RectTransform)页.Find("候选区");
+                            var 信息 = (RectTransform)页.Find("实时构筑预览视口");
+                            var 藏匣范围 = 矩形(藏匣, 页); var 信息范围 = 矩形(信息, 页);
+                            查(前 + "两侧信息不占中央操作区", 藏匣范围.xMax <= 页.rect.xMin + 页.rect.width * .18f && 信息范围.xMin >= 页.rect.xMin + 页.rect.width * .69f && !相交(藏匣范围, 信息范围));
+                            查(前 + "竖排藏匣可以滚动", 藏匣.GetComponent<ScrollRect>().vertical && !藏匣.GetComponent<ScrollRect>().horizontal);
+                        }
                         查(前 + "布局尺寸不随屏幕或DPI变化", Vector2.Distance(设计.rect.size, 天帝移动适配.布局尺寸) < .2f);
+                        查(前 + "固定横屏且等比展示", Mathf.Abs(固定区.rect.width / 固定区.rect.height - 16f / 9f) < .001f && Mathf.Abs(设计.localScale.x - 设计.localScale.y) < .001f);
+                        if (名 == "主页等级下拉")
+                        {
+                            var 下拉列表 = 设计.GetComponentInChildren<Dropdown>().transform.Find("Dropdown List") as RectTransform;
+                            if (下拉列表 != null)
+                            {
+                                var 范围 = 矩形(下拉列表, 固定区); var 安全 = 固定区.rect;
+                                查(前 + "地图等级列表完整位于固定视口", 范围.xMin >= 安全.xMin - .2f && 范围.xMax <= 安全.xMax + .2f && 范围.yMin >= 安全.yMin - .2f && 范围.yMax <= 安全.yMax + .2f);
+                            }
+                        }
                         foreach (var 按钮区 in host.GetComponentsInChildren<天帝按钮文字区域>())
                         {
                             var 纯色 = 按钮区.纯色区域;
@@ -153,9 +194,17 @@ public static class 天帝双端页面验证
                         }
                         foreach (var 文 in host.GetComponentsInChildren<Text>())
                         {
+                            if (文.GetComponent<天帝道纹单字>() != null)
+                                查(前 + "道纹单字保留瓷牌中心区域 " + 路径(文.transform), 文.rectTransform.rect.width > 1 && 文.rectTransform.rect.height >= 文.fontSize);
                             if (string.IsNullOrWhiteSpace(文.text) || 文.resizeTextForBestFit) continue;
                             if (文.preferredHeight > 文.rectTransform.rect.height + 2)
                                 r.排版问题.Add(前 + " " + 路径(文.transform) + " " + 文.rectTransform.rect.size + " 需高" + 文.preferredHeight + " " + 文.text.Replace("\n", " / "));
+                        }
+                        foreach(var 卡 in host.GetComponentsInChildren<天帝道纹详情卡>())
+                        {
+                            if(!手机 || !卡.填满父区域)continue;
+                            var 框=(RectTransform)卡.transform;var 父=(RectTransform)框.parent;
+                            查(前+"嵌入道纹详情不越界",框.rect.width<=父.rect.width+.1f && 框.rect.height<=父.rect.height+.1f);
                         }
                         foreach (var 父 in host.GetComponentsInChildren<RectTransform>())
                         {
@@ -186,6 +235,8 @@ public static class 天帝双端页面验证
                             }
                         }
                         查(前 + "无整页缩放工具", !Array.Exists(host.GetComponentsInChildren<Transform>(true), x => x.name == "触屏阅读工具"));
+                        if ((!手机 && 尺寸.x == 1920) || (手机 && 尺寸.x == 1280) || 名 == "主页")
+                            天帝青绿验收.拍摄(host, (手机 ? "手机_" : "PC_") + 尺寸.x + "x" + 尺寸.y + "_" + 名, 尺寸.x, 尺寸.y);
                     }
                 }
                 if (手机)
@@ -195,6 +246,31 @@ public static class 天帝双端页面验证
                 }
                 适配(new Vector2Int(1280, 720)); ui.显示标题(); 检("标题");
                 ui.显示主页(); 检("主页");
+                if(天帝青绿皮肤.已启用)
+                {
+                    var 下拉=(Dropdown)typeof(天帝界面).GetField("地图等级下拉",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(ui);
+                    查((手机?"手机":"PC")+"地图下拉100级",下拉.options.Count==100);
+                    下拉.SetValueWithoutNotify(99);下拉.RefreshShownValue();检("主页等级100标签");
+                    // Dropdown的渐变驱动在Start初始化；编辑模式夹具显式初始化它。
+                    typeof(Dropdown).GetMethod("Start",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(下拉,null);下拉.alphaFadeSpeed=0;
+                    下拉.Show();
+                    // 手动推进运行时定位协程，验证选择100级时列表不会仍停在第1级。
+                    var 定位 = (System.Collections.IEnumerator)typeof(天帝等级下拉).GetMethod("定位当前项",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(下拉,null);
+                    定位.MoveNext(); 定位.MoveNext(); Canvas.ForceUpdateCanvases();
+                    var 滚动 = 下拉.transform.Find("Dropdown List")?.GetComponent<ScrollRect>();
+                    查((手机?"手机":"PC")+"地图下拉展开定位当前100级",滚动!=null&&滚动.verticalNormalizedPosition<.01f);
+                    检("主页等级下拉");
+                    var 列表=下拉.transform.Find("Dropdown List");
+                    查((手机?"手机":"PC")+"地图下拉可展开",列表!=null);
+                    foreach(var 文 in 下拉.GetComponentsInChildren<Text>())
+                        if(文.text=="100级")查((手机?"手机":"PC")+"实际等级标签",文.text=="100级");
+                    // 编辑模式的淡出协程不会推进，直接销毁隔离夹具生成的临时列表与遮罩。
+                    if(列表!=null)UnityEngine.Object.DestroyImmediate(列表.gameObject);
+                    var 挡=host.transform.Find("Blocker");if(挡!=null)UnityEngine.Object.DestroyImmediate(挡.gameObject);
+                    typeof(Dropdown).GetField("m_Dropdown",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(下拉,null);
+                    typeof(Dropdown).GetField("m_Blocker",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(下拉,null);
+                    ui.显示主页();
+                }
                 ui.显示作弊码(); 检("作弊码"); ui.关闭作弊码();
                 ui.显示消息("确认操作前请检查目标和消耗。\n长说明会在手机确认框内部滚动，取消后回到原页面。"); 检("确认提示"); ui.关闭确认();
                 ui.显示设置(); 检("设置");
@@ -224,6 +300,70 @@ public static class 天帝双端页面验证
                 foreach(var kind in new[]{道纹分类.特性,道纹分类.转化})
                 {int ix=网.道纹.FindIndex(x=>x.分类==kind);ui.改造页.选目标(ix);检(kind+"不可改造详情");查(kind+"详情无虚假词条容量",ui.改造页.当前目标.词条上限==0);}
                 ui.显示道纹(网); 检("道纹");
+                if (天帝青绿皮肤.已启用)
+                {
+                    var 藏匣 = ui.道纹页.transform.Find("候选区").GetComponent<ScrollRect>();
+                    var 输入 = Array.Find(藏匣.GetComponentsInChildren<天帝道纹输入>(), x => !x.是画布);
+                    var 事件 = new UnityEngine.EventSystems.PointerEventData(null) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left };
+                    藏匣.verticalNormalizedPosition = 1; Canvas.ForceUpdateCanvases();
+                    if (手机)
+                    {
+                        事件.position = ((RectTransform)输入.transform).TransformPoint(Vector2.zero); 事件.pressPosition = 事件.position;
+                        输入.OnInitializePotentialDrag(事件); 输入.OnBeginDrag(事件);
+                        事件.position += Vector2.up * 100 * 藏匣.content.lossyScale.y;
+                        输入.OnDrag(事件); 输入.OnEndDrag(事件);
+                    }
+                    else { 事件.scrollDelta = Vector2.down; 输入.OnScroll(事件); }
+                    Canvas.ForceUpdateCanvases();
+                    查((手机 ? "手机卡片纵向滑动" : "PC卡片滚轮滚动") + "确实移动藏匣内容", 藏匣.verticalNormalizedPosition < .99f);
+                    int 原页 = ui.道纹页.候选页码;
+                    查((手机 ? "手机" : "PC") + "藏匣翻页恢复顶部", ui.道纹页.切换候选页(原页 + 1) && 藏匣.verticalNormalizedPosition > .99f);
+                    ui.道纹页.切换候选页(原页);
+                    ui.道纹页.回到源点();
+                    var 画布 = Array.Find(ui.道纹页.GetComponentsInChildren<天帝道纹绘图>(), x => !x.单纹模式);
+                    ui.道纹页.聚焦解锁区域();
+                    查((手机 ? "手机" : "PC") + "少量道纹自动聚焦保留瓷面文字及三色链路", 画布.细节可见);
+                    ui.道纹页.回到源点();
+                    查((手机 ? "手机" : "PC") + "源点定位在两侧栏之间", Mathf.Abs(画布.平移.x - (手机 ? -42 : -74)) < .1f && Mathf.Abs(画布.平移.y) < .1f);
+                    bool 坐标正确 = true;
+                    for (int q = -50; q < 50; q++) for (int t = -50; t < 50; t++)
+                    { var 格 = new Vector2Int(q, t); 坐标正确 &= 画布.位置格(画布.格位置(格)) == 格; }
+                    查((手机 ? "手机" : "PC") + "一万格间距坐标可逆", 坐标正确 && 画布.格间距 > 1.5f);
+                    查((手机 ? "手机" : "PC") + "已激活对应接口绿色", 画布.获取链路状态(Vector2Int.zero, 0) == 天帝道纹绘图.链路状态.已激活);
+                    查((手机 ? "手机" : "PC") + "孤立接口链路红色", 画布.获取链路状态(new Vector2Int(0, 2), 0) == 天帝道纹绘图.链路状态.未激活);
+                    查((手机 ? "手机" : "PC") + "空位链路灰色", 画布.获取链路状态(Vector2Int.zero, 3) == 天帝道纹绘图.链路状态.空位);
+                    var 命中 = typeof(天帝道纹界面).GetMethod("画布命中", BindingFlags.Instance | BindingFlags.NonPublic);
+                    float 原缩 = 画布.缩放; var 原移 = 画布.平移;
+                    foreach (float 缩 in new[] { .5f, 1.1f, 1.65f })
+                    {
+                        画布.缩放 = 缩;
+                        var 格 = new Vector2Int(1, 0);
+                        画布.平移 = 原移 - 画布.格位置(格) * 缩; // 测试目标保持在无遮挡工作区内。
+                        object[] 参数 = { ui.道纹页.格屏幕位置(格), Vector2Int.zero };
+                        查((手机 ? "手机" : "PC") + "缩放后点击命中同一格 " + 缩, (bool)命中.Invoke(ui.道纹页, 参数) && (Vector2Int)参数[1] == 格);
+                    }
+                    画布.缩放 = 原缩; 画布.平移 = 原移; 画布.SetVerticesDirty();
+                    var 外点 = RectTransformUtility.WorldToScreenPoint(null, 画布.rectTransform.TransformPoint(new Vector2(画布.工作区.xMax + 24, 0)));
+                    object[] 外参 = { 外点, Vector2Int.zero };
+                    查((手机 ? "手机" : "PC") + "两侧信息区不接受画布放置", !(bool)命中.Invoke(ui.道纹页, 外参));
+                    var 待放 = Array.Find(藏匣.GetComponentsInChildren<天帝道纹输入>(), x => !x.是画布 && !x.道纹.格子.HasValue).道纹;
+                    // EditMode下从未激活的模拟卡片没有OnDestroy；清理夹具换页后的已销毁订阅。
+                    foreach (object 模型 in new object[] { 网, 人, 钱, 盒 }) 清理已销毁订阅(模型);
+                    var 目标格 = new Vector2Int(-1, 0); 网.解锁格子(目标格);
+                    var 放置事件 = new UnityEngine.EventSystems.PointerEventData(null) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, position = ui.道纹页.格屏幕位置(目标格) };
+                    if (手机) { ui.道纹页.触屏选择(待放, Vector2.zero); ui.道纹页.点击(true, 放置事件); }
+                    else { ui.道纹页.按下(待放, false, 放置事件); ui.道纹页.开始拖动(false, 放置事件); ui.道纹页.结束拖动(放置事件); }
+                    查((手机 ? "手机点选放置" : "PC拖放") + "使用新间距落格", 待放.格子 == 目标格);
+                    查((手机 ? "手机" : "PC") + "新间距放置可撤销", ui.道纹页.撤销上一步() && !待放.格子.HasValue);
+                    if (手机) ui.道纹页.取消触屏选择();
+                    else
+                    {
+                        放置事件.position = (ui.道纹页.格屏幕位置(Vector2Int.zero) + ui.道纹页.格屏幕位置(new Vector2Int(1, 0))) * .5f;
+                        ui.道纹页.按下(null, true, 放置事件); ui.道纹页.开始拖动(true, 放置事件);
+                        查("PC拖动道纹间的空隙只平移画布", (bool)typeof(天帝道纹界面).GetField("平移中", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ui.道纹页));
+                        ui.道纹页.结束拖动(放置事件);
+                    }
+                }
                 查((手机 ? "手机" : "PC") + "构筑预览读取独立出口计划", ui.道纹页.当前演示参数.顺序计划 != null && ui.道纹页.当前演示参数.数量 == 2);
                 ui.显示主页(); 检("100级主页");
                 ui.显示道纹(网); 检("100级道纹");
@@ -273,6 +413,16 @@ public static class 天帝双端页面验证
         }
         string dir = Path.Combine(天帝构建工具.项目根, "生成/验证/双端页面-" + DateTime.Now.ToString("yyyyMMdd-HHmmss")); Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "report.json"), JsonUtility.ToJson(r, true)); return dir;
+    }
+    static void 清理已销毁订阅(object 模型)
+    {
+        foreach (var 字段 in 模型.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+        {
+            if (!(字段.GetValue(模型) is Delegate 订阅)) continue;
+            foreach (var 回调 in 订阅.GetInvocationList())
+                if (回调.Target is UnityEngine.Object 对象 && 对象 == null) 订阅 = Delegate.Remove(订阅, 回调);
+            字段.SetValue(模型, 订阅);
+        }
     }
     static string 路径(Transform t) => t.parent == null ? t.name : 路径(t.parent) + "/" + t.name;
     static Rect 矩形(RectTransform 区, RectTransform 面板)

@@ -19,6 +19,9 @@ public sealed class 战斗敌人
     internal int 技能编号, 显示形态 = 1;
     internal float 技能等待, 退步秒, 停步秒, 形态提示秒;
     internal float 突袭冷却, 蓄力总秒;
+    internal float 战术决策秒;
+    internal Vector2 战术站位;
+    internal 战斗敌人 掩护队友;
     internal Vector2 锁定方向;
     internal readonly List<战斗敌人> 辅助目标 = new List<战斗敌人>(2);
     internal void 设置物种(int 种)
@@ -83,6 +86,7 @@ public sealed class 战斗释放记录
     internal int 顺序生成数;
     internal int 扩展效果数;
     internal bool 根普攻=true;
+    internal bool 手动瞄准;
 }
 public sealed class 战斗灵矢
 {
@@ -159,7 +163,7 @@ public sealed partial class 天帝战斗系统
     public int 剩余敌人数量 => 场上敌人数量 + 未生成敌人数量;
     public int 分类剩余(战斗敌人级别 类) { int 数 = 0; foreach (var 敌 in 敌人数据) if (敌.布点.级别 == 类 && (!敌.已生成 || 敌.存活)) 数++; return 数; }
     public int 分类在场(战斗敌人级别 类) { int 数 = 0; foreach (var 敌 in 敌人数据) if (敌.布点.级别 == 类 && 敌.存活) 数++; return 数; }
-    public string 刷新阶段 => 玩家死亡 ? "挑战结束" : 地图.生存大图 ? BOSS已出现 ? "狼王来袭 · 四面兽潮" : "四面兽潮 · 边缘增援" : 地图.横向区域
+    public string 刷新阶段 => 玩家死亡 ? "挑战结束" : 地图.生存大图 ? BOSS已出现 ? "狼王来袭 · 四面兽潮" : "第"+当前波次+"批 · "+增援节奏 : 地图.横向区域
         ? 地图.王房范围.Contains(地图.所在格(玩家)) ? "东端BOSS区域" : "向东探索 · 沿途营地"
         : BOSS已出现 ? 敌人数据[敌人数据.Count - 1].名称 : 本波精英阶段 ? (当前波次 == 5 ? "头目压阵" : "精英来袭") : "第 " + 当前波次 + " / 5 波 · 小怪群";
     public float 敌人损伤比例 => 总敌人最大生命 <= 0 ? 0 : Mathf.Clamp01(累计敌人损伤 / 总敌人最大生命);
@@ -172,6 +176,7 @@ public sealed partial class 天帝战斗系统
     public event Action<战斗敌人> 敌人死亡;
     public event Action<Vector2, float, bool> 伤害反馈;
     public event Action<Vector2, 战斗伤害明细, bool> 伤害分项反馈;
+    public event Action<战斗受击反馈> 受击表现反馈;
     public event Action<Vector2> 准备射击;
     public event Action<Vector2> 射击释放;
     public float 射击前摇 { get; set; } = (float)天帝数值.取("player.attack_windup");
@@ -200,7 +205,7 @@ public sealed partial class 天帝战斗系统
     Vector2 玩家;
     float 发射冷却, 回响剩余 = -1;
     float 前摇剩余 = -1;
-    int 前摇通路, 下一通路顺序;
+    int 前摇通路;
     普攻参数 回响参数;
     readonly 普攻参数[] 通路参数缓存 = new 普攻参数[6];
     int 参数修订 = -1;
@@ -208,6 +213,8 @@ public sealed partial class 天帝战斗系统
     float 波次等待;
     float 刷新重试剩余;
     int 生存待刷名额, 生存队列索引;
+    int 生存增援轮;
+    public string 增援节奏 => 生存待刷名额>0?"增援入场":生存增援轮>0&&生存增援轮%(int)天帝数值.取("map.arena.pacing.breath_every")==0?"短暂喘息":"兽潮集结";
     bool 本波精英阶段;
     float 累计敌人损伤, 总敌人最大生命;
     public 天帝战斗系统(天帝战斗地图 地图, 天帝道纹 道纹, 天帝主角属性 主角, 战斗难度 难度, 天帝通货 通货 = null, int 地图等级 = 1, Func<Rect> 读取视野 = null, 天帝宝盒 宝盒 = null)
@@ -262,7 +269,7 @@ public sealed partial class 天帝战斗系统
     }
     int 下一开放通路()
     {
-        for (int i = 0; i < 6; i++) { int d = (6 - (下一通路顺序 + i) % 6) % 6; if (道纹.通路参与射击(d)) return d; }
+        for (int i = 0; i < 6; i++) { int d = 技能通路(i); if (道纹.通路开放(d)) return d; }
         return 0;
     }
     void 初始化波次()
@@ -286,11 +293,32 @@ public sealed partial class 天帝战斗系统
         if (地图.生存大图) 敌.突袭冷却 = (float)天帝数值.取("map.arena.charge_period") * (float)(.25 + (敌.序号 % 8) / 8.0);
         return true;
     }
+    int 选择本批敌人(int 在场)
+    {
+        int 末=敌人数据.Count-1,scan=(int)天帝数值.取("map.arena.pacing.candidate_scan");
+        int 角色=(生存增援轮-1)%3==0?0:(生存增援轮-1)%3==1?1:2;
+        bool 辅助=false;foreach(var e in 敌人数据)if(e.存活&&天帝敌种配置.角色(e.物种)>=3&&e.物种!=14){辅助=true;break;}
+        if(在场>=4&&!辅助)角色=3;
+        int fallback=-1;
+        for(int i=生存队列索引;i<末&&i<生存队列索引+scan;i++)
+        {
+            if(敌人数据[i].已生成)continue;if(fallback<0)fallback=i;
+            int r=天帝敌种配置.角色(敌人数据[i].物种);
+            if(r==角色||角色==3&&r==4)return i;
+        }
+        return fallback;
+    }
     void 推进生存(float 秒)
     {
         波次等待 -= 秒; 刷新重试剩余 -= 秒;
         if (波次等待 <= 0 && 生存待刷名额 == 0 && 生存队列索引 < 敌人数据.Count - 1)
-        { 生存待刷名额 = 生存批次数量; 波次等待 = 生存刷新间隔; }
+        {
+            生存增援轮++;当前波次=生存增援轮;
+            生存待刷名额 = 生存批次数量;
+            波次等待 = 生存刷新间隔+(生存增援轮%(int)天帝数值.取("map.arena.pacing.breath_every")==0?(float)天帝数值.取("map.arena.pacing.breath_seconds"):0);
+        }
+        if(生存待刷名额==0&&场上敌人数量<=生存场上上限*天帝数值.取("map.arena.pacing.low_active_fraction"))
+            波次等待=Mathf.Min(波次等待,(float)天帝数值.取("map.arena.pacing.low_active_wait"));
         if (刷新重试剩余 > 0) return;
         刷新重试剩余 = (float)天帝数值.取("map.arena.retry_interval");
         int 在场 = 场上敌人数量;
@@ -299,8 +327,9 @@ public sealed partial class 天帝战斗系统
         int 容量 = 生存场上上限 + (BOSS已出现 && 敌人数据[敌人数据.Count - 1].存活 ? 1 : 0);
         while (生存待刷名额 > 0 && 生存队列索引 < 敌人数据.Count - 1 && 在场 < 容量)
         {
-            if (!生成(敌人数据[生存队列索引], true)) break;
-            生存队列索引++; 生存待刷名额--; 在场++;
+            int index=选择本批敌人(在场);if(index<0||!生成(敌人数据[index], true))break;
+            生存待刷名额--; 在场++;
+            while(生存队列索引<敌人数据.Count-1&&敌人数据[生存队列索引].已生成)生存队列索引++;
         }
         if (生存队列索引 >= 敌人数据.Count - 1) 生存待刷名额 = 0;
     }
@@ -380,50 +409,14 @@ public sealed partial class 天帝战斗系统
         foreach (var 敌 in 敌人数据)
         { 敌.闪白秒 = Mathf.Max(0, 敌.闪白秒 - 秒); 敌.束缚剩余秒 = Mathf.Max(0, 敌.束缚剩余秒 - 秒); if (!敌.存活) 敌.死亡秒 += 秒; }
         if (玩家死亡) { 灵矢数据.Clear(); 待加灵矢.Clear(); 清理扩展功能(); 战术.清理(); 回响剩余 = 前摇剩余 = -1; return; }
+        战斗时钟 += 秒; // 伤害以本细步结束时刻结算，0.100秒边界不延长无敌窗口。
         推进扩展地面(秒);
         推进形态演出(秒);
         推进特性战斗(秒);
         战术.推进效果(玩家, 秒);
         敌人AI.推进(玩家, 秒);
         if (玩家死亡) return;
-        var 参数 = 读取通路参数(前摇剩余 >= 0 ? 前摇通路 : 下一开放通路());
-        发射冷却 = Mathf.Max(0, 发射冷却 - 秒);
-        bool 射出 = false;
-        if (前摇剩余 >= 0)
-        {
-            前摇剩余 -= 秒;
-            if (前摇剩余 <= 0) { 前摇剩余 = -1; if (参数.已激活) 射出 = 发射(参数); }
-        }
-        else if (参数.已激活 && 发射冷却 <= 0)
-        {
-            int 目标 = 找目标(玩家, 普攻参数.索敌距离, null);
-            if (目标 >= 0)
-            {
-                if (射击前摇 > 0)
-                {
-                    前摇通路 = 参数.通路;
-                    前摇剩余 = Mathf.Min(射击前摇, 参数.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
-                    发射冷却 = 参数.间隔;
-                    准备射击?.Invoke((敌人数据[目标].位置 - 玩家).normalized);
-                }
-                else 射出 = 发射(参数);
-            }
-        }
-        if (射出)
-        {
-            if (射击前摇 <= 0) 发射冷却 = 参数.间隔;
-            普通释放次数++;
-            特性根释放(参数.通路);
-            当前通路 = 参数.通路; 通路释放次数[当前通路]++;
-            下一通路顺序 = (((6 - 当前通路) % 6) + 1) % 6;
-            if (余响.记录释放("普攻") != null) { 回响剩余 = (float)天帝数值.取("talents.echo_delay"); 回响参数 = 参数; }
-        }
-        else if (!参数.已激活) { 灵矢数据.Clear(); 待加灵矢.Clear(); 回响剩余 = 前摇剩余 = -1; }
-        if (回响剩余 >= 0)
-        {
-            回响剩余 -= 秒;
-            if (回响剩余 <= 0) { if (回响参数 != null && 回响参数.已激活 && 发射根(回响参数,false)) 回响次数++; 回响剩余 = -1; 回响参数 = null; }
-        }
+        推进主动计时(秒);
         int 原数量 = 灵矢数据.Count;
         for (int i = 原数量 - 1; i >= 0; i--) if (!灵矢一步(灵矢数据[i], 秒)) { var 矢 = 灵矢数据[i]; 矢.释放.根目标.Remove(矢.根目标); 灵矢数据.RemoveAt(i); }
         处理连锁攻击();
@@ -442,13 +435,14 @@ public sealed partial class 天帝战斗系统
             if (待加灵矢[i].自动连锁 && !保留(待加灵矢[i])) 待加灵矢.RemoveAt(i); else i++;
     }
     bool 发射(普攻参数 参数)=>发射根(参数,true);
-    bool 发射根(普攻参数 参数,bool root)
+    bool 发射根(普攻参数 参数,bool root, Vector2? 主动方向 = null)
     {
         if (参数 == null || !参数.已激活) return false;
-        int 目标 = 找目标(玩家, 普攻参数.索敌距离, null); if (目标 < 0) return false;
-        Vector2 向 = (敌人数据[目标].位置 - 玩家).normalized;
+        int 目标 = 主动方向.HasValue ? -1 : 找目标(玩家, 普攻参数.索敌距离, null);
+        if (!主动方向.HasValue && 目标 < 0) return false;
+        Vector2 向 = 主动方向 ?? (敌人数据[目标].位置 - 玩家).normalized;
         double 采样 = 战斗随机.NextDouble(); bool 暴击 = 采样 < 参数.暴击率;
-        var 释放 = new 战斗释放记录 { 编号 = ++释放序号, 暴击倍率 = 暴击 ? 参数.暴击倍率 : 1, 暴击采样 = 采样,根普攻=root };
+        var 释放 = new 战斗释放记录 { 编号 = ++释放序号, 暴击倍率 = 暴击 ? 参数.暴击倍率 : 1, 暴击采样 = 采样,根普攻=root, 手动瞄准=主动方向.HasValue };
         if (暴击) 暴击释放次数++;
         if (参数.顺序计划 != null)
         {
@@ -461,9 +455,9 @@ public sealed partial class 天帝战斗系统
         var 已分配 = new HashSet<int>();
         for (int i = 0; i < 参数.数量; i++)
         {
-            int 独立目标 = 找目标(玩家, 普攻参数.索敌距离, 已分配);
+            int 独立目标 = 主动方向.HasValue ? -1 : 找目标(玩家, 普攻参数.索敌距离, 已分配);
             if (独立目标 >= 0) { 目标 = 独立目标; 已分配.Add(目标); 释放.根目标.Add(目标); }
-            Vector2 瞄准 = (敌人数据[目标].位置 - 玩家).normalized;
+            Vector2 瞄准 = 主动方向 ?? (敌人数据[目标].位置 - 玩家).normalized;
             float 角 = 独立目标 >= 0 ? 0 : (i - (参数.数量 - 1) * .5f) * (float)天帝数值.取("shape.root_spread_degrees");
             灵矢数据.Add(new 战斗灵矢 { 位置 = 玩家, 方向 = 转向(瞄准, 角), 目标 = 目标, 根目标 = 独立目标, 伤害 = 参数.伤害, 释放 = 释放,
                 剩余距离 = 普攻参数.飞行距离, 剩余连锁 = 参数.连锁, 参数 = 参数, 根普攻弹 = root });
@@ -574,10 +568,10 @@ public sealed partial class 天帝战斗系统
         => 伤害敌人(敌: 敌, 包: new 战斗伤害包(原伤害, 0, 主角.等级));
     void 命中伤害(战斗敌人 敌, 战斗灵矢 矢, double 形态)
     {
-        伤害敌人(敌, new 战斗伤害包(矢.参数.普通伤害, 矢.参数.五行额外伤害, 矢.参数.等级, 天帝数值.取("player.skill_multiplier"), 形态 * 扩展蓄势倍率(矢), 矢.参数.天赋倍率, 矢.实际暴击倍率, 矢.参数.五行来源));
+        伤害敌人(敌, new 战斗伤害包(矢.参数.普通伤害, 矢.参数.五行额外伤害, 矢.参数.等级, 天帝数值.取("player.skill_multiplier"), 形态 * 扩展蓄势倍率(矢), 矢.参数.天赋倍率, 矢.实际暴击倍率, 矢.参数.五行来源), 矢.方向);
         if(矢.根普攻弹 && !矢.子矢)特性根命中(敌,矢.参数.通路);
     }
-    public bool 伤害敌人(战斗敌人 敌, 战斗伤害包 包)
+    public bool 伤害敌人(战斗敌人 敌, 战斗伤害包 包, Vector2? 入射方向 = null)
     {
         if (敌 == null || !敌人数据.Contains(敌) || !敌.存活 || 玩家死亡) return false;
         float 伤 = (float)天帝数值.结算伤害(包, 敌.等级, 敌.防御, 敌.抗性);
@@ -585,13 +579,17 @@ public sealed partial class 天帝战斗系统
         if (伤 <= 0) return false;
         敌人AI.受击警戒(敌, 玩家);
         战术.受伤(敌);
+        float 伤前血 = 敌.血量;
         float 盾伤 = Mathf.Min(伤, 敌.护盾量); 敌.护盾量 -= 盾伤;
         if (盾伤 > 0 && 敌.护盾量 <= 0) 敌.盾禁用 = 天帝敌种配置.取("support.shield_lockout");
         敌.血量 = Mathf.Max(0, 敌.血量 - (伤 - 盾伤));
         if (敌.布点.级别 != 战斗敌人级别.王级)
         { float 深 = Mathf.Max(敌.最深伤损, 敌.最大血量 - 敌.血量); 累计敌人损伤 += 深 - 敌.最深伤损; 敌.最深伤损 = 深; }
-        敌.闪白秒 = .1f; 伤害反馈?.Invoke(敌.位置, 伤, false);
+        敌.闪白秒 = 天帝受击表现.取("flash_seconds"); 伤害反馈?.Invoke(敌.位置, 伤, false);
         伤害分项反馈?.Invoke(敌.位置, 天帝数值.拆分伤害(包, 伤, 敌.防御, 敌.抗性), false);
+        受击表现反馈?.Invoke(new 战斗受击反馈(敌,敌.位置,入射方向 ?? 敌.位置-玩家,
+            天帝数值.拆分伤害(包,伤,敌.防御,敌.抗性),伤前血-敌.血量,盾伤,false,包.暴击倍率>1,
+            盾伤>0&&敌.护盾量<=0,!演示模式&&敌.血量<=0));
         if (演示模式) { if (敌.血量 <= 0) 敌.血量 = 敌.最大血量; return true; }
         if (!敌.存活)
         {
@@ -610,7 +608,7 @@ public sealed partial class 天帝战斗系统
         => 特性目标受击(new 战斗伤害包(敌.攻击力, 0, 敌.等级, 倍率,1,1,1,default,敌),特性诱饵目标(敌,玩家), !范围技);
     bool 结算玩家受伤(战斗伤害包 包, bool 可闪避)
     {
-        if (玩家死亡) return false;
+        if (玩家死亡 || 闪避无敌中) return false;
         float 伤 = (float)天帝数值.结算伤害(包, 主角.等级, 主角.防御, 主角.抗性);
         if(包.来源!=null)伤*=包.来源.特性伤害倍率;
         if (伤 <= 0 || (可闪避 && 战斗随机.NextDouble() < 主角.闪避率)) return false;
@@ -620,7 +618,12 @@ public sealed partial class 天帝战斗系统
         主角.设置当前资源(主角.当前血量 - (伤 - 盾伤), 主角.当前灵力, 主角.当前灵气护盾 - 盾伤);
         特性受伤后(Mathf.Max(0,伤前血-主角.当前血量),Mathf.Max(0,伤前盾-主角.当前灵气护盾-特性临时护盾),伤前盾>0 && 主角.当前灵气护盾+特性临时护盾<=0);
         伤害反馈?.Invoke(玩家, 伤, true);
-        伤害分项反馈?.Invoke(玩家, 天帝数值.拆分伤害(包, 伤, 主角.防御, 主角.抗性), true); return true;
+        伤害分项反馈?.Invoke(玩家, 天帝数值.拆分伤害(包, 伤, 主角.防御, 主角.抗性), true);
+        float 血损=Mathf.Max(0,伤前血-主角.当前血量),盾损=Mathf.Max(0,伤前盾-主角.当前灵气护盾-特性临时护盾);
+        if(血损+盾损>0)受击表现反馈?.Invoke(new 战斗受击反馈(null,玩家,包.来源!=null?玩家-包.来源.位置:Vector2.up,
+            天帝数值.拆分伤害(包,血损+盾损,主角.防御,主角.抗性),血损,盾损,true,包.暴击倍率>1,
+            伤前盾>0&&主角.当前灵气护盾+特性临时护盾<=0,玩家死亡));
+        return true;
     }
     static bool 有效伤害(float 伤) => 伤 > 0 && !float.IsNaN(伤) && !float.IsInfinity(伤);
     static Vector2 转向(Vector2 向, float 度)

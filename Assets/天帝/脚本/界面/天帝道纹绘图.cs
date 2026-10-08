@@ -11,9 +11,48 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
     public bool 幽灵;
     public bool 候选暗;
     public bool 构筑美术;
+    public bool 轻透画布;
+    public bool 山水工作区;
     public float 单纹半径 = 44;
     public Vector2 平移;
     public float 缩放 = 1;
+    // 格子的拓扑和存档坐标不变，显示与命中共用同一间距变换。
+    public float 格间距 => 轻透画布 ? 1.55f : 1;
+    // 手机设计坐标会放大约三倍，不能拿PC的逻辑缩放阈值判定实际可读尺寸。
+    public bool 细节可见 => 缩放 >= (轻透画布 && 天帝移动适配.启用 ? .30f : .45f);
+    public Rect 工作区
+    {
+        get
+        {
+            var r = rectTransform.rect;
+            if (!轻透画布) return r;
+            if (山水工作区) return Rect.MinMaxRect(r.xMin+342,r.yMin+12,r.xMin+1220,r.yMax);
+            bool 手机 = 天帝移动适配.启用;
+            // 边缘悬浮工具下方不画网格数字，底部提示保留安静留白。
+            return Rect.MinMaxRect(r.xMin + (手机 ? 108 : 212), r.yMin + (手机 ? 40 : 58),
+                r.xMax - (手机 ? 198 : 384), r.yMax);
+        }
+    }
+    public Vector2 格位置(Vector2Int 格) => 天帝道纹.格位置(格) * 格间距;
+    public Vector2Int 位置格(Vector2 点) => 天帝道纹.位置格(点 / 格间距);
+    public enum 链路状态 { 空位, 未激活, 已激活 }
+    public 链路状态 获取链路状态(Vector2Int 格, int 方向)
+    {
+        if (数据 == null || !数据.已放置.TryGetValue(格, out var 起) || !数据.已放置.TryGetValue(格 + 天帝道纹.邻向[方向], out var 终)) return 链路状态.空位;
+        int 对向 = (方向 + 3) % 6;
+        bool 接通 = 起.有接口(方向) && 终.有接口(对向) &&
+            (起.允许传出(方向) && 终.允许接入(对向) || 终.允许传出(对向) && 起.允许接入(方向));
+        if (!接通) return 链路状态.空位;
+        return 起.生效 && 终.生效 ? 链路状态.已激活 : 链路状态.未激活;
+    }
+    public 链路状态 获取接口状态(道纹实例 纹, int 方向)
+    {
+        if (纹 == null || !纹.有接口(方向) || !纹.格子.HasValue || 数据 == null ||
+            !数据.已放置.TryGetValue(纹.格子.Value, out var 实纹) || !ReferenceEquals(实纹,纹)) return 链路状态.空位;
+        return 获取链路状态(纹.格子.Value,方向);
+    }
+    public static Color 链路状态颜色(链路状态 状态) => 状态 == 链路状态.已激活 ? new Color(.35f,.91f,.57f) :
+        状态 == 链路状态.未激活 ? new Color(.96f,.36f,.31f) : new Color(.55f,.65f,.65f,.20f);
     public Vector2Int? 预览格;
     public bool 预览可放;
     public 道纹实例 拖动纹;
@@ -22,9 +61,10 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
     public readonly List<Vector2Int> 高亮路径 = new List<Vector2Int>();
     public readonly HashSet<Vector2Int> 预览亮起 = new HashSet<Vector2Int>(), 预览暗掉 = new HashSet<Vector2Int>();
     public int 可见格数 { get; private set; }
-    bool 新图集 => (构筑美术 || 天帝道纹美术.彩绘皮肤) && 天帝美术资源.当前 != null && 天帝美术资源.当前.道纹构筑图集 != null;
+    bool 白瓷 => 天帝道纹美术.白瓷图集 != null;
+    bool 新图集 => 白瓷 || (构筑美术 || 天帝道纹美术.彩绘皮肤) && 天帝美术资源.当前 != null && 天帝美术资源.当前.道纹构筑图集 != null;
     Vector2 白点 => 新图集 ? new Vector2(2f / 2048, 2f / 2048) : 天帝美术资源.白点;
-    public override Texture mainTexture => 新图集 ? 天帝美术资源.当前.道纹构筑图集 : 天帝美术资源.已接入 ? 天帝美术资源.当前.道纹图集 : base.mainTexture;
+    public override Texture mainTexture => 白瓷 ? 天帝道纹美术.白瓷图集 : 新图集 ? (天帝青绿皮肤.道纹图集 ?? 天帝美术资源.当前.道纹构筑图集) : 天帝美术资源.已接入 ? 天帝美术资源.当前.道纹图集 : base.mainTexture;
     public static readonly Color 属性色 = new Color(0.30f, 0.82f, 0.70f);
     public static readonly Color 源色 = new Color(1f, 0.83f, 0.40f);
     static readonly Color 接口深青 = new Color(.055f, .24f, .29f);
@@ -44,44 +84,57 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             return;
         }
         if (数据 == null) return;
-        var 区 = rectTransform.rect;
-        var 左下 = 天帝道纹.位置格((区.min - 平移) / 缩放);
-        var 右上 = 天帝道纹.位置格((区.max - 平移) / 缩放);
-        var 左上 = 天帝道纹.位置格((new Vector2(区.xMin, 区.yMax) - 平移) / 缩放);
-        var 右下 = 天帝道纹.位置格((new Vector2(区.xMax, 区.yMin) - 平移) / 缩放);
-        int qMin = Mathf.Max(-50, Mathf.Min(左下.x, 右上.x, 左上.x, 右下.x) - 2);
-        int qMax = Mathf.Min(49, Mathf.Max(左下.x, 右上.x, 左上.x, 右下.x) + 2);
-        int rMin = Mathf.Max(-50, Mathf.Min(左下.y, 右上.y) - 2), rMax = Mathf.Min(49, Mathf.Max(左下.y, 右上.y) + 2);
+        var 区 = 工作区;
+        var 左下 = 位置格((区.min - 平移) / 缩放);
+        var 右上 = 位置格((区.max - 平移) / 缩放);
+        var 左上 = 位置格((new Vector2(区.xMin, 区.yMax) - 平移) / 缩放);
+        var 右下 = 位置格((new Vector2(区.xMax, 区.yMin) - 平移) / 缩放);
+        int qMin = Mathf.Max(天帝道纹.最小坐标, Mathf.Min(左下.x, 右上.x, 左上.x, 右下.x) - 2);
+        int qMax = Mathf.Min(天帝道纹.最大坐标, Mathf.Max(左下.x, 右上.x, 左上.x, 右下.x) + 2);
+        int rMin = Mathf.Max(天帝道纹.最小坐标, Mathf.Min(左下.y, 右上.y) - 2), rMax = Mathf.Min(天帝道纹.最大坐标, Mathf.Max(左下.y, 右上.y) + 2);
         float 半径 = 天帝道纹.半径 * 缩放;
         for (int q = qMin; q <= qMax; q++) for (int r = rMin; r <= rMax; r++)
         {
-            var 格 = new Vector2Int(q, r); var 点 = 天帝道纹.格位置(格) * 缩放 + 平移;
-            if (点.x < 区.xMin - 半径 || 点.x > 区.xMax + 半径 || 点.y < 区.yMin - 半径 || 点.y > 区.yMax + 半径) continue;
+            var 格 = new Vector2Int(q, r); var 点 = 格位置(格) * 缩放 + 平移;
+            if (轻透画布 ? !区.Contains(点) : 点.x < 区.xMin - 半径 || 点.x > 区.xMax + 半径 || 点.y < 区.yMin - 半径 || 点.y > 区.yMax + 半径) continue;
             可见格数++;
             bool 已解锁 = 数据.格已解锁(格);
-            if (缩放 < .45f)
+            bool 可解锁 = !已解锁 && 数据.可解锁格子(格);
+            if (!细节可见)
             {
-                // 大范围总览只画已解锁格的简化六边形，避免一万格突破UGUI顶点上限。
-                if (已解锁 && vh.currentVertCount < 60000)
+                // 大范围总览只画已解锁格和当前可解锁格，保持低缩放时的辨识度。
+                if ((已解锁 || 可解锁) && vh.currentVertCount < 60000)
                 {
                     bool 有纹 = 数据.已放置.TryGetValue(格, out var 小纹);
-                    var 色 = !有纹 ? new Color(.20f,.34f,.33f) : 小纹.是源纹 ? 源色 : 小纹.生效 ? 属性色 : new Color(.40f,.33f,.32f);
+                    var 色 = 可解锁 ? new Color(.28f,.82f,.62f,.92f) : !有纹 ? new Color(.20f,.34f,.33f) : 小纹.是源纹 ? 源色 : 小纹.生效 ? 属性色 : new Color(.40f,.33f,.32f);
                     总览六边(vh, 点, 半径 - .4f, 色);
                 }
                 continue;
             }
-            bool 石青底 = 构筑美术 && 天帝道纹美术.彩绘皮肤;
-            六边(vh, 点, 半径 - 2,
+            bool 石青底 = 构筑美术 && 天帝道纹美术.彩绘皮肤 && !天帝剪纸界面皮肤.已启用;
+            if (轻透画布)
+                for (int d = 0; d < 3; d++) 画间距链路(vh, 格, d);
+            bool 墨青画布 = 轻透画布 && 天帝剪纸界面皮肤.已启用 && !山水工作区;
+            六边(vh, 点, 半径 * 格间距 - 2,
+                墨青画布 ? 已解锁 ? new Color(.63f,.79f,.64f,.28f) : new Color(.72f,.82f,.71f,.025f) :
                 石青底 ? 已解锁 ? new Color(.42f,.66f,.60f,.22f) : new Color(.44f,.61f,.61f,.025f) : 已解锁 ? new Color(.70f,.86f,.79f,.45f) : new Color(.44f,.61f,.61f,.06f),
-                石青底 ? 已解锁 ? new Color(.72f,.88f,.77f,.90f) : new Color(.67f,.79f,.74f,.26f) : 已解锁 ? new Color(.25f,.50f,.48f,.64f) : new Color(.37f,.53f,.53f,.23f), 已解锁 ? 1.8f : .65f);
+                山水工作区 ? 已解锁 ? new Color(.16f,.39f,.32f,.88f) : new Color(.29f,.43f,.36f,.15f) :
+                墨青画布 ? 已解锁 ? new Color(.87f,.86f,.65f,.94f) : new Color(.68f,.79f,.69f,.45f) :
+                石青底 ? 已解锁 ? new Color(.72f,.88f,.77f,.90f) : new Color(.67f,.79f,.74f,轻透画布?.10f:.26f) : 已解锁 ? new Color(.25f,.50f,.48f,.64f) : new Color(.37f,.53f,.53f,.23f), 已解锁 ? 1.8f : 山水工作区 ? .65f : 墨青画布 ? 1.1f : .65f);
             if (!已解锁 && !构筑美术) 画锁(vh, 点, 缩放);
-            else if (!已解锁 && 新图集) 画新图(vh, 4, 点, Vector2.one * 18 * 缩放, new Color(.78f,.87f,.82f,.62f));
-            else 画权重(vh, 点, 天帝道纹.格权重(格), 缩放);
+            else if (!已解锁 && 新图集 && !轻透画布) 画新图(vh, 4, 点, Vector2.one * 18 * 缩放, new Color(.78f,.87f,.82f,.62f));
+            else if(已解锁 && !数据.已放置.ContainsKey(格)) 画权重(vh, 点, 天帝道纹.格权重(格), 缩放);
+            if (可解锁)
+            {
+                // 可解锁格沿用现有预览亮起的青绿色，填充很轻，只强调可操作边界。
+                var 高亮 = new Color(.25f, 1f, .75f, .90f);
+                六边(vh, 点, 半径 * 格间距 - 1, new Color(高亮.r, 高亮.g, 高亮.b, .08f), 高亮, Mathf.Max(1.4f, 2.6f * 缩放));
+            }
             if (数据.已放置.TryGetValue(格, out var 纹))
             {
                 画纹(vh, 点, 半径 - 4, 纹, 纹.生效, 纹 == 拖动纹 ? 0.35f : 1);
                 int 归属 = 数据.通路掩码(纹);
-                if ((归属 & (1 << 强调通路)) != 0)
+                if ((归属 & (1 << 强调通路)) != 0 && !白瓷)
                 {
                     if (石青底) 六边(vh, 点, 半径 - 1, Color.clear, 通路颜色[强调通路], 1.8f);
                     else if (新图集) 画新图(vh, 2, 点, Vector2.one * 半径 * 2.02f, new Color(1,1,1,.85f));
@@ -91,15 +144,23 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
                     总览六边(vh, 点 + Vector2.down * 半径 * .75f, Mathf.Max(2.5f, 4 * 缩放), Color.white);
                 for (int d = 0; d < 3; d++)
                 {
+                    if (轻透画布) break;
                     var 邻格 = 格 + 天帝道纹.邻向[d];
                     if (纹.生效 && 纹.有接口(d) && 数据.已放置.TryGetValue(邻格, out var 邻) && 邻.生效 && 邻.有接口(d + 3) &&
                         (纹.允许传出(d) && 邻.允许接入(d + 3) || 邻.允许传出(d + 3) && 纹.允许接入(d)))
                     {
-                        var 起 = 天帝道纹.格权重(格) <= 天帝道纹.格权重(邻格) ? 点 : 天帝道纹.格位置(邻格) * 缩放 + 平移;
-                        var 终 = 起 == 点 ? 天帝道纹.格位置(邻格) * 缩放 + 平移 : 点;
+                        var 起 = 天帝道纹.格权重(格) <= 天帝道纹.格权重(邻格) ? 点 : 格位置(邻格) * 缩放 + 平移;
+                        var 终 = 起 == 点 ? 格位置(邻格) * 缩放 + 平移 : 点;
                         var 方向 = (终 - 起).normalized;
-                        var a = 起 + 方向 * 半径 * .73f; var b = 终 - 方向 * 半径 * .73f;
-                        if (石青底)
+                        float 边距 = 白瓷 ? (半径 - 4) * 1.01f : 半径 * .73f;
+                        var a = 起 + 方向 * 边距; var b = 终 - 方向 * 边距;
+                        if (白瓷)
+                        {
+                            bool 当前路 = (归属 & (1 << 强调通路)) != 0;
+                            线(vh, a, b, Mathf.Max(2.2f, 3.2f * 缩放), new Color(.12f,.32f,.32f,.85f));
+                            线(vh, a, b, Mathf.Max(1.2f, (当前路?2.2f:1.5f) * 缩放), 当前路 ? new Color(.81f,1,.86f) : new Color(.49f,.76f,.67f));
+                        }
+                        else if (石青底)
                         {
                             线(vh, a, b, Mathf.Max(5, 6 * 缩放), 接口深青);
                             线(vh, a, b, Mathf.Max(2.6f, 3 * 缩放), new Color(.47f,.83f,.75f));
@@ -117,7 +178,7 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
         for (int i = 0; i < 高亮路径.Count; i++)
         {
             if (vh.currentVertCount > 63000) break;
-            var 点 = 天帝道纹.格位置(高亮路径[i]) * 缩放 + 平移;
+            var 点 = 格位置(高亮路径[i]) * 缩放 + 平移;
             bool 彩绘 = 天帝道纹美术.彩绘皮肤;
             if (彩绘)
             {
@@ -126,8 +187,9 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             }
             else 六边(vh, 点, 半径 - 3, Color.clear, 源色, 2.5f);
             if (i == 0) continue;
-            var 起 = 天帝道纹.格位置(高亮路径[i - 1]) * 缩放 + 平移; var 向 = (点 - 起).normalized;
-            var a = 起 + 向 * 半径 * .70f; var b = 点 - 向 * 半径 * .70f;
+            var 起 = 格位置(高亮路径[i - 1]) * 缩放 + 平移; var 向 = (点 - 起).normalized;
+            var a = 起 + 向 * 半径 * (轻透画布 ? .95f : .70f); var b = 点 - 向 * 半径 * (轻透画布 ? .95f : .70f);
+            if (轻透画布) continue; // 状态线不被悬停路径改成金色；节点描边仍提供定位反馈。
             if (彩绘)
             {
                 线(vh, a, b, Mathf.Max(8, 10 * 缩放), 链路描边);
@@ -137,9 +199,25 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             else 线(vh, a, b, 4 * 缩放, 源色);
         }
         if (预览格.HasValue)
-            六边(vh, 天帝道纹.格位置(预览格.Value) * 缩放 + 平移, 半径 - 1,
+            六边(vh, 格位置(预览格.Value) * 缩放 + 平移, 半径 - 1,
                 预览可放 ? new Color(0.2f, 1, 0.5f, 0.25f) : new Color(1, 0.15f, 0.14f, 0.30f),
                 预览可放 ? new Color(0.3f, 1, 0.55f) : new Color(1, 0.25f, 0.25f), 3);
+    }
+    void 画间距链路(VertexHelper 网, Vector2Int 格, int 方向)
+    {
+        var 邻格 = 格 + 天帝道纹.邻向[方向];
+        if (!天帝道纹.在范围(邻格) || 网.currentVertCount > 58000) return;
+        var 起 = 格位置(格) * 缩放 + 平移; var 终 = 格位置(邻格) * 缩放 + 平移;
+        var 向 = (终 - 起).normalized;
+        float 边距 = (天帝道纹.半径 - 4) * 1.05f * 缩放;
+        var a = 起 + 向 * 边距; var b = 终 - 向 * 边距;
+        var 状态 = 获取链路状态(格, 方向); var 色 = 链路状态颜色(状态);
+        if (状态 != 链路状态.空位)
+        {
+            var 晕 = 色; 晕.a = .13f;
+            线(网, a, b, Mathf.Max(4, 5 * 缩放), 晕);
+        }
+        线(网, a, b, 状态 == 链路状态.空位 ? Mathf.Max(.65f,.8f*缩放) : Mathf.Max(1.4f,2*缩放), 色);
     }
     public static Vector2 单位(int d) => new Vector2(Mathf.Cos(d * Mathf.PI / 3), Mathf.Sin(d * Mathf.PI / 3));
     void 总览六边(VertexHelper vh, Vector2 中, float 半, Color 色)
@@ -181,6 +259,7 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
     }
     void 画纹(VertexHelper vh, Vector2 点, float r, 道纹实例 纹, bool 亮, float alpha)
     {
+        if (白瓷) { 画瓷纹(vh, 点, r, 纹, 亮, alpha); return; }
         Color 色 = 品阶色(纹);
         if (!亮) 色 = Color.Lerp(new Color(0.20f, 0.25f, 0.27f), 色, 0.20f);
         色.a = alpha;
@@ -196,22 +275,7 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             天帝美术资源.画图(vh, 0, 点, Vector2.one * r * 2.2f, new Color(亮 ? 1 : .33f, 亮 ? 1 : .33f, 亮 ? 1 : .33f, alpha));
         if (!新图集) 六边(vh, 点, r, 天帝美术资源.已接入 ? Color.clear : new Color(色.r * 0.17f, 色.g * 0.17f, 色.b * 0.17f, alpha), 色, 亮 ? 2.3f : 1.5f,
             纹.品阶 == 道纹品阶.传说 ? (道纹品阶?)纹.品阶 : null, 亮, alpha);
-        int 标 = 天帝美术资源.道纹图标(纹);
-        if (纹.是特性道纹)
-        {
-            var c=纹.特性状态.StartsWith("已激活")?new Color(.16f,.5f,.38f,alpha):纹.生效?new Color(.7f,.46f,.16f,alpha):new Color(.35f,.4f,.4f,alpha);
-            float s=r*.3f;
-            if(纹.分类==道纹分类.转化){画箭头(vh,点-Vector2.right*s,点+Vector2.right*s,2,c);六边(vh,点,s*.6f,Color.clear,c,1.5f);}
-            else {六边(vh,点,s,Color.clear,c,2);线(vh,点-Vector2.up*s*.6f,点+Vector2.up*s*.6f,2,c);线(vh,点-Vector2.right*s*.6f,点+Vector2.right*s*.6f,2,c);}
-        }
-        else if (纹.分类 == 道纹分类.功能 && 纹.功能 > 道纹功能.穿透)
-            画新功能符号(vh, 点, r * .38f, 纹.功能, 新图集 ? new Color(.16f,.35f,.42f,alpha) : 色);
-        else if (纹.分类 == 道纹分类.功能 && 纹.功能 >= 道纹功能.增大 && 纹.功能 <= 道纹功能.穿透)
-            画扩展功能(vh, 点, r * .38f, 纹.功能, 新图集 ? new Color(.16f,.35f,.42f,alpha) : 色);
-        else if (新图集 && 标 >= 0)
-            画UV(vh, new Rect(标 % 8 / 8f, (1 - (标 / 8 + 1) / 4f) * .5f, 1f/8, 1f/8), 点, Vector2.one * r * .94f,
-                纹.是源纹 ? new Color(.36f,.25f,.12f,alpha) : 亮 ? new Color(.16f,.35f,.42f,alpha) : new Color(.42f,.47f,.45f,alpha));
-        else 天帝美术资源.画图(vh, 标, 点, Vector2.one * r * .94f, new Color(色.r, 色.g, 色.b, alpha));
+        // 中央文字由共用单字标签显示，不再叠加属性、功能或特性图标。
         if (新图集) { 色 = 亮 ? 天帝道纹美术.强调 : new Color(.33f,.39f,.38f); 色.a = alpha; }
         for (int d = 0; d < 6; d++) if (纹.有接口(d))
         {
@@ -246,6 +310,50 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             线(vh, 端 - 横 - 方向 * 大小*.48f, 端 + 横 + 方向 * 大小*.48f, 1.4f, 边);
             线(vh, 端 - 横 + 方向 * 大小*.48f, 端 + 横 - 方向 * 大小*.48f, 1.4f, 边);
         }
+    }
+    void 画瓷纹(VertexHelper 网, Vector2 中, float 半径, 道纹实例 纹, bool 生效, float alpha)
+    {
+        var 瓷色 = 生效 ? Color.white : new Color(.82f,.86f,.84f); 瓷色.a=alpha;
+        画新图(网, 0, 中, Vector2.one * 半径 * (256f / 112), 瓷色);
+        // 品质全部位于瓷牌本体边框；传说沿六条边染彩色，不另加外侧标记。
+        var 区=new Rect(3f/8,7f/8,1f/8,1f/8); var uv中=区.center;
+        float 绘半=半径*(128f/112);
+        for(int i=0;i<6;i++)
+        {
+            var a=单位(i)*绘半; var b=单位(i+1)*绘半;
+            // 六边形尖角为90°，每扇区覆盖对应生成边框。
+            a=new Vector2(a.x*.8660254f-a.y*.5f,a.x*.5f+a.y*.8660254f);
+            b=new Vector2(b.x*.8660254f-b.y*.5f,b.x*.5f+b.y*.8660254f);
+            Color 品色 = 纹.是源纹 ? new Color(.96f,.76f,.32f) : 纹.品阶==道纹品阶.普通 ? new Color(.74f,.77f,.73f) :
+                Color.Lerp(Color.white,天帝道纹品阶.边颜色(纹.品阶,i),.82f);
+            if(!生效) 品色=Color.Lerp(品色,new Color(.48f,.53f,.50f),.32f);
+            品色.a=alpha; int n=网.currentVertCount;
+            网.AddVert(中,品色,uv中);
+            网.AddVert(中+a,品色,uv中+a/(绘半*2)*区.width);
+            网.AddVert(中+b,品色,uv中+b/(绘半*2)*区.width);
+            网.AddTriangle(n,n+1,n+2);
+        }
+        for(int d=0;d<6;d++)
+        {
+            if(!纹.有接口(d))continue;
+            var 向=单位(d);
+            var 状态=获取接口状态(纹,d);
+            var 色=状态==链路状态.空位?new Color(.63f,.67f,.68f):链路状态颜色(状态);
+            色.a=alpha;
+            // 平边在品质边框内侧，圆弧朝瓷面中心，保留工艺边和间隙。
+            // 图集112×224 / 256，实际深度.15r、直径.30r。
+            画转图(网,5,中+向*半径*.695f,Vector2.one*半径*(.30f*256/224),-向,色);
+        }
+    }
+    void 画转图(VertexHelper 网,int 编号,Vector2 中,Vector2 大小,Vector2 向,Color 色)
+    {
+        var 区=new Rect(编号%8/8f,1-(编号/8+1)/8f,1f/8,1f/8);
+        var 横=向*大小.x*.5f;var 竖=new Vector2(-向.y,向.x)*大小.y*.5f;int n=网.currentVertCount;
+        网.AddVert(中-横-竖,色,new Vector2(区.xMin,区.yMin));
+        网.AddVert(中-横+竖,色,new Vector2(区.xMin,区.yMax));
+        网.AddVert(中+横+竖,色,new Vector2(区.xMax,区.yMax));
+        网.AddVert(中+横-竖,色,new Vector2(区.xMax,区.yMin));
+        网.AddTriangle(n,n+1,n+2);网.AddTriangle(n,n+2,n+3);
     }
     void 画扩展功能(VertexHelper 网, Vector2 中, float r, 道纹功能 功能, Color 色)
     {

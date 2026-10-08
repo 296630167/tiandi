@@ -9,6 +9,7 @@ using System.Linq;
 
 public static class 天帝构建工具
 {
+    public static string 验证前期体验() => 天帝前期体验验证.运行();
     public static string 接入音频() => 天帝音频接入.导入();
     public static string 验证音频() => 天帝音频接入.验证素材();
     public static string 诊断音频() => 天帝音频接入.诊断();
@@ -48,6 +49,13 @@ public static class 天帝构建工具
     public static string 验证真实数值() => 天帝真实数值验证.运行();
     public static string 验证真实数值实战() => 天帝真实数值实战验证.启动();
     public static string 验证战斗视野() => 天帝战斗视野验证.运行();
+    public static string 验证主动战斗实装()
+    {
+        Environment.SetEnvironmentVariable("TIANDI_BATTLE_AUDIT", "1");
+        Environment.SetEnvironmentVariable("TIANDI_CAPTURE_DIR", Path.GetFullPath("output/手动战斗实装_20261008/清爽移动端"));
+        天帝剩余概念验收.运行();
+        return "已启动主动战斗隔离验收";
+    }
     public static string 验证伤害来源() => 天帝伤害来源验证.运行();
     public static string 查看选图主页() => 天帝选图试玩.打开();
     public static string 验证移动区域() => 天帝移动区域验证.运行();

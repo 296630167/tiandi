@@ -5,8 +5,21 @@ using UnityEngine;
 // 物种与品质独立。参数、名称、波次与形态阈值只读正式JSON导出。
 public static class 天帝敌种配置
 {
-    public static float 取(string 键) => (float)天帝数值.取("battle_content." + 键);
-    public static float 物种(int 种, string 键) => 取("species." + 种 + "." + 键);
+    // 导出的正式配置在程序集生命周期内不变，缓存读取避免逐敌拼接字符串。
+    static readonly Dictionary<string,float> 数值缓存=new Dictionary<string,float>();
+    static readonly Dictionary<string,float[]> 物种缓存=new Dictionary<string,float[]>();
+    public static float 取(string 键)
+    {
+        if(!数值缓存.TryGetValue(键,out float v)){v=(float)天帝数值.取("battle_content."+键);数值缓存.Add(键,v);}
+        return v;
+    }
+    public static float 物种(int 种, string 键)
+    {
+        if(种<0||种>=22)return 取("species."+种+"."+键);
+        if(!物种缓存.TryGetValue(键,out var values))
+        {values=new float[22];for(int i=0;i<values.Length;i++)values[i]=取("species."+i+"."+键);物种缓存.Add(键,values);}
+        return values[种];
+    }
     public static int 角色(int 种) => (int)物种(种, "role");
     public static bool 已解锁(int 种, int 地图等级) => 地图等级 >= 物种(种, "unlock");
     public static string 名称(int 种) => 天帝数值配置.取文本("battle_content.species." + 种 + ".name");
@@ -20,21 +33,12 @@ public static class 天帝敌种配置
         return 形;
     }
     public static string 美术编号(战斗敌人 敌)
-        => 敌.物种 == 20 ? "BTN04" : 敌.物种 == 21 ? "BTN09" : 敌.物种 >= 15 ? "BTN01" : 敌.物种 == 14 ? "BTB" + 敌.形态.ToString("00") : 敌.物种 < 12 ? "BTN" + (敌.物种 + 1).ToString("00") : "BTE" + (敌.物种 - 11).ToString("00");
+        => 敌.物种 >= 15 ? "BTV" + 敌.物种.ToString("00") : 敌.物种 == 14 ? "BTB" + 敌.形态.ToString("00") : 敌.物种 < 12 ? "BTN" + (敌.物种 + 1).ToString("00") : "BTE" + (敌.物种 - 11).ToString("00");
     public static bool 属性狼(int 种) => 种 >= 15 && 种 <= 19;
     public static Color 立绘颜色(int 种)
     {
-        switch (种)
-        {
-            case 15: return new Color(1, .86f, .54f);
-            case 16: return new Color(.6f, 1, .65f);
-            case 17: return new Color(.55f, .86f, 1);
-            case 18: return new Color(1, .55f, .4f);
-            case 19: return new Color(.88f, .74f, .52f);
-            case 20: return new Color(.9f, .7f, 1);
-            case 21: return new Color(.65f, .7f, 1);
-            default: return Color.white;
-        }
+        // 独立原画保留自身材质与配色，不再把普通狼/鹤/豹整体染色。
+        return Color.white;
     }
     public static int[] 区域队列(int 等级, int 种子, int 数量)
     {

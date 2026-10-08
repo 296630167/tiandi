@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-// 移动页的分区随安全区改变，正文保留可读行高；不缩放整页。
+// 手机分区在固定横屏逻辑画面内排版，正文保留可读行高；外层统一等比缩放。
 public sealed class 天帝移动排版 : MonoBehaviour
 {
     public Action<RectTransform> 排版;
@@ -72,7 +72,8 @@ public static class 天帝双端页面布局
         {
             var 文 = 框.GetChild(i).GetComponent<Text>();
             if (文 == null) continue;
-            固定(文.rectTransform, 12, 4, 框.rect.width - 180, 40); 文.fontSize = 22; 文.alignment = TextAnchor.MiddleLeft; break;
+            float 左=天帝青绿皮肤.已启用?20:12;
+            固定(文.rectTransform, 左, 8, 框.rect.width - 180 - (左-12), 40); 文.fontSize = 22; 文.alignment = TextAnchor.MiddleLeft; break;
         }
     }
     public static RectTransform 滚动组(RectTransform 框, string 名, float 左, float 上, float 宽, float 高)

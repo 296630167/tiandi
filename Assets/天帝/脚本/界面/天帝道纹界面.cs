@@ -12,6 +12,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
     public 天帝道纹 数据 { get; private set; }
     public 天帝道纹绘图 画布 { get; private set; }
     public bool 浮窗显示 => 浮窗 != null && 浮窗.gameObject.activeSelf;
+    public bool 引导讲解中 { get; set; }
     public bool 拖动中 => 拖纹 != null;
     public bool? 放置反馈 => 拖纹 == null || !画布.预览格.HasValue ? (bool?)null : 画布.预览可放;
     readonly List<天帝道纹绘图> 候选图 = new List<天帝道纹绘图>();
@@ -23,7 +24,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
     readonly List<GameObject> 候选卡 = new List<GameObject>();
     readonly List<天帝道纹锁定按钮> 候选锁 = new List<天帝道纹锁定按钮>();
     readonly List<Image> 候选状态图 = new List<Image>();
-    int 每页数量 => 天帝移动适配.启用 ? 4 : 8;
+    int 每页数量 => 天帝青绿皮肤.已启用 ? (天帝移动适配.启用 ? 4 : 6) : (天帝移动适配.启用 ? 4 : 8);
     readonly List<int> 显示索引 = new List<int>();
     public 道纹候选排序 当前排序 { get; private set; }
     public 道纹分类? 当前分类 { get; private set; }
@@ -103,11 +104,13 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
             候选品阶.Add(文字(卡, 天帝道纹品阶.彩色品阶文字(纹.品阶), 8, 5, 宽 - 48, 23, 13, TextAnchor.MiddleLeft));
             var 图区 = 区块(卡, "道纹图", (宽 - 102) / 2, 24, 102, 72);
             var 图 = 图区.gameObject.AddComponent<天帝道纹绘图>(); 图.单纹模式 = true; 图.单纹半径 = 30; 图.单纹 = 纹; 图.raycastTarget = false; 图.构筑美术 = true; 候选图.Add(图);
+            图.数据=数据;
             var 选框 = 区块(卡, "道纹选中框", (宽 - 82) / 2, 18, 82, 82).gameObject.AddComponent<Image>();
             天帝道纹美术.应用(选框, "选中框", false); 选框.enabled = false;
             卡.gameObject.AddComponent<天帝道纹卡片美术>().选框 = 选框;
             var 色 = 天帝道纹绘图.品阶色(纹);
-            var 短名字 = 文字(卡, 天帝美术资源.有道纹图标(纹) ? "" : 纹.短名, (宽 - 60) / 2, 35, 60, 45, 27, TextAnchor.MiddleCenter); 短名字.color = 色; 候选短名.Add(短名字);
+            var 短名字 = 文字(卡, 天帝道纹美术.单字(纹), (宽 - 60) / 2, 35, 60, 45, 27, TextAnchor.MiddleCenter); 短名字.color = 色; 候选短名.Add(短名字);
+            天帝道纹单字.绑定(短名字, 图区);
             var 说明 = 文字(卡, 纹.候选说明, 8, 94, 宽 - 16, 28, 15, TextAnchor.MiddleCenter); 说明.color = 文字色; 候选说明.Add(说明);
             候选状态.Add(文字(卡, "", 30, 124, 宽 - 38, 21, 13, TextAnchor.MiddleLeft));
             var 状态像 = 区块(卡, "装备状态图", 10, 126, 18, 18).gameObject.AddComponent<Image>();
@@ -117,15 +120,19 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         }
         浮窗 = 区块(根, "道纹属性浮窗", 0, 0, 天帝道纹详情卡.宽度, 440);
         详情卡 = 浮窗.gameObject.AddComponent<天帝道纹详情卡>(); 详情卡.初始化(字体, true);
+        详情卡.设置数据(数据);
         拖影 = 区块(根, "拖动道纹", 0, 0, 108, 108); 拖影.pivot = new Vector2(0.5f, 0.5f);
         拖影图 = 拖影.gameObject.AddComponent<天帝道纹绘图>(); 拖影图.单纹模式 = true; 拖影图.幽灵 = true; 拖影图.raycastTarget = false; 拖影图.构筑美术 = true;
+        拖影图.数据=数据;
         拖影字 = 文字(拖影, "", 0, 30, 108, 48, 30, TextAnchor.MiddleCenter); 拖影.gameObject.SetActive(false);
+        天帝道纹单字.绑定(拖影字, 拖影);
         拖放状态图 = 区块(拖影, "放置状态", 88, 70, 24, 24).gameObject.AddComponent<Image>(); 天帝道纹美术.应用(拖放状态图, "可替换", false);
         空列表提示 = 文字(候选区, "此分类暂无道纹 · 可在筛选中选择“显示全部”", 0, 40, 1536, 70, 23, TextAnchor.MiddleCenter);
         建筛选菜单();
         建构筑预览();
         建操作工具();
-        建触屏操作();
+        if (天帝青绿皮肤.已启用) 建悬浮布局(); else 建触屏操作();
+        装配山水构筑();
         数据.状态改变 += 刷新; 刷新(); 聚焦解锁区域();
     }
     RectTransform 区块(RectTransform 父, string 名, float x, float y, float w, float h)
@@ -156,7 +163,9 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
             var 标 = 区块(区, 图标, 8, (h-20)/2, 20, 20).gameObject.AddComponent<Image>(); 天帝道纹美术.应用(标, 图标, false);
             文.rectTransform.anchoredPosition = new Vector2(25, 0); 文.rectTransform.sizeDelta = new Vector2(w-29,h);
         }
-        像.raycastTarget = true; return 键;
+        像.raycastTarget = true;
+        if(山水构筑){天帝图三四山水素材.按钮(键);文.font=字体;}
+        return 键;
     }
     void 建筛选菜单()
     {
@@ -207,6 +216,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
             筛选选项[名].text = (选中 ? "✓ " : "") + (名 == "形态属性" ? "功能道纹" : 名);
         }
         筛选层.SetAsLastSibling(); 筛选层.gameObject.SetActive(true);
+        if(山水构筑)foreach(var 键 in 筛选层.GetComponentsInChildren<Button>())if(键.name!="关闭筛选遮罩")天帝图三四山水素材.按钮(键);
     }
     public void 关闭筛选() { if (筛选层 != null) 筛选层.gameObject.SetActive(false); if (来源层 != null) 来源层.gameObject.SetActive(false); if (方案层 != null) 方案层.gameObject.SetActive(false); 指针离开(); }
     public bool 设置候选排序(道纹候选排序 排序)
@@ -246,32 +256,34 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         for (int j = 候选页码 * 每页数量; j < Mathf.Min(显示索引.Count, (候选页码 + 1) * 每页数量); j++)
         {
             var 卡 = 候选卡[显示索引[j]]; var 区 = (RectTransform)卡.transform;
-            if (天帝移动适配.启用) 天帝双端页面布局.固定(区, j % 每页数量 * 160, 0, 154, 90);
+            if (天帝青绿皮肤.已启用) 排悬浮候选卡(显示索引[j], j % 每页数量);
+            else if (天帝移动适配.启用) 天帝双端页面布局.固定(区, j % 每页数量 * 160, 0, 154, 90);
             else 天帝响应布局.设计位置(区, new Vector2(2 + j % 每页数量 * (1536f / 每页数量), 0));
             卡.SetActive(true);
         }
         空列表提示.gameObject.SetActive(显示索引.Count == 0);
-        空列表提示.text = 数据.道纹.Count == 0 ? "藏匣尚空 · 前往青岚原获得道纹，返回后拖入构筑" : "此分类暂无道纹 · 在筛选中选择“显示全部”";
+        空列表提示.text = 数据.道纹.Count == 0 ? "藏匣尚空 · 可回主页开属性宝盒，或去青岚原收集道纹" : "此分类暂无道纹 · 在筛选中选择“显示全部”";
         上页按钮.interactable = 候选页码 > 0; 下页按钮.interactable = 候选页码 + 1 < 候选总页数;
         上页按钮.GetComponentInChildren<Text>().color = 上页按钮.interactable ? 文字色 : 天帝道纹美术.次文;
         下页按钮.GetComponentInChildren<Text>().color = 下页按钮.interactable ? 文字色 : 天帝道纹美术.次文;
     }
     void 建格标签(道纹实例 纹)
     {
-        var 字 = 文字(画布.rectTransform, 纹.短名, 0, 0, 60, 46, 24, TextAnchor.MiddleCenter);
+        var 字 = 文字(画布.rectTransform, 天帝道纹美术.单字(纹), 0, 0, 60, 46, 24, TextAnchor.MiddleCenter);
+        天帝道纹单字.绑定(字);
         var 区 = 字.rectTransform; 区.anchorMin = 区.anchorMax = 区.pivot = new Vector2(0.5f, 0.5f); 格标签[纹] = 字;
     }
     public void 刷新()
     {
         if (画布 == null) return;
-        成长字.text = "等级 " + 数据.玩家等级 + "   ·   技能点 " + 数据.技能点 + "   ·   已解锁 " + 数据.已解锁格数 + " / 10000";
+        成长字.text = "等级 " + 数据.玩家等级 + "   ·   技能点 " + 数据.技能点 + "   ·   已解锁 " + 数据.已解锁格数 + " / " + (天帝道纹.边长 * 天帝道纹.边长);
         画布.SetVerticesDirty(); 更新标签();
         刷新显示索引();
         for (int i = 0; i < 数据.道纹.Count; i++)
         {
             var 纹 = 数据.道纹[i]; 候选图[i].候选暗 = 纹.格子.HasValue; 候选图[i].SetVerticesDirty();
             候选品阶[i].text = 天帝道纹品阶.彩色品阶文字(纹.品阶);
-            候选短名[i].text = 天帝美术资源.有道纹图标(纹) ? "" : 纹.短名; 候选短名[i].color = 天帝道纹美术.正文;
+            候选短名[i].text = 天帝道纹美术.单字(纹); 候选短名[i].color = 天帝道纹美术.正文;
             候选说明[i].color = 文字色;
             // 装备状态由标记与图案色区分，文字不跟着整卡褪色。
             候选透明[i].alpha = 1;
@@ -289,8 +301,10 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
             (当前排序 == 道纹候选排序.默认 ? "默认顺序" : 当前排序 == 道纹候选排序.品阶 ? "品阶↓" : "属性分组") +
             (当前接口筛选 == 0 ? "" : " · 接口筛选") + " · 第 " + (候选页码 + 1) + " / " + 候选总页数 + " 页 · " + 筛选结果数 + " / " + 数据.道纹.Count + " 枚";
         if (天帝移动适配.启用) 页码字.text = (候选页码 + 1) + " / " + 候选总页数 + " · " + 筛选结果数 + "枚";
-        提示字.text = 天帝移动适配.启用 ? 触屏默认提示 : 展开操作说明 ? "锁格消耗1技能点 · 拖拽时 R/右键旋转 · 双击卸载 · Ctrl+Z撤销 · 青框为当前通路，金链为悬停路径，白点为共享" : "点锁格解锁，拖入道纹并连接源纹 · 悬停查看链路与旋转后变化";
+        提示字.text = 天帝移动适配.启用 ? (天帝青绿皮肤.已启用 ? "点选后点格放置 · 拖空白移动 · 双指缩放" : 触屏默认提示) : 展开操作说明 ? "锁格消耗1技能点 · 拖拽时 R/右键旋转 · 双击卸载 · Ctrl+Z撤销 · 青框为当前通路，金链为悬停路径，白点为共享" : "点锁格解锁，拖入道纹并连接源纹 · 悬停查看链路与旋转后变化";
         更新触屏操作();
+        if (天帝青绿皮肤.已启用) 更新悬浮配色();
+        刷新山水构筑();
     }
     public bool 切换候选页(int 页)
     {
@@ -302,21 +316,41 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         foreach (var 项 in 格标签)
         {
             var 纹 = 项.Key;
-            var 字 = 项.Value; var 点 = 纹.格子.HasValue ? 天帝道纹.格位置(纹.格子.Value) * 画布.缩放 + 画布.平移 : Vector2.zero;
-            字.gameObject.SetActive(画布.缩放 >= .45f && 纹.格子.HasValue && 画布.rectTransform.rect.Contains(点)); 字.rectTransform.anchoredPosition = 点;
+            var 字 = 项.Value; var 点 = 纹.格子.HasValue ? 画布.格位置(纹.格子.Value) * 画布.缩放 + 画布.平移 : Vector2.zero;
+            字.gameObject.SetActive(画布.细节可见 && 纹.格子.HasValue && 画布.工作区.Contains(点)); 字.rectTransform.anchoredPosition = 点;
             字.fontSize = Mathf.RoundToInt(24 * 画布.缩放); 字.rectTransform.sizeDelta = new Vector2(60,Mathf.Max(46,字.fontSize*1.8f));
-            字.text = 天帝美术资源.有道纹图标(纹) ? "" : 纹.短名;
+            字.text = 天帝道纹美术.单字(纹);
             字.color = 纹.生效 ? 天帝道纹美术.正文 : new Color(0.37f, 0.43f, 0.44f);
         }
     }
     public Vector2 格屏幕位置(Vector2Int 格)
-    { return RectTransformUtility.WorldToScreenPoint(null, 画布.rectTransform.TransformPoint(天帝道纹.格位置(格) * 画布.缩放 + 画布.平移)); }
+    { return RectTransformUtility.WorldToScreenPoint(null, 画布.rectTransform.TransformPoint(画布.格位置(格) * 画布.缩放 + 画布.平移)); }
     public Vector2 候选屏幕位置(int 索引)
     { var 区 = (RectTransform)候选图[索引].transform.parent; return RectTransformUtility.WorldToScreenPoint(null, 区.TransformPoint(区.rect.center)); }
+    public RectTransform 引导候选区域(道纹实例 纹)
+    {
+        int 索引 = 数据.道纹.IndexOf(纹);
+        return 索引 >= 0 && 索引 < 候选卡.Count && 候选卡[索引].activeInHierarchy ? (RectTransform)候选卡[索引].transform : null;
+    }
+    public RectTransform 定位引导候选(道纹实例 纹)
+    {
+        int 索引 = 数据.道纹.IndexOf(纹); if (索引 < 0) return null;
+        // 只调整列表导航，旧档中的道纹也能被教程找到；不修改道纹或库存。
+        当前分类 = null; 当前分组 = null; 当前接口筛选 = 0; 关闭筛选(); 刷新();
+        候选页码 = 显示索引.IndexOf(索引) / 每页数量; 刷新();
+        return 引导候选区域(纹);
+    }
     bool 画布命中(Vector2 屏幕, out Vector2Int 格)
     {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(画布.rectTransform, 屏幕, null, out var 点);
-        格 = 天帝道纹.位置格((点 - 画布.平移) / 画布.缩放); return 画布.rectTransform.rect.Contains(点);
+        格 = 画布.位置格((点 - 画布.平移) / 画布.缩放); return 画布.工作区.Contains(点);
+    }
+    bool 点在道纹(Vector2 屏幕, Vector2Int 格)
+    {
+        if (!画布.轻透画布) return true;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(画布.rectTransform, 屏幕, null, out var 点);
+        var 中心 = 画布.格位置(格) * 画布.缩放 + 画布.平移;
+        return Vector2.Distance(点, 中心) <= 天帝道纹.半径 * 1.1f * 画布.缩放;
     }
     public void 指针移动(Vector2 点) { 指针位置 = 点; 有指针 = true; 更新悬停(); }
     public void 指针离开() { 有指针 = false; if (浮窗 != null) 浮窗.gameObject.SetActive(false); if (!拖动中) 清理连接预览(); }
@@ -326,20 +360,17 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         if (天帝移动适配.启用 && (!触屏点击可操作(e) || 在画布 && 触屏点画布(e))) return;
         if (!在画布 || !画布命中(e.position, out var 格))
         { 上次点击纹 = null; return; }
-        if (e.button == PointerEventData.InputButton.Left && 提示解锁点不足(格)) return;
-        if (画布.缩放 < .45f) { 定位格子(格); 提示字.text = "已放大此处，现在可编辑格子"; return; }
+        if (!画布.细节可见) { 定位格子(格); 提示字.text = "已放大此处，现在可编辑格子"; return; }
         if (!数据.已放置.TryGetValue(格, out var 纹))
         {
             上次点击纹 = null;
             if (e.button == PointerEventData.InputButton.Left && 天帝道纹.在范围(格))
             {
-                bool 原已解锁 = 数据.格已解锁(格);
-                bool 成功 = false; 记录画布操作(() => 成功 = 数据.解锁格子(格), "DW01_解锁");
-                提示字.text = 成功 ? "格子已解锁  ·  消耗1技能点，现在可以放置道纹" :
-                    原已解锁 ? "格子已解锁  ·  可放置道纹；连到源纹才会生效" : "技能点不足  ·  每升1级获得1点，解锁此格需要1点";
+                尝试解锁格子(格);
             }
             return;
         }
+        if (!点在道纹(e.position, 格)) { 上次点击纹 = null; return; }
         if (纹.是源纹) { 上次点击纹 = null; return; }
         bool 已修改 = false;
         if (e.button == PointerEventData.InputButton.Right)
@@ -359,7 +390,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         if (拖动中 && e.button == PointerEventData.InputButton.Right) { 旋转拖动道纹(); return; }
         if (筛选已打开 || e.button != PointerEventData.InputButton.Left) return;
         指针移动(e.position); 按下纹 = null;
-        if (在画布 && 画布命中(e.position, out var 格)) 数据.已放置.TryGetValue(格, out 按下纹);
+        if (在画布 && 画布命中(e.position, out var 格) && 点在道纹(e.position, 格)) 数据.已放置.TryGetValue(格, out 按下纹);
         else if (候选 != null && !候选.格子.HasValue) 按下纹 = 候选;
         if (按下纹 != null && 按下纹.是源纹) 按下纹 = null;
         if (天帝移动适配.启用 && 在画布) 按下纹 = null;
@@ -371,7 +402,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         指针移动(e.position); 平移中 = 在画布 && 按下纹 == null;
         if (按下纹 != null)
         {
-            拖纹 = 按下纹; 画布.拖动纹 = 拖纹; 拖影纹 = 创建拖影(拖纹); 拖影图.单纹 = 拖影纹; 拖影字.text = 天帝美术资源.有道纹图标(拖纹) ? "" : 拖纹.短名;
+            拖纹 = 按下纹; 画布.拖动纹 = 拖纹; 拖影纹 = 创建拖影(拖纹); 拖影图.单纹 = 拖影纹; 拖影字.text = 天帝道纹美术.单字(拖纹);
             拖影.gameObject.SetActive(true); 拖影图.SetVerticesDirty(); 浮窗.gameObject.SetActive(false);
         }
         更新拖动(e.position);
@@ -405,7 +436,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         else
         {
             拖放状态图.enabled = false;
-            画布.预览格 = null; 提示字.text = "拖回下方候选区可收回；松开到其它位置则返回原位";
+            画布.预览格 = null; 提示字.text = 天帝青绿皮肤.已启用 ? "拖回左侧藏匣可收回；松开到其它位置则返回原位" : "拖回下方候选区可收回；松开到其它位置则返回原位";
             更新构筑预览(拖纹, null, false, 拖纹.格子.HasValue && RectTransformUtility.RectangleContainsScreenPoint(候选区, 屏幕, null));
         }
         画布.SetVerticesDirty();
@@ -444,10 +475,10 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
     }
     void 限制平移()
     {
-        // 限制到有限的100×100轴向区域附近，保留越界红色反馈空间。
-        var 中心格 = 天帝道纹.位置格(-画布.平移 / 画布.缩放);
-        var 限制格 = new Vector2Int(Mathf.Clamp(中心格.x, -52, 51), Mathf.Clamp(中心格.y, -52, 51));
-        if (限制格 != 中心格) 画布.平移 = -天帝道纹.格位置(限制格) * 画布.缩放;
+        // 随画布边界限制平移，保留两格越界红色反馈空间。
+        var 中心格 = 画布.位置格(-画布.平移 / 画布.缩放);
+        var 限制格 = new Vector2Int(Mathf.Clamp(中心格.x, 天帝道纹.最小坐标 - 2, 天帝道纹.最大坐标 + 2), Mathf.Clamp(中心格.y, 天帝道纹.最小坐标 - 2, 天帝道纹.最大坐标 + 2));
+        if (限制格 != 中心格) 画布.平移 = -画布.格位置(限制格) * 画布.缩放;
     }
     void LateUpdate()
     {
@@ -466,13 +497,14 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         if (天帝移动适配.启用) return;
         if (筛选已打开 || !有指针 || 拖纹 != null || 平移中) { 浮窗.gameObject.SetActive(false); return; }
         道纹实例 悬停 = null;
-        if (画布命中(指针位置, out var 格)) 数据.已放置.TryGetValue(格, out 悬停);
+        if (画布命中(指针位置, out var 格) && 点在道纹(指针位置, 格)) 数据.已放置.TryGetValue(格, out 悬停);
         else for (int i = 0; i < 候选图.Count; i++) if (候选卡[i].activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)候选图[i].transform.parent, 指针位置, null)) { 悬停 = 数据.道纹[i]; break; }
         显示属性(悬停, 指针位置);
     }
     public void 显示属性(道纹实例 纹, Vector2 屏幕)
     {
-        更新构筑预览(纹, null, 纹 != null && !纹.是源纹 && 纹.格子.HasValue, false);
+        更新构筑预览(纹, null, !天帝移动适配.启用 && 纹 != null && !纹.是源纹 && 纹.格子.HasValue, false);
+        if (引导讲解中) { 浮窗.gameObject.SetActive(false); return; }
         if (纹 == null) { 浮窗.gameObject.SetActive(false); return; }
         详情卡.设置(纹, 连接诊断 == null ? null : 归属说明(数据, 纹, 连接诊断));
         RectTransformUtility.ScreenPointToLocalPointInRectangle(根, 屏幕, null, out var 点);
@@ -494,10 +526,34 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
     }
     void OnApplicationFocus(bool 焦点) { if (!焦点) { 有指针 = false; 取消触屏选择(); 清理触屏手势(); } }
     void OnEnable() { if (数据 != null) { 数据.状态改变 -= 刷新; 数据.状态改变 += 刷新; } }
-    bool 提示解锁点不足(Vector2Int 格)
+    internal 道纹解锁结果 尝试解锁格子(Vector2Int 格)
     {
-        if (!天帝道纹.在范围(格) || 数据.格已解锁(格) || 数据.技能点 > 0) return false;
-        提示字.text = "技能点不足，无法解锁 · 每格需要1点技能点，当前剩余0点";
+        var 结果 = 道纹解锁结果.超出范围;
+        记录画布操作(() => 结果 = 数据.尝试解锁格子(格), "DW01_解锁");
+        switch (结果)
+        {
+            case 道纹解锁结果.成功:
+                提示字.text = "格子已解锁  ·  消耗1技能点，现在可以放置道纹";
+                break;
+            case 道纹解锁结果.已解锁:
+                提示字.text = "格子已解锁  ·  可放置道纹；连到源纹才会生效";
+                break;
+            case 道纹解锁结果.技能点不足:
+                显示技能点不足提示();
+                break;
+            case 道纹解锁结果.缺少相邻解锁格:
+                提示字.text = "只有已解锁格子旁边的才能解锁";
+                break;
+            default:
+                提示字.text = "此格无法解锁";
+                break;
+        }
+        画布.SetVerticesDirty();
+        return 结果;
+    }
+    void 显示技能点不足提示()
+    {
+        提示字.text = "没有技能点";
         if (解锁提示框 == null)
         {
             解锁提示框 = 区块(根, "技能点不足提示", 0, 0, 620, 88);
@@ -508,7 +564,7 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
             底色.color = new Color(.12f, .09f, .06f, .97f); 底色.raycastTarget = false;
             var 边 = 解锁提示框.gameObject.AddComponent<Outline>(); 边.effectColor = 天帝道纹美术.金墨;
             var 组 = 解锁提示框.gameObject.AddComponent<CanvasGroup>(); 组.blocksRaycasts = 组.interactable = false;
-            var 文 = 文字(解锁提示框, "技能点不足，无法解锁\n解锁需要1点技能点，当前剩余0点", 16, 8, 588, 72, 天帝移动适配.启用 ? 18 : 20, TextAnchor.MiddleCenter);
+            var 文 = 文字(解锁提示框, "没有技能点", 16, 8, 588, 72, 天帝移动适配.启用 ? 18 : 20, TextAnchor.MiddleCenter);
             天帝响应布局.动态(文.rectTransform);
             文.rectTransform.anchorMin = Vector2.zero; 文.rectTransform.anchorMax = Vector2.one;
             文.rectTransform.offsetMin = new Vector2(16, 8); 文.rectTransform.offsetMax = new Vector2(-16, -8);
@@ -518,7 +574,6 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         解锁提示框.SetAsLastSibling(); 解锁提示框.gameObject.SetActive(true);
         解锁提示截止 = Time.unscaledTime + 3;
         天帝声音.提示("UI04_拒绝");
-        return true;
     }
     void OnDisable() { if (数据 != null) 数据.状态改变 -= 刷新; if (画布 != null) 取消触屏选择(); 清理触屏手势(); if (解锁提示框 != null) 解锁提示框.gameObject.SetActive(false); }
     void OnDestroy() { if (数据 != null) 数据.状态改变 -= 刷新; }
@@ -538,7 +593,11 @@ public sealed class 天帝道纹输入 : MonoBehaviour, IPointerDownHandler, IPo
     public void OnBeginDrag(PointerEventData e) { if (候选滚动 != null) { 候选滚动.OnBeginDrag(e); return; } if (!天帝移动适配.启用 || 页面.触屏指针可操作(e)) 页面.开始拖动(是画布, e); }
     public void OnDrag(PointerEventData e) { if (候选滚动 != null) { 候选滚动.OnDrag(e); return; } if (天帝移动适配.启用 && 页面.触屏手势移动(是画布, e)) return; if (!天帝移动适配.启用 || 页面.触屏指针可操作(e)) 页面.拖动(e); }
     public void OnEndDrag(PointerEventData e) { if (候选滚动 != null) { 候选滚动.OnEndDrag(e); return; } if (!天帝移动适配.启用 || 页面.触屏点击可操作(e)) 页面.结束拖动(e); }
-    public void OnScroll(PointerEventData e) { if (!天帝移动适配.启用 && 是画布) 页面.缩放画布(e); }
+    public void OnScroll(PointerEventData e)
+    {
+        if (!是画布) { GetComponentInParent<ScrollRect>()?.OnScroll(e); return; }
+        if (!天帝移动适配.启用) 页面.缩放画布(e);
+    }
     public void OnPointerMove(PointerEventData e) { if (!天帝移动适配.启用) 页面.指针移动(e.position); }
     public void OnPointerEnter(PointerEventData e) { if (!天帝移动适配.启用) 页面.指针移动(e.position); }
     public void OnPointerExit(PointerEventData e) { if (!天帝移动适配.启用) 页面.指针离开(); }

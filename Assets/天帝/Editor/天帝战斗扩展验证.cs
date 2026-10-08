@@ -105,7 +105,8 @@ public static class 天帝战斗扩展验证
         检查("水弹施加正式短减速",t.玩家移速倍率<1&&t.玩家移速倍率>0);
         for(int i=0;i<60;i++)t.推进效果(new Vector2(4,0),.025f);检查("减速到期恢复",近(t.玩家移速倍率,1));
         准备(3,new Vector2(4,0));t.释放(e,new Vector2(4,0));t.清理();检查("离场清除全部敌术",t.敌术.Count==0&&t.辅助线.Count==0);
-        准备(3,new Vector2(4,0));for(int i=0;i<60;i++)t.释放(e,new Vector2(4,0));检查("敌方效果48上限",t.敌术.Count==48);t.清理();
+        int 弹预算=Mathf.FloorToInt((float)天帝数值.敌战术成长(e.地图档位,"projectiles_end",天帝敌种配置.取("limits.projectiles")));
+        准备(3,new Vector2(4,0));for(int i=0;i<弹预算+10;i++)t.释放(e,new Vector2(4,0));检查("敌方效果遵守正式等级预算",t.敌术.Count==弹预算);t.清理();
         准备(1,new Vector2(1,0));t.释放(e,new Vector2(2.4f,0));检查("近战后撤离开真实范围安全",hits==0);
         // 场景边界外的弹体与冲锋不跨越通行边界。
         准备(3,new Vector2(40,0));设(e,"位置",new Vector2(34,0));t.释放(e,new Vector2(40,0));
@@ -126,7 +127,7 @@ public static class 天帝战斗扩展验证
         var list=new List<战斗敌人>{heal,shield,a,b,boss};float sum=list.Sum(x=>x.最大血量);
         var t=new 天帝敌人战术(map,path,list,p=>true,(p,d)=>true,sum,null);
         void 起手(战斗敌人 e,int id)
-        {设(e,"行动",敌人行动.追击);设(e,"冷却",0f);t.推进敌(e,new Vector2(3,0),.025f,(x,y,z)=>{});}
+        {设(e,"行动",敌人行动.追击);设(e,"冷却",0f);t.开始敌人推进();t.推进敌(e,new Vector2(3,0),.025f,(x,y,z)=>{});}
         起手(heal,13);检查("治疗引导选中受伤非辅助队友",(int)typeof(战斗敌人).GetField("技能编号",隐).GetValue(heal)==13);
         float hp=a.血量;t.完成辅助(heal,敌技能.读取(13));检查("治疗每次8%且画出连线",近(a.血量-hp,a.最大血量*.08)&&t.辅助线.Count==2);
         for(int i=0;i<5;i++){起手(heal,13);t.完成辅助(heal,敌技能.读取(13));}

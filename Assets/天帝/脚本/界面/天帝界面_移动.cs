@@ -10,6 +10,7 @@ public partial class 天帝界面
     }
     void 布局主页()
     {
+        if (天帝青绿皮肤.已启用) return;
         if (!天帝移动适配.启用) return;
         void 区(string 名, float x, float y, float w, float h)
         { var r = 页面.Find(名) as RectTransform; if (r != null) 天帝响应布局.比例(r, x, y, w, h); }
@@ -24,9 +25,6 @@ public partial class 天帝界面
         }
         区("主角立绘", .23f, .06f, .36f, .73f);
         区("主角落地阴影", .32f, .72f, .19f, .035f);
-        区("道纹实力评语", .235f, .76f, .36f, .22f);
-        天帝响应布局.比例(主页实力字.rectTransform, .10f, .08f, .80f, .64f);
-        天帝响应布局.比例(主页构筑字.rectTransform, .10f, .72f, .80f, .28f);
         区("主页灵石纸面", .62f, .015f, .20f, .105f);
         区("设置", .825f, .015f, .16f, .105f);
         区("主页常驻选图", .615f, .15f, .375f, .835f);
@@ -35,8 +33,6 @@ public partial class 天帝界面
         {
             foreach (string 名 in 导航)
             { var 文 = 面板.Find(名)?.GetComponentInChildren<UnityEngine.UI.Text>(); if (文 != null) 文.fontSize = 16; }
-            主页实力字.fontSize = 16;
-            主页构筑字.fontSize = 14; 主页构筑字.resizeTextForBestFit = false;
             var 地图区 = 面板.Find("主页常驻选图") as RectTransform;
             float 宽 = 地图区.rect.width, 卡宽 = (宽 - 8) / 3;
             for (int i = 0; i < 3; i++)

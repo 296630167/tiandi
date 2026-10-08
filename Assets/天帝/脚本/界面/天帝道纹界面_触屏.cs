@@ -7,12 +7,14 @@ public sealed partial class 天帝道纹界面
 {
     const string 触屏默认提示 = "点选道纹，再点已解锁格放置 · 拖空白移动画布 · 双指缩放 · 空格点一次解锁";
     道纹实例 触屏选择纹, 触屏方向纹;
+    Vector2Int? 触屏预览格;
     readonly Dictionary<int, Vector2> 画布触点 = new Dictionary<int, Vector2>();
     readonly HashSet<int> 手势指针 = new HashSet<int>();
     int 触屏操作指针 = int.MinValue;
     Button 触屏旋转键, 触屏卸下键, 触屏取消键;
     public 道纹实例 触屏选中道纹 => 触屏选择纹;
     public int? 触屏待放接口 => 触屏方向纹?.接口;
+    public string 触屏操作说明 => 提示字 != null ? 提示字.text : "";
 
     void 建触屏操作()
     {
@@ -59,7 +61,7 @@ public sealed partial class 天帝道纹界面
         {
             var 卡 = (RectTransform)候选卡[i].transform;
             天帝响应布局.比例(候选图[i].rectTransform, .025f, .13f, .22f, .75f);
-            天帝响应布局.比例(候选短名[i].rectTransform, .025f, .13f, .22f, .75f);
+            // 单字随瓷牌图区伸缩，保持共同中心。
             天帝响应布局.比例(候选品阶[i].rectTransform, .28f, .04f, .69f, .44f);
             天帝响应布局.比例(候选状态[i].rectTransform, .32f, .53f, .64f, .40f);
             天帝响应布局.比例(候选状态图[i].rectTransform, .27f, .64f, .045f, .20f);
@@ -102,7 +104,7 @@ public sealed partial class 天帝道纹界面
             {
                 var 卡 = (RectTransform)候选卡[i].transform;
                 天帝双端页面布局.固定(卡, i % 每页数量 * 160, 0, 154, 90);
-                天帝双端页面布局.固定(候选短名[i].rectTransform, 4, 40, 44, 44); 候选短名[i].fontSize = 16;
+                候选短名[i].fontSize = 16;
                 天帝双端页面布局.固定(候选图[i].rectTransform, 4, 40, 44, 44); 候选图[i].单纹半径 = 20;
                 天帝双端页面布局.固定(候选品阶[i].rectTransform, 4, 2, 98, 24); 候选品阶[i].fontSize = 14;
                 天帝双端页面布局.固定(候选状态[i].rectTransform, 52, 48, 98, 40); 候选状态[i].fontSize = 14;
@@ -131,6 +133,7 @@ public sealed partial class 天帝道纹界面
         if (数据 == null || 纹 == null || 拖动中 || 筛选已打开) return false;
         if (!纹.是源纹 && !数据.道纹.Contains(纹)) return false;
         触屏选择纹 = 纹.是源纹 ? null : 纹;
+        触屏预览格 = null;
         触屏方向纹 = 触屏选择纹 == null ? null : 创建拖影(纹);
         显示属性(纹, 位置);
         提示字.text = 纹.是源纹 ? "中心天赋不可移动、旋转或卸下" : "已选 " + 纹.名称 + (纹.格子.HasValue ? " · 可旋转、卸下或点空格移动" : " · 点已解锁格放置；旋转只在放置时提交");
@@ -138,16 +141,22 @@ public sealed partial class 天帝道纹界面
     }
     public void 取消触屏选择()
     {
-        触屏选择纹 = 触屏方向纹 = null;
+        触屏选择纹 = 触屏方向纹 = null; 触屏预览格 = null;
         有指针 = false; 取消拖动(); 更新触屏操作();
     }
     public bool 触屏旋转()
     {
         if (触屏选择纹 == null || 拖动中 || 筛选已打开) return false;
         if (触屏选择纹.格子.HasValue)
-        { bool 对 = false; 记录画布操作(() => 对 = 数据.旋转(触屏选择纹), "DW03_旋转"); 触屏方向纹 = 创建拖影(触屏选择纹); return 对; }
+        {
+            bool 对 = false; 记录画布操作(() => 对 = 数据.旋转(触屏选择纹), "DW03_旋转");
+            触屏方向纹 = 创建拖影(触屏选择纹);
+            if (对) { 提示字.text = new 天帝道纹连接诊断(数据).说明(触屏选择纹).Split('\n')[0]; 更新构筑预览(触屏选择纹, null, false, false); }
+            return 对;
+        }
         触屏方向纹.顺时针旋转接口();
-        提示字.text = "待放朝向已转60° · 放置后生效"; return true;
+        if (触屏预览格.HasValue) 更新待放构筑预览(触屏选择纹, 触屏预览格, false, false, 触屏方向纹.接口);
+        提示字.text = "待放朝向已转60° · 当前接口：" + 触屏接口说明() + " · 放置才提交"; return true;
     }
     public bool 触屏卸下()
     {
@@ -158,22 +167,40 @@ public sealed partial class 天帝道纹界面
     bool 触屏点画布(PointerEventData e)
     {
         if (!画布命中(e.position, out var 格)) return true;
-        if (提示解锁点不足(格)) return true;
-        if (画布.缩放 < .45f) { 定位格子(格); 提示字.text = "已放大此处，再点格子编辑"; return true; }
-        if (数据.已放置.TryGetValue(格, out var 已放)) { 触屏选择(已放, e.position); return true; }
-        if (触屏选择纹 == null) return false; // 沿用正式的花费技能点解锁逻辑。
+        if (!画布.细节可见) { 定位格子(格); 提示字.text = "已放大此处，再点格子编辑"; return true; }
+        if (数据.已放置.TryGetValue(格, out var 已放)) { if (点在道纹(e.position, 格)) 触屏选择(已放, e.position); return true; }
         if (!数据.格已解锁(格))
         {
-            bool 成功 = false; 记录画布操作(() => 成功 = 数据.解锁格子(格), "DW01_解锁");
-            提示字.text = 成功 ? "已花1点解锁 · 再点此格放置所选道纹" : "此格不能解锁 · 请检查范围与剩余技能点"; return true;
+            var 结果 = 尝试解锁格子(格);
+            if (结果 == 道纹解锁结果.成功 && 触屏选择纹 != null)
+            {
+                触屏预览格 = 格;
+                更新待放构筑预览(触屏选择纹, 格, false, false, 触屏方向纹.接口);
+                提示字.text = "已花1点解锁 · 再点此格放置所选道纹";
+            }
+            return true;
         }
+        if (触屏选择纹 == null) return false;
         if (!数据.可放置(触屏选择纹, 格)) { 提示字.text = "此格不能放置 · 选择仍保留"; return true; }
         var 纹 = 触屏选择纹;
         var 布局 = 数据.当前布局(); 布局.RemoveAll(x => x.编号 == 纹.编号);
         布局.Add(new 道纹布局项 { 编号 = 纹.编号, 格子 = 格, 接口 = 触屏方向纹.接口, 入口方向 = 触屏方向纹.是顺序功能 ? 触屏方向纹.入口方向 : -1 });
         bool 放好 = false; 记录画布操作(() => 放好 = 数据.应用布局(布局, out _));
-        if (放好) { 触屏方向纹 = 创建拖影(纹); 显示属性(纹, e.position); 提示字.text = "已放置 · 接口双向连到源纹才会生效"; }
+        if (放好)
+        {
+            触屏预览格 = null;
+            触屏方向纹 = 创建拖影(纹); 显示属性(纹, e.position);
+            string 说明 = new 天帝道纹连接诊断(数据).说明(纹);
+            int 换行 = 说明.IndexOf('\n'); 提示字.text = "已放置 · " + (换行 < 0 ? 说明 : 说明.Substring(0, 换行));
+            更新构筑预览(纹, null, false, false);
+        }
         更新触屏操作(); return true;
+    }
+    string 触屏接口说明()
+    {
+        var 名称 = new List<string>();
+        for (int d = 0; d < 6; d++) if (触屏方向纹.有接口(d)) 名称.Add(天帝道纹.方向名[d]);
+        return string.Join(" / ", 名称);
     }
     public void 触屏缩放(float 倍率)
     {

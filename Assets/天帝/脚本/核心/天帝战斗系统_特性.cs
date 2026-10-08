@@ -33,6 +33,7 @@ public sealed partial class 天帝战斗系统
         internal 特性施放记录 释放=new 特性施放记录();
         internal bool 仅演出;
         internal bool 次级,已衍生;
+        internal bool 手动瞄准;
         internal int 分段数量=1;
         internal 特性战斗效果 复制()=> (特性战斗效果)MemberwiseClone();
         internal Dictionary<int,bool> 环内=new Dictionary<int,bool>();
@@ -61,6 +62,7 @@ public sealed partial class 天帝战斗系统
     static float 百分(特性运行 s)=>1+(强(s)-1)*.5f;
     float 周期(特性运行 s)=>(float)天帝特性道纹.数值(种(s),"周期")*(float)天帝特性道纹.品阶值(s.定义.道纹,"周期")/(1+主角.技能急速);
     static float 基持续(特性运行 s)=>(float)天帝特性道纹.数值(种(s),"持续")*久(s);
+    static bool 周期主动特性(int id) => new[]{1,2,3,4,5,6,7,8,9,10,11,16,19,20,23,25,29,30,31,32,33,34,35,36,37,38}.Contains(id);
     static double 下(特性运行 s,道纹属性 a)=>s.定义.下游[(int)a];
     float 半径(特性运行 s,float 基)=>Mathf.Min(特("shape_radius_max"),基+(float)Math.Min(特("shape_radius_max"),下(s,道纹属性.范围))*.35f);
     int 数量(特性运行 s)=>Mathf.Min((int)特("shape_quantity_max"),1+(int)下(s,道纹属性.数量));
@@ -111,7 +113,7 @@ public sealed partial class 天帝战斗系统
             if(id==27 && s.移动>=特("water_distance")&&s.冷却<=0){s.移动=0;施放特性(s);}
             if(id==28 && s.移动>=特("immunity_distance")&&s.冷却<=0){s.移动=0;施放特性(s);}
             if(id==22 && s.反震>0 && s.冷却<=0){施放特性(s);}
-            if(new[]{1,2,3,4,5,6,7,8,9,10,11,16,19,20,23,25,29,30,31,32,33,34,35,36,37,38}.Contains(id)&&s.冷却<=0)施放特性(s);
+            if(演示模式&&周期主动特性(id)&&s.冷却<=0)施放特性(s);
         }
         主角.设置特性增益(move,haste,aps,evasion);
         推进特性效果(dt);
@@ -159,8 +161,13 @@ public sealed partial class 天帝战斗系统
     }
     void 特性根释放(int route)
     {
-        同步特性();foreach(var s in 特性运行表.Values)if(种(s)==26&&s.定义.通路==route)
-        {s.根次数++;if(s.根次数>=特("shield_cast_count")&&s.冷却<=0){s.根次数=0;授盾((float)(特("shield_on_cast_g")*u*强(s)),基持续(s),s.定义.道纹.编号);s.冷却=特("shield_cast_period");特性施放次数++;}}
+        同步特性();foreach(var s in 特性运行表.Values.ToArray())
+        {
+            if(s.定义.通路!=route)continue;
+            if(周期主动特性(种(s))&&s.冷却<=0)施放特性方向(s,前摇方向);
+            if(种(s)!=26)continue;
+            s.根次数++;if(s.根次数>=特("shield_cast_count")&&s.冷却<=0){s.根次数=0;授盾((float)(特("shield_on_cast_g")*u*强(s)),基持续(s),s.定义.道纹.编号);s.冷却=特("shield_cast_period");特性施放次数++;}
+        }
     }
     void 特性根命中(战斗敌人 enemy,int route)
     {
@@ -168,10 +175,12 @@ public sealed partial class 天帝战斗系统
         {s.蓄满=false;s.站稳=0;s.冷却=周期(s);特性伤害(s,enemy,特("rest_bonus_g")*u*强(s),1);特性施放次数++;}
     }
     bool 施放特性(特性运行 s)
+        => 施放特性方向(s,null);
+    bool 施放特性方向(特性运行 s,Vector2? 手动方向)
     {
-        int id=种(s),target=找目标(玩家,特("attack_range"),null);
+        int id=种(s),target=手动方向.HasValue?-1:找目标(玩家,特("attack_range"),null);
         bool offensive=new[]{1,3,4,5,7,8,9,10,11,16,20,29,30,31,32,34,35,38}.Contains(id);
-        if(offensive&&target<0)return false;
+        if(offensive&&target<0&&!手动方向.HasValue)return false;
         if(id==20 && 主角.当前灵力<主角.最大灵力*特("burst_mp_cost"))return false;
         if(id==20)主角.设置当前资源(主角.当前血量,主角.当前灵力-主角.最大灵力*特("burst_mp_cost"),主角.当前灵气护盾);
         s.冷却=周期(s);s.持续=基持续(s);特性施放次数++;
@@ -182,8 +191,10 @@ public sealed partial class 天帝战斗系统
         if(id==16)
         {var chosen=敌人数据.Where(e=>e.存活&&Vector2.Distance(e.位置,玩家)<=半径(s,特("attack_range"))).OrderByDescending(e=>e.布点.级别).ThenByDescending(e=>e.最大血量).Take(Mathf.Min((int)特("shape_quantity_max"),数量(s)+(int)下(s,道纹属性.连锁)));foreach(var e in chosen){e.特性易伤=Mathf.Max(e.特性易伤秒>0?e.特性易伤:0,特("mark_vulnerability")*百分(s));e.特性易伤秒=基持续(s);}return true;}
         if(特性效果.Count>=限("effects_alive"))return true;
-        Vector2 point=target>=0?敌人数据[target].位置:玩家,dir=(point-玩家).sqrMagnitude>.001f?(point-玩家).normalized:Vector2.right;
+        Vector2 point=手动方向.HasValue?形态可达(玩家,玩家+手动方向.Value*Mathf.Min(4,特("attack_range"))):target>=0?敌人数据[target].位置:玩家;
+        Vector2 dir=手动方向??((point-玩家).sqrMagnitude>.001f?(point-玩家).normalized:Vector2.right);
         var effect=new 特性战斗效果{特性=id,实例=s.定义.道纹.编号,位置=玩家,起点=玩家,方向=dir,运行=s,目标=target,剩余秒=基持续(s),总时长=基持续(s),暴击=战斗随机.NextDouble()<主角.暴击率?主角.暴击倍率:1,伤害=天帝特性道纹.数值(id,"伤害")*u*强(s),半径=半径(s,特("effect_hit_radius"))};
+        effect.手动瞄准=手动方向.HasValue;
         if(id==14)
         {effect.诱饵=true;effect.半径=半径(s,特("decoy_radius"));effect.剩余秒=特("decoy_seconds")*久(s);while(特性效果.Count(e=>e.诱饵)>=限("decoys_max"))特性效果.Remove(特性效果.First(e=>e.诱饵));}
         if(id==4||id==29)
@@ -228,9 +239,9 @@ public sealed partial class 天帝战斗系统
             float spread=n<=1?0:(i-(n-1)*.5f)*Mathf.Min(60,180f/n);
             if(支持(s,"弧度"))spread+=n<=1?0:(i-(n-1)*.5f)*Mathf.Min(特("shape_arc_max"),(float)下(s,道纹属性.弧度))/Mathf.Max(1,n-1);
             e.方向=转向(prototype.方向,spread);
-            if(new[]{1,3,5,7,11,31,32,35}.Contains(id))
+            if(!prototype.手动瞄准&&new[]{1,3,5,7,11,31,32,35}.Contains(id))
             {int t=找目标(玩家,特("attack_range"),assigned);if(t>=0){assigned.Add(t);e.目标=t;e.方向=(敌人数据[t].位置-玩家).normalized;}}
-            if(id==8||id==9||id==38)
+            if(!prototype.手动瞄准&&(id==8||id==9||id==38))
             {int t=找目标(玩家,半径(s,特("attack_range")),assigned);if(t<0){if(i>0)break;}else{assigned.Add(t);e.目标=t;e.位置=敌人数据[t].位置;}}
             else if(e.召唤||e.诱饵){e.位置=形态可达(玩家,玩家+转向(Vector2.right,i*360f/n)*.8f);}
             else if(e.土垒)

@@ -54,9 +54,9 @@ public sealed partial class 天帝道纹
     {
         if (!通路开放(方向)) return false;
         if (弹槽生效数[方向] > 0) return true;
-        if (方向 != 0) return false;
+        // 新局没有下游道纹时保留第一路基础灵力弹；一旦玩家接通任意链路，空接口不再占用技能槽。
         for (int d = 0; d < 6; d++) if (弹槽生效数[d] > 0) return false;
-        return true; // 没有接入任何道纹时，天然普攻始终由第一路提供。
+        return 方向 == 0;
     }
     public int 射击通路数 { get { int 数 = 0; for (int d = 0; d < 6; d++) if (通路参与射击(d)) 数++; return 数; } }
     public List<道纹布局项> 当前布局()
@@ -70,10 +70,11 @@ public sealed partial class 天帝道纹
         if (存 == null) return;
         for (int i = 0; i < Math.Min(方案槽数, 存.Count); i++)
         {
-            var 方案 = 存[i]; if (方案 == null || !方案.已保存 || 方案.名称.Length > 20 || 方案.摆放 == null || 方案.摆放.Count >= 边长 * 边长) continue;
+            // 旧布局原样保留；越界布局不可载入，玩家可查看后重新摆放并覆盖保存。
+            var 方案 = 存[i]; if (方案 == null || !方案.已保存 || 方案.名称.Length > 20 || 方案.摆放 == null || 方案.摆放.Count >= 10000) continue;
             var 编号 = new HashSet<int>(); var 格 = new HashSet<Vector2Int>(); bool 有效 = true;
             foreach (var 项 in 方案.摆放)
-                if (项 == null || 项.编号 < 1 || 项.接口 < 1 || 项.接口 > 63 || !在范围(项.格子) || 项.格子 == Vector2Int.zero || !编号.Add(项.编号) || !格.Add(项.格子)) { 有效 = false; break; }
+                if (项 == null || 项.编号 < 1 || 项.接口 < 1 || 项.接口 > 63 || !在旧画布范围(项.格子) || 项.格子 == Vector2Int.zero || !编号.Add(项.编号) || !格.Add(项.格子)) { 有效 = false; break; }
             if (有效) 布局方案[i] = 方案.副本();
         }
     }
@@ -92,7 +93,8 @@ public sealed partial class 天帝道纹
         {
             if (条 == null || !编号.Add(条.编号) || !位置.Add(条.格子)) { 原因 = "编号或位置重复"; return false; }
             if (!库存.TryGetValue(条.编号, out var 纹)) { 原因 = "缺少道纹 #" + 条.编号 + "，请先获得原实例"; return false; }
-            if (!在范围(条.格子) || 条.格子 == Vector2Int.zero || !锁格.Contains(条.格子)) { 原因 = "目标格 " + 条.格子 + " 尚未解锁或不可用"; return false; }
+            if (!在范围(条.格子)) { 原因 = "目标格 " + 条.格子 + " 超出31×31画布，请重新摆放并保存方案"; return false; }
+            if (条.格子 == Vector2Int.zero || !锁格.Contains(条.格子)) { 原因 = "目标格 " + 条.格子 + " 尚未解锁或不可用"; return false; }
             if (!同形接口(纹.接口, 条.接口)) { 原因 = "道纹 #" + 条.编号 + " 的接口形状已改变"; return false; }
             if (纹.是顺序功能 && !天帝顺序道纹.定义有效(纹.功能, 条.接口))
             { 原因 = "功能道纹的接口数量不匹配"; return false; }

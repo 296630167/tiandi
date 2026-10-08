@@ -22,7 +22,7 @@ public sealed class 战斗敌人小队
 }
 
 // 固定大图按图片轮廓生成通行位图；无大图时保留种子可重现的旧地图。布点不代表已生成实体。
-public sealed class 天帝战斗地图
+public sealed partial class 天帝战斗地图
 {
     public const int 宽 = 20, 高 = 20;
     public const int 普通数量 = 60, 精英数量 = 4, 头目数量 = 1, 王级数量 = 1, 小队数量 = 8;
@@ -158,6 +158,7 @@ public sealed class 天帝战斗地图
             throw new InvalidOperationException("生存大图通行图需可读且匹配0.5米采样。");
         var 像素 = 图.GetPixels32();
         for (int y=0;y<区域高;y++) for (int x=0;x<区域宽;x++) 通行区域[x,y] = 像素[y*区域宽+x].r >= 128;
+        生成随机战场(随机);
         出生格 = 所在格(Vector2.zero); 王房中心格 = new Vector2Int(地块宽/2,地块高-2); 王房入口格=王房中心格;
         for (int y=0;y<地块高;y++) for (int x=0;x<地块宽;x++) 地形[x,y] = 可站立(格中心(x,y)) ? 战斗地块.草地 : 战斗地块.林地;
         if (!可站立(Vector2.zero,1.2f)) throw new InvalidOperationException("中央出生空地不可通行。");
@@ -504,6 +505,14 @@ public sealed class 天帝战斗地图
             }
         }
         return 当前位置;
+    }
+    public Vector2 直线闪避(Vector2 起, Vector2 向, float 距)
+    {
+        if (!可站立(起) || !有限(向.x) || !有限(向.y) || !有限(距) || 距 <= 0) return 起;
+        var 位移 = Vector2.ClampMagnitude(向, 1) * Mathf.Min(距, 100);
+        int 数 = Mathf.Max(1, Mathf.CeilToInt(位移.magnitude / .1f)); var 步 = 位移 / 数;
+        for (int i = 0; i < 数; i++) { if (!可站立(起 + 步)) break; 起 += 步; }
+        return 起;
     }
     public Color 地块颜色(int x, int y)
     {

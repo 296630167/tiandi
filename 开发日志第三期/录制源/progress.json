@@ -1,0 +1,90 @@
+{
+    "帧数": 930,
+    "开始等级": 1,
+    "地图等级": 1,
+    "击败数": 0,
+    "完成": false,
+    "玩家死亡": false,
+    "片段": [
+        {
+            "名": "第三期开发日志 · 当前版本实录",
+            "开始帧": 0,
+            "结束帧": 45
+        },
+        {
+            "名": "序章 · 从比赛现场到异界",
+            "开始帧": 45,
+            "结束帧": 75
+        },
+        {
+            "名": "十三种天赋 · 随机五选一",
+            "开始帧": 75,
+            "结束帧": 105
+        },
+        {
+            "名": "剪纸山水主页 · 自选地图等级",
+            "开始帧": 105,
+            "结束帧": 165
+        },
+        {
+            "名": "角色 · 属性与当前构筑",
+            "开始帧": 165,
+            "结束帧": 195
+        },
+        {
+            "名": "宝盒 · 灵石收集道纹",
+            "开始帧": 195,
+            "结束帧": 240
+        },
+        {
+            "名": "白瓷道纹 · 接口连接与实时构筑",
+            "开始帧": 240,
+            "结束帧": 345
+        },
+        {
+            "名": "道纹改造 · 十一种通货",
+            "开始帧": 345,
+            "结束帧": 405
+        },
+        {
+            "名": "道纹回收 · 批量选择与灵石预览",
+            "开始帧": 405,
+            "结束帧": 450
+        },
+        {
+            "名": "图鉴 · 功能、特性与转化",
+            "开始帧": 450,
+            "结束帧": 540
+        },
+        {
+            "名": "设置 · 音乐、音效与剧情音量",
+            "开始帧": 540,
+            "结束帧": 570
+        },
+        {
+            "名": "青岚原 · 进入前确认挑战",
+            "开始帧": 570,
+            "结束帧": 600
+        },
+        {
+            "名": "青岚原实战 · 四面来敌与走位",
+            "开始帧": 600,
+            "结束帧": 750
+        },
+        {
+            "名": "实战原速 · 命中反馈与自动拾取",
+            "开始帧": 750,
+            "结束帧": 930
+        },
+        {
+            "名": "暂停 · 查看战况与通路参数",
+            "开始帧": 930,
+            "结束帧": 0
+        }
+    ],
+    "错误": [],
+    "编辑器诊断": [
+        "ArgumentOutOfRangeException: Index was out of range. Must be non-negative and less than the size of the collection.\r\nParameter name: index\nSystem.Collections.Generic.List`1[T].get_Item (System.Int32 index) (at <41d29b352f6a475ab1bf7c6628b82790>:0)\nUnityEditor.Search.SearchDatabase+<EnumerateAll>d__80.MoveNext () (at <e5e60b34d51d47fbbbfacfb81405fd89>:0)\nSystem.Linq.Enumerable.TryGetFirst[TSource] (System.Collections.Generic.IEnumerable`1[T] source, System.Boolean& found) (at <80564d689e48448fa2a7101993ee7201>:0)\nSystem.Linq.Enumerable.First[TSource] (System.Collections.Generic.IEnumerable`1[T] source) (at <80564d689e48448fa2a7101993ee7201>:0)\nUnityEditor.Search.SearchDatabase.GetDefaultSearchDatabase () (at <e5e60b34d51d47fbbbfacfb81405fd89>:0)\nUnityEditor.Search.SearchInit.IndexationOnStartup () (at <e5e60b34d51d47fbbbfacfb81405fd89>:0)\nUnityEditor.EditorApplication.Internal_CallDelayFunctions () (at <49fcb209645d4ccfb3e373da32345d37>:0)\n"
+    ],
+    "方法": "当前运行源码；现有进度隔离副本；正式UI与正式战斗；30fps原速选段。"
+}

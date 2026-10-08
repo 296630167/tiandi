@@ -183,12 +183,12 @@ public static class 天帝道纹界面美术验证
         检查("真实空藏匣引导与分页禁用",空页.筛选结果数==0 && 空页.GetComponentsInChildren<Text>().Any(t=>t.text.StartsWith("藏匣尚空")) && 空页.GetComponentsInChildren<Button>().Where(b=>b.name=="上一页" || b.name=="下一页").All(b=>!b.interactable));
         yield return 截("08-开局空藏匣"); var 大存=空页.数据.导出存档(); UnityEngine.Object.Destroy(空物); yield return null;
         大存.解锁格.Clear();
-        for(int q=-50;q<50;q++) for(int r=-50;r<50;r++) 大存.解锁格.Add(new Vector2Int(q,r));
-        var 大物=new GameObject("隔离一万格总览",typeof(RectTransform),typeof(天帝道纹界面)); 大物.transform.SetParent(页.transform.parent,false);
+        for(int q=天帝道纹.最小坐标;q<=天帝道纹.最大坐标;q++) for(int r=天帝道纹.最小坐标;r<=天帝道纹.最大坐标;r++) 大存.解锁格.Add(new Vector2Int(q,r));
+        var 大物=new GameObject("隔离31×31格总览",typeof(RectTransform),typeof(天帝道纹界面)); 大物.transform.SetParent(页.transform.parent,false);
         var 大区=(RectTransform)大物.transform; 大区.anchorMin=Vector2.zero; 大区.anchorMax=Vector2.one; 大区.offsetMin=大区.offsetMax=Vector2.zero;
         var 大页=大物.GetComponent<天帝道纹界面>(); 大页.初始化(天帝道纹.读取存档(大存),游戏.默认字体,()=>{});
         Canvas.ForceUpdateCanvases(); 大页.画布.Rebuild(CanvasUpdate.PreRender);
-        var 大网=大页.画布.canvasRenderer.GetMesh(); 检查("一万格新皮肤聚焦与顶点限制",大页.画布.缩放<.45f && 大网!=null && 大网.vertexCount>0 && 大网.vertexCount<65000);
+        var 大网=大页.画布.canvasRenderer.GetMesh(); 检查("31×31格新皮肤聚焦与顶点限制",大页.数据.已解锁格数==961 && 大页.画布.缩放<.45f && 大网!=null && 大网.vertexCount>0 && 大网.vertexCount<65000);
         UnityEngine.Object.Destroy(大物); yield return null;
         var 六词=天帝道纹生成.创建(1,道纹分类.属性,道纹品阶.史诗,new System.Random(4)); 六词.词条.Clear();
         foreach(var 属性 in 天帝道纹属性.普通属性) 六词.词条.Add(new 道纹词条(属性,8));

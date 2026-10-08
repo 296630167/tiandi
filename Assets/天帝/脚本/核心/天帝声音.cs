@@ -31,6 +31,8 @@ public sealed class 天帝声音 : MonoBehaviour
         for (int i = 0; i < 音乐.Length; i++) 音乐[i] = Resources.Load<AudioClip>("天帝音频/音乐/" + 音乐名称[i]);
         if (音乐[0] == null) 音乐[0] = 游戏.主页音乐;
         foreach (string 名 in 音效名称) 音效[名] = Resources.Load<AudioClip>("天帝音频/音效/" + 名);
+        foreach(string 名 in new[]{"咬击","翼射","炎术","岩击","疗愈","护盾","狼王","破盾","暴击","跑步"})
+            音效["润色_"+名]=Resources.Load<AudioClip>("战斗润色音效/"+名);
         for (int i = 0; i < 乐.Length; i++) { 乐[i] = 建源("音乐交叉淡化" + i); 乐[i].loop = true; }
         for (int i = 0; i < 池.Length; i++) 池[i] = 建源("音效通道" + i);
     }
@@ -70,21 +72,23 @@ public sealed class 天帝声音 : MonoBehaviour
     {
         return 音效.TryGetValue(名, out var 片) && 播放(片, 名);
     }
-    public bool 播放(AudioClip 片, string 标识 = null)
+    public bool 播放(AudioClip 片, string 标识 = null, float 音高=1, float 力度=1)
     {
         if (片 == null || 游戏 == null || 后台 || 失焦 || 游戏.音效音量 <= 0 || 游戏.音量 <= 0) return false;
-        bool 战斗声 = 标识 != null && 标识.StartsWith("ZD");
+        bool 战斗声 = 标识 != null && (标识.StartsWith("ZD")||标识.StartsWith("润色_"));
         if (战斗声 && 游戏.界面?.战斗已暂停 == true) return false;
-        float 间隔 = 标识 == "ZD01_灵力弹" ? .10f : 标识 == "ZD02_命中" ? .125f : 标识 == "ZD05_拾取" || 标识 == "ZD03_受伤" ? .25f : .045f;
+        float 间隔 = 标识!=null&&标识.StartsWith("润色_")?天帝战斗润色.取("enemy_audio_interval"):
+            标识 == "ZD01_灵力弹" ? .10f : 标识 == "ZD02_命中" ? .125f : 标识 == "ZD05_拾取" || 标识 == "ZD03_受伤" ? .25f : .045f;
         string 键 = 标识 ?? 片.GetInstanceID().ToString(); float 现在 = Time.unscaledTime;
         if (上次.TryGetValue(键, out float 前) && 现在 - 前 < 间隔) return false;
         // 前四路保留给UI与重要提示，普通战斗声音只用后八路。
-        bool 普通战斗 = 标识 == "ZD01_灵力弹" || 标识 == "ZD02_命中" || 标识 == "ZD05_拾取" || 标识 == "ZD03_受伤";
+        bool 普通战斗 = 标识 == "ZD01_灵力弹" || 标识 == "ZD02_命中" || 标识 == "ZD05_拾取"||
+            标识!=null&&标识.StartsWith("润色_")&&标识!="润色_破盾"&&标识!="润色_暴击"&&标识!="润色_狼王";
         int 起 = 普通战斗 ? 4 : 0;
         for (int i = 起; i < 池.Length; i++) if (!池[i].isPlaying)
         {
-            var a = 池[i]; a.clip = 片; a.volume = 游戏.音效音量 * (普通战斗 ? .40f : .70f); a.pitch = 1;
-            通道增益[i] = 普通战斗 ? .40f : .70f;
+            var a = 池[i]; a.clip = 片; a.volume = 游戏.音效音量 * (普通战斗 ? .40f : .70f); a.pitch = Mathf.Clamp(音高,.85f,1.15f);
+            通道增益[i] = (普通战斗 ? .40f : .70f)*Mathf.Clamp(力度,.5f,1.2f);
             a.Play(); 更新音效音量(); 上次[键] = 现在; 音效播放次数++; return true;
         }
         return false;
@@ -97,6 +101,22 @@ public sealed class 天帝声音 : MonoBehaviour
         for (int i = 0; i < 池.Length; i++) if (池[i] != null) 池[i].volume = 游戏.音效音量 * 通道增益[i] * 系数;
     }
     public static void 提示(string 名) { 当前?.播放(名); }
+    public static void 提示命中(战斗受击反馈 击)
+    {
+        var 声=当前;if(声==null)return;
+        string 名=击.破盾?"润色_破盾":击.玩家受伤?"ZD03_受伤":击.暴击?"润色_暴击":"ZD02_命中";
+        if(!声.音效.TryGetValue(名,out var 片))return;
+        float 变=天帝受击表现.取("sound_pitch_variation");
+        float 高=击.仅护盾?1.1f:击.重击?.94f:1+(声.音效播放次数%3-1)*变;
+        声.播放(片,名,高,击.重击?1.15f:1);
+    }
+    public static void 提示敌技(战斗敌人 e,敌技能 s,Vector2 玩家)
+    {
+        if((e.位置-玩家).sqrMagnitude>Mathf.Pow(天帝战斗润色.取("enemy_audio_range"),2))return;
+        string name=s.类型==敌技能类型.治疗?"疗愈":s.类型==敌技能类型.护盾?"护盾":e.物种==14&&s.大招?"狼王":
+            e.物种==3||e.物种==20?"翼射":e.物种==4||e.物种==11||e.物种==18?"炎术":e.物种==7||e.物种==12||e.物种==19?"岩击":"咬击";
+        提示("润色_"+name);
+    }
     void OnApplicationFocus(bool f) { 失焦 = !f; 同步(); }
     void OnApplicationPause(bool p) { 后台 = p; 同步(); }
     void OnDestroy() { if (当前 == this) 当前 = null; }

@@ -6,13 +6,16 @@ public static class 天帝界面美术
     public static void 面板(Image 图,string 素材,Color 色)
     {
         var s=天帝道纹美术.获取(素材);if(s==null)return;
-        图.sprite=s;图.type=Image.Type.Sliced;图.color=色;图.pixelsPerUnitMultiplier=天帝道纹美术.彩绘皮肤?2:1;
+        图.sprite=s;图.type=天帝剪纸界面皮肤.已启用&&素材.Contains("按钮")?Image.Type.Simple:Image.Type.Sliced;图.color=色;图.pixelsPerUnitMultiplier=天帝剪纸界面皮肤.已启用?(素材.Contains("按钮")?1:2):天帝道纹美术.彩绘皮肤?2:1;
     }
     public static void 自动面板(Image 图,string 名,float 宽,float 高,Color 原色,bool 淡纸=false)
     {
         if(原色.a<.08f||名.Contains("遮罩")||名.Contains("图标")||名.Contains("立绘")||名.Contains("进度")||名.Contains("血条")||名.Contains("填充")||名.Contains("手柄")||名.Contains("轨道")||名.Contains("高亮"))return;
         bool 框=名.Contains("面板")||名.Contains("窗口")||名.Contains("详情")||名.Contains("信息")||名.Contains("日志")||名.Contains("字卡")||名.Contains("衬底")||名.Contains("标题")||名.Contains("状态")||名.Contains("底")||名.Contains("通货说明")||名.Contains("道纹实力")||名.Contains("宝盒")||名.Contains("源道纹-");
         if(!框||宽<80||高<35)return;
+        // 宽而浅的信息条使用同一生成纸材的留白中心，避免角饰压住靠边的文字。
+        if(天帝青绿皮肤.已启用&&(名=="重点属性衬底"||高<=100&&宽>高*3))
+        {面板(图,"小信息框",Color.white);return;}
         面板(图,淡纸?"属性面板":宽>600&&高>400?"一级面板":"二级面板",Color.white);
     }
     public static void 按钮(Button 键,bool 主=false)
@@ -25,7 +28,7 @@ public static class 天帝界面美术
         float 高=大小.y;
         bool 关闭键 = 天帝按钮文字区域.是关闭入口(键);
         if (关闭键) 主 = false;
-        bool 卡片=!关闭键&&高>80,紧凑=!关闭键&&!主&&(高<48||键.name.Contains("页签"));
+        bool 卡片=!关闭键&&!主&&高>80,紧凑=!关闭键&&!主&&(高<48||键.name.Contains("页签"));
         if(卡片||紧凑)选项(图,false);
         else 面板(图,主?"确认按钮":"按钮",Color.white);
         图.raycastTarget=true;
@@ -64,7 +67,14 @@ public static class 天帝界面美术
     }
     public static void 选项(Image 图,bool 选中,bool 锁定=false)
     {
-        面板(图,"小信息框",锁定?new Color(.91f,.93f,.87f):选中?new Color(.79f,.91f,.86f):Color.white);
+        if (天帝剪纸界面皮肤.已启用 && 图.rectTransform.rect.height <= 70 && 图.GetComponent<Button>() != null)
+        {
+            图.sprite=天帝剪纸界面皮肤.素材("轻纸框");图.type=Image.Type.Sliced;图.pixelsPerUnitMultiplier=2;
+            图.color=选中?new Color(.82f,.91f,.82f):Color.white;图.raycastTarget=true;
+            foreach(var 文 in 图.GetComponentsInChildren<Text>())文.color=天帝剪纸界面皮肤.墨;
+            return;
+        }
+        面板(图,"小信息框",锁定?new Color(.91f,.93f,.87f):选中?(天帝剪纸界面皮肤.已启用?new Color(1,.85f,.77f):new Color(.79f,.91f,.86f)):Color.white);
         图.raycastTarget=true;
         if(图.transform.Find("控件细边")==null)
         {

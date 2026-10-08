@@ -58,6 +58,7 @@ InitTestScene*.unity*
 /Assets/StreamingAssets/aa*
 /Assets/AddressableAssetsData/link.xml*
 /Assets/Addressables_Temp*
+/Assets/_Recovery/
 /Assets/AddressableAssetsData/*/*.bin*
 /Assets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db*
 /Assets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers*

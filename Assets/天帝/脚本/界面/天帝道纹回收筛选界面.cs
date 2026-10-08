@@ -14,7 +14,7 @@ public sealed partial class 天帝道纹回收界面
         // 改变显示条件不保留隐藏的旧勾选，避免批量回收超出眼前条件。
         选择.Clear();刷新();
     }
-    Dropdown 条件下拉(RectTransform 父,string 名,float x,float y,List<string> 项,Action<int> 改变)
+    Dropdown 条件下拉(RectTransform 父,string 名,float x,float y,List<string> 项,Action<int> 改变,bool 清空勾选=true)
     {
         // 紧凑条件控件使用清晰的纸面边框，花饰按钮会压住44行高中的文字。
         var r=图(父,名,x,y,198,44,"小信息框").rectTransform;r.GetComponent<Image>().raycastTarget=true;
@@ -38,6 +38,6 @@ public sealed partial class 天帝道纹回收界面
         d.itemText=字文(行,"",28,0,162,44,16);d.itemText.alignment=TextAnchor.MiddleLeft;
         天帝响应布局.比例(d.itemText.rectTransform,.14f,0,.82f,1);
         var 滚=模板.gameObject.AddComponent<ScrollRect>();滚.viewport=口;滚.content=内容;滚.horizontal=false;滚.movementType=ScrollRect.MovementType.Clamped;滚.scrollSensitivity=32;
-        d.template=模板;模板.gameObject.SetActive(false);d.AddOptions(项);d.onValueChanged.AddListener(v=>{选择.Clear();改变(v);});return d;
+        d.template=模板;模板.gameObject.SetActive(false);d.AddOptions(项);d.onValueChanged.AddListener(v=>{if(清空勾选)选择.Clear();改变(v);});return d;
     }
 }

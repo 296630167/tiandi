@@ -26,6 +26,8 @@ public sealed class 道纹存档实例
 [Serializable]
 public sealed class 道纹存档数据
 {
+    // 旧档缺省0表示100×100；新档记录尺寸，避免越界退款在重读时重复发生。
+    public int 画布边长;
     public int 天赋编号 = -1;
     public int 玩家等级, 技能点;
     public int 当前经验, 迁移前等级;
@@ -42,6 +44,8 @@ public sealed class 天帝存档数据
     public string 数值版本 = 天帝数值配置.版本;
     public string 保存时间;
     public bool 序章已完成;
+    // 仅新创建的角色设true；旧存档缺省false，不打断老玩家。
+    public bool 新手指引待完成;
     public 主角属性配置 主角;
     public 道纹存档数据 画布;
     public int[] 通货;

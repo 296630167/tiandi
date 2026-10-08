@@ -8,6 +8,7 @@ public partial class 天帝界面
     public bool 宝盒概率已打开 => 宝盒概率层 != null;
     public void 显示宝盒概率(int 序号)
     {
+        if (天帝剪纸界面皮肤.已启用) { 显示山水宝盒概率(序号); return; }
         if(!宝盒已打开||宝盒概率已打开||序号<0||序号>2)return;
         foreach(var 控件 in 弹层.GetComponentsInChildren<Selectable>())控件.interactable=false;
         宝盒概率层=区块(弹层,"宝盒概率层",0,0,1600,900);
@@ -48,6 +49,6 @@ public partial class 天帝界面
         foreach(var 控件 in 弹层.GetComponentsInChildren<Selectable>())控件.interactable=true;
         // 抽取按钮按余额恢复，避免关闭概率时启用买不起的盒子。
         foreach(var b in 弹层.GetComponentsInChildren<Button>())if(b.name=="抽取")
-        {var p=b.transform.parent;int i=p.name=="属性宝盒"?0:p.name=="功能宝盒"?1:2;b.interactable=游戏.宝盒数据.灵石>=天帝宝盒.价格((宝盒种类)i);}
+        {var p=b.transform.parent;int i=p.name=="属性宝盒"?0:p.name=="功能宝盒"?1:2;b.interactable=游戏.宝盒数据.灵石>=天帝宝盒.价格((宝盒种类)i);天帝首两页山水素材.按钮透明度(b);}
     }
 }

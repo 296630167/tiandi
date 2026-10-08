@@ -15,9 +15,8 @@ public sealed class 天帝移动摇杆 : MaskableGraphic, IPointerDownHandler, I
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, e.position, e.pressEventCamera, out var 点))
         {
             var 输入 = (点 - rectTransform.rect.center) / Mathf.Max(1, Mathf.Min(rectTransform.rect.width, rectTransform.rect.height) * .39f);
-            float 幅度 = 输入.magnitude;
-            方向 = 幅度 <= .12f ? Vector2.zero : 输入.normalized * Mathf.Clamp01((幅度 - .12f) / .88f);
-            SetVerticesDirty();
+            var 新方向=天帝战斗润色.摇杆响应(输入);
+            if((新方向-方向).sqrMagnitude>.00001f){方向=新方向;SetVerticesDirty();}
         }
     }
     public void OnPointerUp(PointerEventData e) { if (指针 == e.pointerId) 归零(); }

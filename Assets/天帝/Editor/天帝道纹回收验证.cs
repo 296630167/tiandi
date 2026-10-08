@@ -100,20 +100,20 @@ public static class 天帝道纹回收验证
                     typeof(Dropdown).GetField("m_Dropdown",隐).SetValue(品阶下拉,null);typeof(Dropdown).GetField("m_Blocker",隐).SetValue(品阶下拉,null);
                 }
                 p.一键选中();检查(前+"默认跨页选当前筛选且跳过锁",p.选中数量==30&&p.总回收灵石==w.道纹.Where(z=>!z.回收锁定).Sum(天帝数值.道纹回收价));
-                var 原位置=Enumerable.Range(0,手机?6:12).Select(p.显示项).ToArray();
+                var 原位置=Enumerable.Range(0,手机?6:9).Select(p.显示项).ToArray();
                 var 项=p.显示项(1);int 旧数=p.选中数量;
                 var 锁键=host.GetComponentsInChildren<天帝道纹锁定按钮>().First(z=>z.transform.parent.name=="回收道纹-1").GetComponent<Button>();
                 锁键.onClick.Invoke();
                 检查(前+"锁按钮立即剔除已勾选实例",项.回收锁定&&p.选中数量==旧数-1);
-                检查(前+"点击锁定卡片不跳位也不改变其他卡片顺序",原位置.SequenceEqual(Enumerable.Range(0,手机?6:12).Select(p.显示项)));
-                锁键.onClick.Invoke();检查(前+"解锁仍保持原位",!项.回收锁定&&原位置.SequenceEqual(Enumerable.Range(0,手机?6:12).Select(p.显示项)));锁键.onClick.Invoke();
+                检查(前+"点击锁定卡片不跳位也不改变其他卡片顺序",原位置.SequenceEqual(Enumerable.Range(0,手机?6:9).Select(p.显示项)));
+                锁键.onClick.Invoke();检查(前+"解锁仍保持原位",!项.回收锁定&&原位置.SequenceEqual(Enumerable.Range(0,手机?6:9).Select(p.显示项)));锁键.onClick.Invoke();
                 p.设置显示条件(0);p.一键选中();检查(前+"按品阶显示并批选",p.选中数量==w.道纹.Count(z=>z.品阶==道纹品阶.普通&&!z.回收锁定)&&p.显示项(0).品阶==道纹品阶.普通);
                 p.设置显示条件(-1,0,2);p.一键选中();检查(前+"只显示锁定时批选为空",p.选中数量==0&&p.显示项(0).回收锁定);
                 var 待解=p.显示项(0);host.GetComponentsInChildren<天帝道纹锁定按钮>().First(z=>z.transform.parent.name=="回收道纹-0").GetComponent<Button>().onClick.Invoke();
                 检查(前+"锁图标再次点击解锁且锁筛选移除",!待解.回收锁定&&p.选中数量==0);
                 var 下拉=host.GetComponentsInChildren<Dropdown>().Single(z=>z.name=="回收状态筛选");下拉.value=3;p.一键选中();
-                检查(前+"下拉事件筛可回收",p.选中数量==30&&Enumerable.Range(0,手机?6:12).Select(p.显示项).Where(z=>z!=null).All(z=>w.可回收(z,out _)));
-                p.设置批选范围(new 天帝回收范围{品阶掩码=255,位置=2});p.一键选中();检查(前+"范围支持当前页",p.选中数量==(手机?6:12));
+                检查(前+"下拉事件筛可回收",p.选中数量==30&&Enumerable.Range(0,手机?6:9).Select(p.显示项).Where(z=>z!=null).All(z=>w.可回收(z,out _)));
+                p.设置批选范围(new 天帝回收范围{品阶掩码=255,位置=2});p.一键选中();检查(前+"范围支持当前页",p.选中数量==(手机?6:9));
                 p.设置批选范围(new 天帝回收范围{品阶掩码=0});p.一键选中();检查(前+"未选任何品阶清空选择",p.选中数量==0);
                 p.设置批选范围(new 天帝回收范围());p.打开范围();
                 var 顶部=host.GetComponentsInChildren<Button>().Single(z=>z.name=="一键选中");

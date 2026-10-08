@@ -123,6 +123,16 @@ public sealed class 天帝主角属性 : IDisposable
         当前血量 = 血; 当前灵力 = 灵; 当前灵气护盾 = 盾; 属性改变?.Invoke(); return true;
     }
     static bool 有限(float 值) => !float.IsNaN(值) && !float.IsInfinity(值);
+    public bool 尝试消耗灵力(float 消耗)
+    {
+        if (已释放 || 当前血量 <= 0 || !有限(消耗) || 消耗 < 0 || 当前灵力 < 消耗) return false;
+        return 设置当前资源(当前血量, 当前灵力 - 消耗, 当前灵气护盾);
+    }
+    public void 回复灵力(float 数量)
+    {
+        if (!已释放 && 当前血量 > 0 && 有限(数量) && 数量 > 0)
+            设置当前资源(当前血量, 当前灵力 + 数量, 当前灵气护盾);
+    }
     float 加成(道纹属性 属性) => 道纹 != null ? (float)道纹.生效加成[(int)属性] : 0;
     public void 重算()
     {

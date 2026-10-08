@@ -11,6 +11,16 @@ public sealed class 天帝战斗美术 : IDisposable
         public SpriteRenderer 阴影;
         public Vector2 上次位置;
         public float 比例;
+        public float 步尘冷却,反冲秒,点缀冷却;
+        public float 受击秒,受击力度,命中特效冷却;
+        public float 受击闪白秒;
+        public bool 有受击快照;
+        public Vector2 受击方向;
+        public Color 受击色=Color.white;
+        public string 动作编号;
+        public int 动作物种=-1,动作形态=-1;
+        public 敌人行动 上次行动;
+        public Vector2 朝向=Vector2.right;
         public readonly MaterialPropertyBlock 参数 = new MaterialPropertyBlock();
     }
     sealed class 短效
@@ -33,8 +43,14 @@ public sealed class 天帝战斗美术 : IDisposable
     readonly Dictionary<战斗道纹掉落, SpriteRenderer[]> 道纹图 = new Dictionary<战斗道纹掉落, SpriteRenderer[]>();
     readonly Dictionary<战斗通货掉落, SpriteRenderer> 通货图 = new Dictionary<战斗通货掉落, SpriteRenderer>();
     单位图 玩家图;
+    SpriteRenderer 玩家遮挡提示;
+    readonly MaterialPropertyBlock 遮挡参数 = new MaterialPropertyBlock();
+    public Bounds 玩家绘制范围 => 玩家图?.像 != null ? 玩家图.像.bounds : new Bounds();
+    public bool 玩家遮挡提示可见 => 玩家遮挡提示 != null && 玩家遮挡提示.enabled;
     readonly 天帝八方向播放 主角帧播放;
     readonly 天帝战斗系统 动画事件源;
+    readonly 天帝战斗系统 战斗源;
+    readonly 天帝敌人动作 敌动作=new 天帝敌人动作();
     float 总秒, 尘雾冷却, 玩家闪白, 回弹秒;
     int 上次发射;
     Vector2 移动方向;
@@ -45,13 +61,18 @@ public sealed class 天帝战斗美术 : IDisposable
     public int 敌人立绘数 => 敌图.Count;
     public 天帝战斗美术(Transform 父, 天帝美术资源 素材, 天帝战斗地图 地图, 天帝战斗系统 战斗, bool 显示地形 = true)
     {
-        this.素材 = 素材; this.地图 = 地图;
+        this.素材 = 素材; this.地图 = 地图; 战斗源=战斗;
         if (素材 == null || 素材.立绘着色器 == null || 素材.获取("CH02") == null) return;
         for (int i = 1; i <= 4; i++) if (素材.获取("EN" + i.ToString("00")) == null) return;
         根 = new GameObject("青岚原手绘美术").transform; 根.SetParent(父, false);
         材质 = new Material(素材.立绘着色器) { name = "静态立绘共用材质" };
         if (显示地形) 建地形();
         玩家图 = 建单位("程序员主角", "CH02", 地图.出生位置, 3.7f);
+        玩家遮挡提示 = 建像("主角被遮挡时的青玉剪影", "CH02", 地图.出生位置, Vector2.one, 10002);
+        玩家遮挡提示.enabled = false;
+        染色(玩家遮挡提示, new Color(.62f, .94f, .82f, .55f), 0, 遮挡参数);
+        遮挡参数.SetFloat(Shader.PropertyToID("_Silhouette"), 1);
+        玩家遮挡提示.SetPropertyBlock(遮挡参数);
         if (素材.主角移动动画 != null && 素材.主角移动动画.完整)
         {
             主角帧播放 = new 天帝八方向播放(素材.主角移动动画);
@@ -66,6 +87,9 @@ public sealed class 天帝战斗美术 : IDisposable
             string 编号 = 天帝敌种配置.美术编号(敌);
             if (素材.获取(编号) == null) 编号 = "EN" + ((int)敌.布点.级别 + 1).ToString("00");
             var 图 = 建单位(敌.名称, 编号, 敌.位置, 天帝敌种配置.物种(敌.物种, "width"));
+            图.动作编号=编号;图.动作物种=敌.物种;图.动作形态=敌.显示形态;
+            敌动作.预加载(编号);
+            if(敌.物种==14)for(int f=1;f<=天帝敌种配置.形态数(敌.地图档位);f++)敌动作.预加载("BTB"+f.ToString("00"));
             图.像.enabled = 敌.已生成; if (图.阴影 != null) 图.阴影.enabled = 敌.已生成;
             敌图.Add(图);
         }
@@ -185,8 +209,34 @@ public sealed class 天帝战斗美术 : IDisposable
     {
         if (!可用) return;
         if (玩家受伤) { 玩家闪白 = .1f; 发特效("FX06", 点, 1.4f, .2f, new Color(1, .45f, .26f)); }
-        else 发特效("FX04", 点, .7f, .18f, new Color(.78f, .78f, .72f, .6f));
+        else
+        {
+            发特效("FX06", 点, .85f, .12f, new Color(.8f, 1, .91f, .8f));
+            发特效("FX04", 点, 1.1f, .28f, new Color(.72f, .86f, .79f, .45f));
+        }
     }
+    public void 命中(战斗受击反馈 击)
+    {
+        if(!可用||击.明细.合计<=0)return;
+        单位图 图=击.玩家受伤?玩家图:null;
+        if(图==null)for(int i=0;i<战斗源.敌人.Count;i++)if(ReferenceEquals(战斗源.敌人[i],击.目标)){图=敌图[i];break;}
+        if(图==null)return;
+        图.有受击快照=true;
+        if(图.受击闪白秒<=0)图.受击闪白秒=天帝受击表现.取("flash_seconds");
+        float 力=击.重击?天帝受击表现.取("heavy_multiplier"):1;
+        图.受击秒=天帝受击表现.取("recoil_seconds");图.受击力度=力;
+        if(击.目标?.物种==14)图.受击力度*=天帝受击表现.取("boss_recoil_factor");
+        图.受击方向=击.方向;
+        图.受击色=击.仅护盾||击.破盾?new Color(.48f,.85f,1):击.玩家受伤?new Color(1,.48f,.36f):击.暴击?new Color(1,.88f,.5f):Color.white;
+        if(击.玩家受伤)玩家闪白=天帝受击表现.取("flash_seconds");
+        if(图.命中特效冷却>0&&!击.破盾&&!击.击杀)return;
+        图.命中特效冷却=天帝受击表现.取("effect_interval");
+        var 点=击.位置+new Vector2(0,.65f);
+        发特效("HIT闪",点,1.05f*力,.16f,new Color(图.受击色.r,图.受击色.g,图.受击色.b,.88f),-击.方向);
+        if(击.重击||击.仅护盾)发特效("HIT环",点,1.45f*力,.24f,new Color(图.受击色.r,图.受击色.g,图.受击色.b,.5f));
+    }
+    void 推进受击(单位图 图,float 秒)
+    { 图.受击秒=Mathf.Max(0,图.受击秒-秒);图.受击闪白秒=Mathf.Max(0,图.受击闪白秒-秒);图.命中特效冷却=Mathf.Max(0,图.命中特效冷却-秒); }
     public void 更新(天帝战斗系统 战斗, Vector2 玩家, float 秒)
     {
         if (!可用) return;
@@ -203,6 +253,7 @@ public sealed class 天帝战斗美术 : IDisposable
                 玩家图.比例 = 素材.主角移动动画.展示高度 / Mathf.Max(.01f, 帧.bounds.size.y);
             }
         }
+        推进受击(玩家图,秒);
         更新单位(玩家图, 玩家, !战斗.玩家死亡, 战斗.玩家死亡 ? .5f : 0, 玩家闪白, false, 主角帧播放 == null && 回弹秒 > 0 ? -3 : 0, 0, 主角帧播放 != null);
         尘雾冷却 -= 秒;
         if (移动方向.sqrMagnitude > .01f && !战斗.玩家死亡 && 尘雾冷却 <= 0 && (玩家 - 玩家图.上次位置).sqrMagnitude > .00001f)
@@ -212,16 +263,57 @@ public sealed class 天帝战斗美术 : IDisposable
             尘雾冷却 = 跑步中 ? .13f : .22f;
         }
         玩家图.上次位置 = 玩家;
+        int 尘预算=(int)天帝敌种配置.取("presentation.enemy_dust_frame_max");
+        int 点缀预算 = 2;
         for (int i = 0; i < 敌图.Count; i++)
         {
             var 敌 = 战斗.敌人[i];
+            推进受击(敌图[i],秒);
             if (!敌.已生成) { 敌图[i].像.enabled = false; if (敌图[i].阴影 != null) 敌图[i].阴影.enabled = false; continue; }
-            var 新图 = 素材.获取(敌.物种 == 14 ? "BTB" + 敌.显示形态.ToString("00") : 天帝敌种配置.美术编号(敌));
+            var 当前图=敌图[i];
+            if(当前图.动作物种!=敌.物种||当前图.动作形态!=敌.显示形态)
+            {当前图.动作编号=敌.物种 == 14 ? "BTB" + 敌.显示形态.ToString("00") : 天帝敌种配置.美术编号(敌);当前图.动作物种=敌.物种;当前图.动作形态=敌.显示形态;}
+            string code=当前图.动作编号;
+            var 新图 = 敌动作.读取(code,敌,(敌.位置-敌图[i].上次位置).sqrMagnitude>.00001f,总秒+i*.07f)??素材.获取(code);
             if (新图 != null && 敌图[i].像.sprite != 新图)
             { 敌图[i].像.sprite = 新图; 敌图[i].像.name = 敌.名称; 敌图[i].比例 = 天帝敌种配置.物种(敌.物种, "width") / 新图.bounds.size.x; }
             更新单位(敌图[i], 敌.位置, 敌.存活, 敌.死亡秒, 敌.闪白秒, 敌.行动 == 敌人行动.蓄力, 敌.行动 == 敌人行动.后摇 ? -6 : 0, i, false, 天帝敌种配置.立绘颜色(敌.物种));
+            if (敌.存活)
+            {
+                var 图=敌图[i];var 位移=敌.位置-图.上次位置;
+                if(位移.sqrMagnitude>.00001f)图.朝向=位移.normalized;
+                if(敌.行动==敌人行动.蓄力)图.朝向=敌.锁定方向;
+                图.像.flipX=图.朝向.x<0;
+                if(图.上次行动==敌人行动.蓄力&&敌.行动==敌人行动.后摇)图.反冲秒=天帝敌种配置.取("presentation.enemy_recoil_seconds");
+                图.反冲秒=Mathf.Max(0,图.反冲秒-秒);图.步尘冷却=Mathf.Max(0,图.步尘冷却-秒);
+                图.点缀冷却=Mathf.Max(0,图.点缀冷却-秒);
+                if (秒 > 0 && 敌.物种 >= 15 && 点缀预算 > 0 && 图.点缀冷却 <= 0 &&
+                    (敌.位置-玩家).sqrMagnitude < 196 && (位移.sqrMagnitude > .00001f || 敌.行动 == 敌人行动.蓄力))
+                {
+                    // 专属生成点缀使用已有48槽池；不参与碰撞或伤害。
+                    var 点 = 敌.位置 - 图.朝向 * .45f + new Vector2(0,.35f);
+                    发特效("BFX"+敌.物种,点,敌.物种==20?.7f:.55f,.55f,Color.white,图.朝向);
+                    图.点缀冷却=.42f+i%4*.09f;点缀预算--;
+                }
+                if(位移.sqrMagnitude>.00001f)
+                {
+                    float 步=Mathf.Abs(Mathf.Sin(总秒*(天帝敌种配置.角色(敌.物种)==2?17:13)+i));
+                    图.像.transform.position+=new Vector3(0,0,步*天帝敌种配置.取("presentation.enemy_gait_bob"));
+                    if(尘预算>0&&图.步尘冷却<=0&&(敌.位置-玩家).sqrMagnitude<Mathf.Pow(天帝敌种配置.取("presentation.enemy_dust_range"),2))
+                    {发特效("FX04",敌.位置-图.朝向*.25f,.6f,.3f,new Color(1,1,1,.25f));尘预算--;图.步尘冷却=天帝敌种配置.取("presentation.enemy_step_interval")*(1+i%3*.15f);}
+                }
+                float 蓄 = 敌.行动 == 敌人行动.蓄力 ? Mathf.Clamp01(1 - 敌.蓄力 / Mathf.Max(.01f, 敌.蓄力总秒)) : 0;
+                float 挤 = 蓄 * 天帝敌种配置.取("presentation.windup_squash");
+                float 击 = Mathf.Clamp01((图.有受击快照?图.受击闪白秒:敌.闪白秒) / 天帝受击表现.取("flash_seconds")) * 天帝敌种配置.取("presentation.hit_stretch");
+                var 比例 = 敌图[i].像.transform.localScale;
+                敌图[i].像.transform.localScale = new Vector3(比例.x * (1 + 挤 - 击), 比例.y * (1 - 挤 + 击), 1);
+                if (蓄 > 0 || 击 > 0) 敌图[i].像.transform.rotation = 平面旋转 * Quaternion.Euler(0, 0, (敌.锁定方向.x < 0 ? 1 : -1) * (蓄 * 9 + 击 * 45));
+                else if(图.反冲秒>0)图.像.transform.rotation=平面旋转*Quaternion.Euler(0,0,(图.朝向.x<0?1:-1)*天帝敌种配置.取("presentation.enemy_recoil_angle")*图.反冲秒/天帝敌种配置.取("presentation.enemy_recoil_seconds"));
+            }
+            else 敌图[i].像.transform.rotation=平面旋转*Quaternion.Euler(0,0,(i%2==0?1:-1)*天帝敌种配置.取("presentation.enemy_death_angle")*Mathf.Clamp01(敌.死亡秒/.65f));
             敌图[i].像.transform.position += new Vector3(0, 0, 敌.跳跃高度);
             敌图[i].上次位置 = 敌.位置;
+            敌图[i].上次行动=敌.行动;
         }
         foreach (var 影 in 水镜虚影) 影.enabled = false;
         int 幻数 = 0;
@@ -235,7 +327,24 @@ public sealed class 天帝战斗美术 : IDisposable
                     if (地图.可站立(点)) { var 影 = 水镜虚影[幻数++]; 影.enabled = true; 影.transform.position = new Vector3(点.x, .12f, 点.y); 影.sortingOrder = 深度(点); }
                 }
             }
-        更新掉落(战斗); 更新特效(秒);
+        更新玩家遮挡(战斗); 更新掉落(战斗); 更新特效(秒);
+    }
+    void 更新玩家遮挡(天帝战斗系统 战斗)
+    {
+        bool 遮挡 = false;
+        if (!战斗.玩家死亡)
+            for (int i = 0; i < 敌图.Count; i++)
+            {
+                var 像 = 敌图[i].像;
+                if (像.enabled && 战斗.敌人[i].存活 && 像.sortingOrder >= 玩家图.像.sortingOrder &&
+                    天帝战斗辨识.平面相交(玩家图.像.bounds, 像.bounds)) { 遮挡 = true; break; }
+            }
+        玩家遮挡提示.enabled = 遮挡;
+        if (!遮挡) return;
+        玩家遮挡提示.sprite = 玩家图.像.sprite;
+        玩家遮挡提示.transform.SetPositionAndRotation(玩家图.像.transform.position, 玩家图.像.transform.rotation);
+        玩家遮挡提示.transform.localScale = 玩家图.像.transform.localScale;
+        玩家遮挡提示.flipX = 玩家图.像.flipX;
     }
     void 更新单位(单位图 图, Vector2 点, bool 活, float 死亡秒, float 闪白秒, bool 蓄力, float 倾角, int 序号, bool 使用方向帧 = false, Color? 基色 = null)
     {
@@ -258,7 +367,17 @@ public sealed class 天帝战斗美术 : IDisposable
         图.像.sortingOrder = 深度(点);
         Color 色 = !活 ? new Color(.36f, .39f, .40f, Mathf.Clamp01(1 - 死亡秒 / .65f)) : 蓄力 ? new Color(1, .74f, .58f) : Color.white;
         if (活) 色 *= 基色 ?? Color.white;
-        染色(图.像, 色, 闪白秒 > 0 ? .92f : 0, 图.参数);
+        float 闪=Mathf.Clamp01((图.有受击快照?图.受击闪白秒:闪白秒)/天帝受击表现.取("flash_seconds"));
+        if(图.受击秒>0)
+        {
+            float 弹=天帝受击表现.回弹(图.受击秒,天帝受击表现.取("recoil_seconds"))*图.受击力度;
+            var 偏移=图.受击方向*弹*天帝受击表现.取("recoil_distance");
+            图.像.transform.position+=new Vector3(偏移.x,0,偏移.y);
+            float 挤=Mathf.Abs(弹)*.055f;
+            var 大小=图.像.transform.localScale;图.像.transform.localScale=new Vector3(大小.x*(1+挤),大小.y*(1-挤),1);
+            色=Color.Lerp(色,图.受击色,闪*.45f);
+        }
+        染色(图.像, 色, 闪*.85f, 图.参数);
     }
     void 更新掉落(天帝战斗系统 战斗)
     {
@@ -332,11 +451,13 @@ public sealed class 天帝战斗美术 : IDisposable
     public void Dispose()
     {
         if (动画事件源 != null) { 动画事件源.准备射击 -= 准备主角射击; 动画事件源.射击释放 -= 释放主角射击; }
-        if (根 != null) UnityEngine.Object.Destroy(根.gameObject);
-        if (材质 != null) UnityEngine.Object.Destroy(材质);
-        foreach (var 网 in 地表网格) if (网 != null) UnityEngine.Object.Destroy(网);
-        foreach (var 地材 in 地表材质) if (地材 != null) UnityEngine.Object.Destroy(地材);
+        if (根 != null) 释放资源(根.gameObject);
+        释放资源(材质);
+        foreach (var 网 in 地表网格) 释放资源(网);
+        foreach (var 地材 in 地表材质) 释放资源(地材);
         地表网格.Clear(); 地表材质.Clear();
         敌图.Clear(); 特效池.Clear(); 水镜虚影.Clear(); 道纹图.Clear(); 通货图.Clear(); 玩家图 = null;
     }
+    static void 释放资源(UnityEngine.Object o)
+    { if(o==null)return;if(Application.isPlaying)UnityEngine.Object.Destroy(o);else UnityEngine.Object.DestroyImmediate(o); }
 }

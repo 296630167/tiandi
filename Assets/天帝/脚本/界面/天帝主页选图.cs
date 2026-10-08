@@ -82,13 +82,21 @@ public partial class 天帝界面
     {
         var 底 = 主页面板(父, "地图等级下拉", "主操作按钮", x, y, 宽, 高); 底.raycastTarget = true;
         var 下拉 = 底.gameObject.AddComponent<天帝等级下拉>(); 下拉.targetGraphic = 底;
-        var 文 = 主页字(底.rectTransform, "", 34, 0, 宽 - 68, 高, 24, 天帝道纹美术.浅字); 文.alignment = TextAnchor.MiddleCenter;
-        主页字(底.rectTransform, "▼", 宽 - 43, 0, 26, 高, 17, 天帝道纹美术.浅字); 下拉.captionText = 文;
+        var 下拉字色 = 天帝青绿皮肤.已启用 ? 天帝道纹美术.正文 : 天帝道纹美术.浅字;
+        var 文 = 主页字(底.rectTransform, "", 34, 0, 宽 - 68, 高, 24, 下拉字色); 文.alignment = TextAnchor.MiddleCenter;
+        主页字(底.rectTransform, "▼", 宽 - 43, 0, 26, 高, 17, 下拉字色); 下拉.captionText = 文;
         天帝按钮文字区域.绑定(下拉);
         var 列表 = 图(底.rectTransform, "Template", 0, 0, 宽, 264, new Color(.055f, .10f, .10f, .99f)).rectTransform;
         var 列表皮肤=图(列表,"等级菜单素材",0,0,宽,264,Color.white);天帝界面美术.面板(列表皮肤,"二级面板",Color.white);列表皮肤.raycastTarget=false;
         列表.anchorMin = 列表.anchorMax = new Vector2(0, 1); 列表.pivot = new Vector2(0, 0); 列表.anchoredPosition = new Vector2(0, 8);
-        天帝响应布局.动态(列表); 列表.anchorMax = Vector2.one; 列表.sizeDelta = new Vector2(0, 264);
+        天帝响应布局.动态(列表);
+        if (天帝青绿皮肤.已启用)
+        {
+            // 在固定横屏画面内向上展开；小屏高度不能沿用PC菜单或叠加父控件高度。
+            列表.anchorMin = new Vector2(0, 1); 列表.anchorMax = Vector2.one;
+            列表.sizeDelta = new Vector2(0, 天帝移动适配.启用 ? 164 : 264);
+        }
+        else { 列表.anchorMax = Vector2.one; 列表.sizeDelta = new Vector2(0, 264); }
         天帝响应布局.比例(列表皮肤.rectTransform, 0, 0, 1, 1);
         var 视口 = 铺满(列表, "Viewport"); 视口.offsetMin = new Vector2(4, 4); 视口.offsetMax = new Vector2(-16, -4);
         var 口像 = 视口.gameObject.AddComponent<Image>(); 口像.color = new Color(0, 0, 0, .01f); 视口.gameObject.AddComponent<RectMask2D>();
@@ -127,11 +135,14 @@ public partial class 天帝界面
         if (游戏.阶段 != 游戏阶段.主页) return;
         关闭等级下拉();
         int 等级 = 游戏.当前地图等级;
-        显示确认("确定进入青岚原吗？", 天帝地图挑战.进入说明(等级), "确认进入", () =>
+        string 入图说明 = 天帝地图挑战.进入说明(等级);
+        if (游戏.道纹数据 != null && 等级 > 游戏.道纹数据.玩家等级)
+            入图说明 += "\n提示：当前地图高于角色等级，敌人生命与攻击更高；初次历练可选1级。";
+        显示确认("确定进入青岚原吗？", 入图说明, "确认进入", () =>
         {
             if (游戏.当前地图编号 == 0 && 游戏.当前地图等级 == 等级) 游戏.进入战斗();
         }, 600);
-        var 说明 = 弹层.GetComponentsInChildren<Text>().FirstOrDefault(x => x.text == 天帝地图挑战.进入说明(等级));
+        var 说明 = 弹层.GetComponentsInChildren<Text>().FirstOrDefault(x => x.text == 入图说明);
         if (说明 != null)
         {
             string 原文 = 说明.text; int 行尾 = 原文.IndexOf('\n');

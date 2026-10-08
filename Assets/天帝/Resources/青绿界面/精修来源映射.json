@@ -1,0 +1,77 @@
+{
+  "project_id": "9a4dd81a-f6cc-4948-b3b9-47df257e033c",
+  "model": "server default; result does not identify actual model",
+  "source_atlas": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+  "assets": [
+    {
+      "name": "精修深青面板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+      "remote_url": "https://tapcode-sce.spark.xd.com/tapcode-images/b4a73bf5-5bc8-4dfb-95b0-fd9e64b58e78.png",
+      "crop": [
+        47,
+        204,
+        990,
+        1170
+      ],
+      "sha256": "1ba28cb0cc6e6085075efd563137ef29e74f38e93acf5f661cf417106fd166ef",
+      "processed": "rectangular crop and white-background alpha removal"
+    },
+    {
+      "name": "精修纸面板",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+      "remote_url": "https://tapcode-sce.spark.xd.com/tapcode-images/b4a73bf5-5bc8-4dfb-95b0-fd9e64b58e78.png",
+      "crop": [
+        1063,
+        205,
+        2005,
+        1170
+      ],
+      "sha256": "bd9f47e685cf52c179b2ac256fd96d643f70427aebfea81b504b0ad8f3b38b7d",
+      "processed": "rectangular crop and white-background alpha removal"
+    },
+    {
+      "name": "精修浅纸按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+      "remote_url": "https://tapcode-sce.spark.xd.com/tapcode-images/b4a73bf5-5bc8-4dfb-95b0-fd9e64b58e78.png",
+      "crop": [
+        51,
+        1410,
+        987,
+        1582
+      ],
+      "sha256": "73f8a30ebe8dc78f887e299ba7e22816628cb0e970ba330fb68469bfd6236090",
+      "processed": "rectangular crop and white-background alpha removal"
+    },
+    {
+      "name": "精修深青按钮",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+      "remote_url": "https://tapcode-sce.spark.xd.com/tapcode-images/b4a73bf5-5bc8-4dfb-95b0-fd9e64b58e78.png",
+      "crop": [
+        1066,
+        1409,
+        2002,
+        1582
+      ],
+      "sha256": "7b47ac0dd6637de697bed52c0c58d46df5862fa82eb173894ca6345519aa9311",
+      "processed": "rectangular crop and white-background alpha removal"
+    },
+    {
+      "name": "精修地图卡框",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝清晰主页_四组件底板_20261007041454.png",
+      "sha256": "728cc1f6cb65778315b990fc7eaa8d1f50a33f8dd90ed8ffa33395e15b9e827b",
+      "processed": "reference art extraction; no repaint"
+    },
+    {
+      "name": "精修青岚原卡面",
+      "source": "C:\\Users\\123\\Documents\\taptap製造_一滴水的故事\\assets\\image\\天帝青绿UI_主页净背景_20261007023014.png",
+      "sha256": "e74614c3187675c91f5fefda6f9b7a7b2fb9777f44132f0caa00650a8e8cd699",
+      "processed": "450x600 crop from the retained Tap-generated full-resolution background; no upscale",
+      "crop": [
+        750,
+        110,
+        1200,
+        710
+      ]
+    }
+  ]
+}
