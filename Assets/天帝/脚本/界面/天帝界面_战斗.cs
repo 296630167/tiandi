@@ -251,7 +251,8 @@ public partial class 天帝界面
             战斗目标.fontSize = 手机 ? 10 : 16;
             战斗目标.horizontalOverflow = HorizontalWrapMode.Overflow;
         }
-        区("拾取提示列表", 手机 ? .64f : .755f, 手机 ? .39f : .56f, 手机 ? .345f : .23f, 手机 ? .36f : .34f);
+        // 拾取通知需要保留完整的两行文案；移动端给出更宽的右侧安全区，避免字体被压缩成一团。
+        区("拾取提示列表", 手机 ? .53f : .70f, 手机 ? .39f : .56f, 手机 ? .45f : .285f, 手机 ? .36f : .34f);
         foreach (string 名 in new[] { "暂停入口", "跑步入口", "离开入口" })
         {
             var r = 战斗界面层.Find(名); var 键 = r == null ? null : r.GetComponentInChildren<Button>(true);

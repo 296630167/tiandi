@@ -26,10 +26,10 @@ public sealed class 天帝拾取提示 : IDisposable
     public 天帝拾取提示(RectTransform 父, Font 字体, float 停留秒 = 默认停留秒, bool 紧凑 = false, bool 右侧 = false)
     {
         this.字体 = 字体; this.紧凑 = 紧凑;
-        宽 = 紧凑 ? 344 : 490; 高 = 紧凑 ? 56 : 62; 行距 = 紧凑 ? 62 : 68;
+        宽 = 紧凑 ? 344 : 490; 高 = 紧凑 ? 68 : 62; 行距 = 紧凑 ? 74 : 68;
         停靠点 = 紧凑 ? 8 : 28; 起始点 = 右侧 ? 宽 + 16 : -宽;
         this.停留秒 = float.IsNaN(停留秒) || float.IsInfinity(停留秒) ? 默认停留秒 : Mathf.Max(.1f, 停留秒);
-        根 = 创建区(父, "拾取提示列表", 0, 389, 紧凑 ? 360 : 530, 行距 * 最大显示数);
+        根 = 创建区(父, "拾取提示列表", 0, 389, 紧凑 ? 420 : 530, 行距 * 最大显示数);
         根.gameObject.AddComponent<RectMask2D>();
     }
     static RectTransform 创建区(RectTransform 父, string 名, float x, float y, float w, float h)
@@ -49,10 +49,10 @@ public sealed class 天帝拾取提示 : IDisposable
         {
             // 纸雕按钮两端花饰与上下边线不能占用文字区；按实际条目比例适配双端。
             bool 标题=y==0;
-            // 中文行框含上下空白；两行的字形中心约在32%和70%，保留足够行框防止小屏裁字。
-            天帝响应布局.比例(字.rectTransform,.18f,标题?.03f:.42f,.64f,标题?.58f:.55f);
+            // 两行各占一条清晰基线，避免标题和详情锚点重叠；扩大文字安全区但保留两端花饰。
+            天帝响应布局.比例(字.rectTransform,.10f,标题?.06f:.52f,.80f,标题?.42f:.36f);
             字.fontSize=标题?18:14;
-            字.resizeTextForBestFit=true;字.resizeTextMinSize=8;字.resizeTextMaxSize=字.fontSize;
+            字.resizeTextForBestFit=true;字.resizeTextMinSize=标题?12:10;字.resizeTextMaxSize=字.fontSize;
             return;
         }
         if (紧凑)

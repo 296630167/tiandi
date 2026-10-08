@@ -30,6 +30,8 @@ public static class 天帝拾取提示验证
             检查("连续九枚逐条入队无覆盖", 列.显示数 == 1 && 列.等待数 == 8);
             检查("入场从左侧透明开始且不拦截输入", ((RectTransform)首.transform).anchoredPosition.x < 0 && 首.alpha == 0 && !首.blocksRaycasts && !首.interactable);
             列.更新(.125f); 检查("滑入中可观测位置与透明度", 首.alpha > 0 && 首.alpha < 1 && ((RectTransform)首.transform).anchoredPosition.x < 28);
+            var 首行 = 首.GetComponentsInChildren<Text>();
+            检查("标题与详情分行且不重叠", 首行.Length == 2 && 首行[1].rectTransform.anchorMax.y <= 首行[0].rectTransform.anchorMin.y + .01f);
             列.更新(.375f); 检查("最多四条可见其余五条排队", 列.显示数 == 4 && 列.等待数 == 5);
             检查("每枚提示保留拾取瞬间快照", 父.GetComponentsInChildren<Text>().Where(t => t.text.Contains("接口")).All(t => !t.text.Contains("999")));
             检查("中文品阶名称与属性行高度足够无截断", 父.GetComponentsInChildren<Text>().All(t => t.preferredHeight <= t.rectTransform.rect.height + .01f));
