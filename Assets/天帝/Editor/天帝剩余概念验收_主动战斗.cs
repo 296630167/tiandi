@@ -13,6 +13,7 @@ public static partial class 天帝剩余概念验收
 {
     static void 主动模型检查()
     {
+        主动冷却模型检查();
         周期特性手动检查();
         主动攻击形态检查();
         var 地 = new 天帝战斗地图(42, true); var 网 = new 天帝道纹(42, 天帝天赋.获取((int)天赋种类.普通人));
@@ -37,7 +38,7 @@ public static partial class 天帝剩余概念验收
                 战.推进(起, .225f);
                 var 弹 = 战.灵矢.LastOrDefault(x => x.参数.通路 == (6 - i) % 6);
                 检查("主动-前摇后保持输入方向-" + i, Vector2.Dot(发射方向, 向.normalized) > .999f && (弹 == null || Vector2.Dot(弹.方向, 向.normalized) > .999f) && 战.通路释放次数[(6 - i) % 6] == 1);
-                for (int n = 0; n < 6; n++) 战.推进(起, .25f);
+                推进主动验收秒(战, 起, 战.技能冷却剩余 + .001f);
             }
             战.设置演示靶(Array.Empty<Vector2>()); 人.设置当前资源(人.血量, 天帝战斗系统.技能灵力消耗 - .001f, 人.灵气护盾);
             float 少 = 人.当前灵力; int 释放前 = 战.普通释放次数;
@@ -62,7 +63,7 @@ public static partial class 天帝剩余概念验收
             检查("闪避-冷却期间拒绝重复", 战.尝试闪避() == 战斗操作结果.冷却中);
             float 冷却 = 战.闪避冷却剩余; 战.推进(起, 0);
             检查("闪避-零时间不偷跑冷却", 战.闪避冷却剩余 == 冷却);
-            for (int i = 0; i < 6; i++) 战.推进(起, .25f);
+            推进主动验收秒(战, 起, 战.闪避冷却剩余 + .001f);
             检查("闪避-冷却结束恢复使用", 战.尝试闪避() == 战斗操作结果.成功);
             检查("闪避-空地直线准确三米", Vector2.Distance(地.直线闪避(起, Vector2.right, 3), 起 + Vector2.right * 3) < .001f);
             bool 墙 = false;
@@ -89,9 +90,110 @@ public static partial class 天帝剩余概念验收
         {
             var 战 = new 天帝战斗系统(地,回网,人,战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(Array.Empty<Vector2>());
             bool 方向对=true; 战.射击释放+=向=>方向对 &= Vector2.Dot(向,Vector2.up)>.999f;
-            for(int i=0;i<5;i++){战.尝试释放技能(2,Vector2.up,地.出生位置);for(int n=0;n<6;n++)战.推进(地.出生位置,.25f);}
+            for(int i=0;i<5;i++){战.尝试释放技能(2,Vector2.up,地.出生位置);推进主动验收秒(战,地.出生位置,战.技能冷却剩余+.001f);}
             检查("余响-五次手动施放追加一次且继承方向通路", 战.普通释放次数==5&&战.回响次数==1&&方向对&&战.当前通路==4&&战.通路释放次数[4]==5);
         }
+    }
+    static void 推进主动验收秒(天帝战斗系统 战, Vector2 位置, float 秒)
+    {
+        while (秒 > .00001f) { float 步 = Mathf.Min(.25f, 秒); 战.推进(位置, 步); 秒 -= 步; }
+    }
+    static void 推进主动验收秒(天帝战斗场景 场, float 秒)
+    {
+        while (秒 > .00001f) { float 步 = Mathf.Min(.25f, 秒); 场.战斗一步(步); 秒 -= 步; }
+    }
+    static float 主动验收前摇(天帝战斗系统 战)
+        => Mathf.Min(战.射击前摇, 战.技能冷却总时长 * (float)天帝数值.取("player.attack_windup_fraction")) + .001f;
+    static void 主动冷却模型检查()
+    {
+        var 地 = new 天帝战斗地图(42, true); var 网 = new 天帝道纹(42, 天帝天赋.获取((int)天赋种类.普通人));
+        using (var 人 = new 天帝主角属性(天帝普攻.主角配置(), 网))
+        {
+            var 战 = new 天帝战斗系统(地, 网, 人, 战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(Array.Empty<Vector2>());
+            try
+            {
+                检查("冷却-一级正式基础攻速0.7", Mathf.Abs(人.攻击速度 - .7f) < .00001f);
+                检查("冷却-技能启动记录实际间隔", 战.尝试释放技能(0, Vector2.up, 地.出生位置) == 战斗操作结果.成功
+                    && Mathf.Abs(战.技能冷却总时长 - 战.当前普攻.间隔) < .00001f && 战.技能冷却总时长 == 战.技能冷却剩余);
+                检查("冷却-闪避启动记录实际急速间隔", 战.尝试闪避() == 战斗操作结果.成功
+                    && Mathf.Abs(战.闪避冷却总时长 - (float)天帝数值.取("player.dodge_cooldown") / (1 + 人.技能急速)) < .00001f);
+                推进主动验收秒(战, 地.出生位置, Mathf.Min(战.技能冷却总时长, 战.闪避冷却总时长) * .4f);
+                float 技总 = 战.技能冷却总时长, 技剩 = 战.技能冷却剩余, 闪总 = 战.闪避冷却总时长, 闪剩 = 战.闪避冷却剩余;
+                float 旧速 = 人.攻击速度, 旧急 = 人.技能急速;
+                网.设置玩家等级(50); 人.设置特性增益(0, .2f, .25f, 0);
+                检查("冷却-升级与增益确实改变攻速急速", 人.攻击速度 > 旧速 && 人.技能急速 > 旧急);
+                检查("冷却-升级与急速不改变正在运行的总长剩余", 战.技能冷却总时长 == 技总 && 战.技能冷却剩余 == 技剩
+                    && 战.闪避冷却总时长 == 闪总 && 战.闪避冷却剩余 == 闪剩);
+                推进主动验收秒(战, 地.出生位置, Mathf.Max(技剩, 闪剩) + .001f);
+                检查("冷却-两种计时结束归零", 战.技能冷却剩余 == 0 && 战.闪避冷却剩余 == 0);
+                float 新技总 = 战.读取通路参数(0).间隔, 新闪总 = (float)天帝数值.取("player.dodge_cooldown") / (1 + 人.技能急速);
+                人.设置当前资源(人.血量, 人.灵力, 人.灵气护盾);
+                检查("冷却-下一次技能才使用升级后间隔", 战.尝试释放技能(0, Vector2.up, 地.出生位置) == 战斗操作结果.成功
+                    && Mathf.Abs(战.技能冷却总时长 - 新技总) < .00001f && 战.技能冷却总时长 < 技总);
+                检查("冷却-下一次闪避使用当前急速", 战.尝试闪避() == 战斗操作结果.成功 && Mathf.Abs(战.闪避冷却总时长 - 新闪总) < .00001f);
+            }
+            finally { 战.清理特性战斗(); 战.战术.清理(); }
+        }
+    }
+    static T 主动HUD字段<T>(string 名)
+        => (T)typeof(天帝界面).GetField(名, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(游戏.界面);
+    static void 检查主动冷却HUD(string 阶段, 天帝战斗系统 战, 天帝主角属性 人)
+    {
+        var 按钮 = 主动HUD字段<Button[]>("技能键"); var 遮罩 = 主动HUD字段<Image[]>("技能冷却遮罩");
+        bool 亮度 = true, 点击 = true, 径向 = true, 隐藏 = true;
+        var 名字 = 主动HUD字段<Text[]>("技能标签"); var 状态 = 主动HUD字段<Text[]>("技能状态字"); var 序号 = 主动HUD字段<Text[]>("技能按键字");
+        for (int i = 0; i < 6; i++)
+        {
+            bool 链 = 战.技能有链路(i), 开 = 战.技能已解封(i), 冷 = 链 && 开 && 战.技能冷却剩余 > .00001f;
+            bool 可操作 = 链 && 开 && !战.玩家死亡 && !游戏.界面.战斗已暂停 && 人.当前灵力 >= 天帝战斗系统.技能灵力消耗;
+            亮度 &= Mathf.Abs(按钮[i].GetComponent<CanvasGroup>().alpha - (可操作 ? 1 : .5f)) < .00001f;
+            点击 &= 按钮[i].interactable == (可操作 && !冷);
+            float 比例 = 冷 ? Mathf.Clamp01(战.技能冷却剩余 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
+            径向 &= 遮罩[i].gameObject.activeSelf == 冷 && 遮罩[i].type == Image.Type.Filled && 遮罩[i].fillMethod == Image.FillMethod.Radial360
+                && !遮罩[i].raycastTarget && Mathf.Abs(遮罩[i].fillAmount - 比例) < .0001f;
+            隐藏 &= 按钮[i].gameObject.activeSelf == 链 && 名字[i].gameObject.activeSelf == 链 && 状态[i].gameObject.activeSelf == 链
+                && 序号[i].gameObject.activeSelf == 链 && 按钮[i].GetComponent<CanvasGroup>().blocksRaycasts == 链;
+        }
+        检查(阶段 + "-冷却保持亮度其它禁用半透明", 亮度); 检查(阶段 + "-按钮按实际状态可用", 点击);
+        检查(阶段 + "-径向剩余比例与结束隐藏", 径向); 检查(阶段 + "-未接通槽按钮文字及射线均隐藏", 隐藏);
+        var 闪 = 主动HUD字段<Button>("闪避键"); var 轨 = 主动HUD字段<Image>("闪避冷却轨道"); var 条 = 主动HUD字段<Image>("闪避冷却进度");
+        bool 闪可 = !战.玩家死亡 && !游戏.界面.战斗已暂停, 闪冷 = 战.闪避冷却剩余 > .00001f;
+        检查(阶段 + "-闪避细条按已过比例推进", 轨.gameObject.activeSelf == 闪冷 && !轨.raycastTarget && !条.raycastTarget
+            && Mathf.Abs(条.rectTransform.anchorMax.x - Mathf.Clamp01(1 - 战.闪避冷却剩余 / Mathf.Max(.001f, 战.闪避冷却总时长))) < .0001f);
+        检查(阶段 + "-闪避冷却保持亮度其它禁用半透明", 闪.interactable == (闪可 && !闪冷)
+            && Mathf.Abs(主动HUD字段<CanvasGroup>("闪避透明").alpha - (闪可 ? 1 : .5f)) < .00001f);
+    }
+    static void 检查冷却遮罩对齐(string 平台, bool 手机)
+    {
+        var 按钮 = 主动HUD字段<Button[]>("技能键"); var 遮罩 = 主动HUD字段<Image[]>("技能冷却遮罩");
+        检查(平台 + "-遮罩贴合原素材且不改布局", Enumerable.Range(0, 6).All(i =>
+        {
+            var 底 = 按钮[i].GetComponentsInChildren<Image>(true).First(x => x.name == (手机 ? "圆形技能青玉底" : "接口道纹图标"));
+            var r = 遮罩[i].rectTransform;
+            return 遮罩[i].sprite == 底.sprite && Vector2.Distance(r.anchoredPosition, 底.rectTransform.anchoredPosition) < .0001f
+                && Vector2.Distance(r.rect.size, 底.rectTransform.rect.size) < .0001f
+                && Mathf.Abs(r.rect.width - (手机 ? 39 : 44)) < .0001f;
+        }));
+    }
+    static void 检查主动冷却暂停(string 平台, 天帝战斗场景 场)
+    {
+        var 战 = 场.战斗; var 人 = 游戏.主角属性;
+        if (战.闪避冷却剩余 <= .00001f) { 场.闪避(); 游戏.界面.更新战斗状态(); }
+        var 冷却片 = 主动HUD字段<Image[]>("技能冷却遮罩").FirstOrDefault(x => x.gameObject.activeInHierarchy);
+        float 技 = 战.技能冷却剩余, 闪 = 战.闪避冷却剩余, 灵 = 人.当前灵力;
+        bool 在冷却 = 技 > .00001f && 闪 > .00001f && 冷却片 != null;
+        检查(平台 + "-暂停夹具确有两种正在计时的冷却", 在冷却);
+        if (!在冷却) return;
+        float 遮 = 冷却片.fillAmount, 条 = 主动HUD字段<Image>("闪避冷却进度").rectTransform.anchorMax.x;
+        游戏.界面.切换战斗暂停(); 游戏.界面.更新战斗状态();
+        场.战斗一步(.25f);
+        检查(平台 + "-暂停冻结资源技能闪避和视觉进度", 战.技能冷却剩余 == 技 && 战.闪避冷却剩余 == 闪 && 人.当前灵力 == 灵
+            && Mathf.Abs(冷却片.fillAmount - 遮) < .0001f
+            && 主动HUD字段<Image>("闪避冷却进度").rectTransform.anchorMax.x == 条);
+        检查(平台 + "-暂停拒绝施法闪避", 场.释放技能(0) == 战斗操作结果.无法操作 && 场.闪避() == 战斗操作结果.无法操作);
+        检查主动冷却HUD(平台 + "暂停", 战, 人);
+        游戏.界面.关闭战斗暂停(); 游戏.界面.更新战斗状态();
+        检查主动冷却HUD(平台 + "恢复", 战, 人);
     }
     // 只建立当前特性的必要条件，避免旧全属性长直线夹具超出正式31格画布。
     static 天帝道纹 主动特性构筑(int id)
@@ -188,32 +290,53 @@ public static partial class 天帝剩余概念验收
         for (int i = 0; i < 900 && 游戏.阶段 == 游戏阶段.战斗加载; i++) yield return null;
         var 场 = 游戏.战斗场景; 检查("主动-正式主页进入真实战场", 游戏.阶段 == 游戏阶段.战斗 && 场?.战斗 != null);
         if (场 == null) throw new Exception("实际战斗入口未加载");
-        游戏.界面.跳过新手指引(); 场.enabled = false;
+        游戏.界面.跳过新手指引(); 场.enabled = false; 场.战斗.自动攻击启用 = false;
+        var 人 = 游戏.主角属性; var 战 = 场.战斗;
+        推进主动验收秒(场, Mathf.Max(战.技能冷却剩余, 战.闪避冷却剩余) + .001f);
+        人.设置当前资源(人.血量, 人.灵力, 人.灵气护盾); 游戏.界面.更新战斗状态();
         游戏.界面.更新适配(); Canvas.ForceUpdateCanvases(); yield return null; yield return new WaitForEndOfFrame();
         int 预期技能槽 = Enumerable.Range(0, 6).Count(i => 场.战斗.技能有链路(i));
         检查("HUD-技能槽按实际链路显示", 游戏.GetComponentsInChildren<Button>().Count(x => x.name.StartsWith("技能") && x.name.Length == 3) == 预期技能槽);
         检查("HUD-无链路技能卡隐藏且不拦截射线", 游戏.GetComponentsInChildren<Button>(true).Where(x => x.name.StartsWith("技能") && x.name.Length == 3 && !场.战斗.技能有链路(int.Parse(x.name.Substring(2)) - 1)).All(x => !x.gameObject.activeSelf && !x.GetComponent<CanvasGroup>().blocksRaycasts));
         检查("HUD-资源球为独立素材动态液位", 游戏.GetComponentsInChildren<Image>().Count(x => x.name == "真实液位" && x.sprite != null && x.type == Image.Type.Filled) == 2);
-        检查("HUD-不可用技能只整卡半透明", 游戏.GetComponentsInChildren<Button>().Where(x => x.name.StartsWith("技能") && x.name.Length == 3 && !x.interactable).All(x => x.GetComponent<CanvasGroup>().alpha == .5f));
-        yield return 拍("战斗01_PC真实存档HUD");
-        var 人 = 游戏.主角属性; var 战 = 场.战斗; 战.自动攻击启用 = false;
+        检查主动冷却HUD("PC就绪", 战, 人); 检查冷却遮罩对齐("PC", false);
         Vector2 发射向 = Vector2.zero; 战.射击释放 += 向 => 发射向 = 向;
-        float 血 = 人.当前血量;
         场.设置触控瞄准(Vector2.up);
         var 首个技能 = 游戏.GetComponentsInChildren<Button>().First(x => x.name.StartsWith("技能") && x.name.Length == 3 && x.interactable);
         int 首槽 = int.Parse(首个技能.name.Substring(2)) - 1;
-        float 灵 = 人.当前灵力; 点(首个技能);
+        float 灵 = 人.当前灵力; int 首次释放前 = 战.普通释放次数; 点(首个技能);
         检查("PC-实际按钮点击触发施法与扣灵力", 人.当前灵力 == 灵 - 天帝战斗系统.技能灵力消耗);
-        场.战斗一步(.225f);
-        检查("PC-按钮前摇后真发射", 战.普通释放次数 == 1);
-        场.战斗一步(.25f); 场.战斗一步(.25f); 场.战斗一步(.25f); 场.战斗一步(.25f);
+        检查("PC-冷却启动遮罩为整圈", 战.技能冷却剩余 > 0 && 主动HUD字段<Image[]>("技能冷却遮罩")[首槽].fillAmount == 1);
+        检查("PC-闪避启动细条为空", 场.闪避() == 战斗操作结果.成功); 游戏.界面.更新战斗状态();
+        检查主动冷却HUD("PC冷却开始", 战, 人);
+        推进主动验收秒(场, 主动验收前摇(战));
+        检查("PC-按钮前摇后真发射", 战.普通释放次数 == 首次释放前 + 1);
+        推进主动验收秒(场, 战.技能冷却剩余 - 战.技能冷却总时长 * .5f);
+        检查("PC-技能中段径向遮罩为半圈", Mathf.Abs(主动HUD字段<Image[]>("技能冷却遮罩")[首槽].fillAmount - .5f) < .001f);
+        检查主动冷却HUD("PC冷却中段", 战, 人);
+        float 旧技总 = 战.技能冷却总时长, 旧闪总 = 战.闪避冷却总时长;
+        float 旧遮 = 主动HUD字段<Image[]>("技能冷却遮罩")[首槽].fillAmount, 旧条 = 主动HUD字段<Image>("闪避冷却进度").rectTransform.anchorMax.x;
+        var 增益字段 = new[] { "特性移速", "特性急速", "特性攻速", "特性闪避" }.Select(名 => typeof(天帝主角属性).GetField(名, BindingFlags.Instance | BindingFlags.NonPublic)).ToArray();
+        var 原增益 = 增益字段.Select(x => (float)x.GetValue(人)).ToArray();
+        try
+        {
+            人.设置特性增益(原增益[0], 原增益[1] + .25f, 原增益[2] + .25f, 原增益[3]); 游戏.界面.更新战斗状态();
+            检查("PC-急速攻速改变不跳当前冷却总长与视觉比例", 战.技能冷却总时长 == 旧技总 && 战.闪避冷却总时长 == 旧闪总
+                && 主动HUD字段<Image[]>("技能冷却遮罩")[首槽].fillAmount == 旧遮 && 主动HUD字段<Image>("闪避冷却进度").rectTransform.anchorMax.x == 旧条);
+        }
+        finally { 人.设置特性增益(原增益[0], 原增益[1], 原增益[2], 原增益[3]); 游戏.界面.更新战斗状态(); }
+        yield return 拍("战斗01_PC冷却中段");
+        检查主动冷却暂停("PC", 场); yield return null;
+        推进主动验收秒(场, Mathf.Max(战.技能冷却剩余, 战.闪避冷却剩余) + .001f);
+        检查("PC-技能闪避冷却完成", 战.技能冷却剩余 == 0 && 战.闪避冷却剩余 == 0);
+        检查主动冷却HUD("PC冷却结束", 战, 人);
         var 鼠 = InputSystem.AddDevice<Mouse>(); var 键 = InputSystem.AddDevice<Keyboard>();
         try
         {
             Vector2 屏幕 = 场.俯视相机.WorldToScreenPoint(new Vector3(场.玩家位置.x + 6, 0, 场.玩家位置.y));
             InputSystem.QueueStateEvent(鼠, new MouseState { position = 屏幕 }); InputSystem.QueueStateEvent(键, new KeyboardState((Key)((int)Key.Digit1 + 首槽))); InputSystem.Update();
-            私调(场, "读取主动操作"); 场.战斗一步(.225f);
-            检查("PC-真实InputSystem数字键朝鼠标发射", 战.普通释放次数 == 2 && Vector2.Dot(发射向, Vector2.right) > .999f);
+            int 数字释放前 = 战.普通释放次数; 私调(场, "读取主动操作"); 推进主动验收秒(场, 主动验收前摇(战));
+            检查("PC-真实InputSystem数字键朝鼠标发射", 战.普通释放次数 == 数字释放前 + 1 && Vector2.Dot(发射向, Vector2.right) > .999f);
             System.IO.File.WriteAllText(System.IO.Path.Combine(目录,"inputdiagnostic.txt"), "数字键后释放次数="+战.普通释放次数+" 事件方向="+发射向+" 鼠标="+鼠.position.ReadValue()+" 瞄准="+场.瞄准方向);
             InputSystem.QueueStateEvent(键, new KeyboardState()); InputSystem.Update();
             InputSystem.QueueStateEvent(键, new KeyboardState(Key.Space)); InputSystem.Update(); var 前 = 场.玩家位置; 私调(场, "读取主动操作"); 场.战斗一步(.1f);
@@ -221,16 +344,12 @@ public static partial class 天帝剩余概念验收
             InputSystem.QueueStateEvent(键, new KeyboardState()); InputSystem.Update();
         }
         finally { InputSystem.RemoveDevice(键); InputSystem.RemoveDevice(鼠); }
-        for (int i = 0; i < 6; i++) 场.战斗一步(.25f);
+        推进主动验收秒(场, Mathf.Max(战.技能冷却剩余, 战.闪避冷却剩余) + .001f);
         人.设置当前资源(人.当前血量, 0, 人.当前灵气护盾); 游戏.界面.更新战斗状态();
         int 声前 = UnityEngine.Object.FindAnyObjectByType<天帝声音>().音效播放次数;
         检查("反馈-不足灵力真实操作拒绝", 场.释放技能(首槽) == 战斗操作结果.灵力不足 && 人.当前灵力 == 0);
         检查("反馈-文字声音视觉均来自失败事件", 游戏.GetComponentsInChildren<Text>().Any(x => x.name == "技能失败提示" && x.text == "灵力不足，无法释放") && UnityEngine.Object.FindAnyObjectByType<天帝声音>().音效播放次数 > 声前);
-        yield return 拍("战斗02_PC灵力不足反馈");
-        游戏.界面.切换战斗暂停(); yield return null;
-        float 暂灵 = 人.当前灵力, 暂冷 = 战.技能冷却剩余; 场.战斗一步(.25f);
-        检查("暂停-拒绝操作冻结回复冷却", 场.释放技能(首槽) == 战斗操作结果.无法操作 && 场.闪避() == 战斗操作结果.无法操作 && 人.当前灵力 == 暂灵 && 战.技能冷却剩余 == 暂冷);
-        yield return 拍("战斗03_PC暂停说明"); 游戏.界面.关闭战斗暂停();
+        检查主动冷却HUD("PC灵力不足", 战, 人);
         人.设置当前资源(人.当前血量, 人.灵力, 人.当前灵气护盾);
         bool? 移原 = 天帝移动适配.验证移动平台;
         try
@@ -239,6 +358,7 @@ public static partial class 天帝剩余概念验收
             检查("移动-HUD左摇杆与右侧技能手势", 游戏.界面.战斗摇杆 != null && 游戏.GetComponentsInChildren<天帝战斗触控技能>().Length == 预期技能槽);
             var 圆技能 = 游戏.GetComponentsInChildren<Transform>().Where(x => x.name == "圆形技能青玉底").ToArray();
             检查("移动-技能圆形按钮两行布局", 圆技能.Length == 预期技能槽 && 圆技能.All(x => ((RectTransform)x.parent).rect.width >= 55 && ((RectTransform)x.parent).rect.height >= 55));
+            检查冷却遮罩对齐("移动", true); 检查主动冷却HUD("移动就绪", 战, 人);
             var 手势 = 游戏.GetComponentsInChildren<天帝战斗触控技能>().FirstOrDefault();
             if (手势 == null) throw new Exception("当前构筑没有可验证的技能链路按钮");
             var r = (RectTransform)手势.transform; Vector2 中 = RectTransformUtility.WorldToScreenPoint(null, r.TransformPoint(r.rect.center));
@@ -249,11 +369,22 @@ public static partial class 天帝剩余概念验收
             e.position = 中 + Vector2.up * 110; ExecuteEvents.Execute(手势.gameObject, e, ExecuteEvents.dragHandler);
             int 发前 = 战.普通释放次数;
             检查("移动-拖动时瞄准但不提前发射", Vector2.Dot(场.瞄准方向,Vector2.up) > .999f && 战.普通释放次数 == 发前);
-            ExecuteEvents.Execute(手势.gameObject, e, ExecuteEvents.pointerUpHandler); 场.战斗一步(.225f);
+            ExecuteEvents.Execute(手势.gameObject, e, ExecuteEvents.pointerUpHandler);
+            int 移槽 = int.Parse(手势.name.Substring(2)) - 1;
+            检查("移动-冷却启动遮罩为整圈", 战.技能冷却剩余 > 0 && 主动HUD字段<Image[]>("技能冷却遮罩")[移槽].fillAmount == 1);
+            检查("移动-闪避真实触控按钮启动", 主动HUD字段<Button>("闪避键").interactable); 点(主动HUD字段<Button>("闪避键")); 游戏.界面.更新战斗状态();
+            检查主动冷却HUD("移动冷却开始", 战, 人);
+            推进主动验收秒(场, 主动验收前摇(战));
             检查("移动-松手真实施法", 战.普通释放次数 == 发前 + 1);
-            yield return 拍("战斗04_移动端摇杆技能HUD");
+            推进主动验收秒(场, 战.技能冷却剩余 - 战.技能冷却总时长 * .5f);
+            检查("移动-技能中段径向遮罩为半圈", Mathf.Abs(主动HUD字段<Image[]>("技能冷却遮罩")[移槽].fillAmount - .5f) < .001f);
+            检查主动冷却HUD("移动冷却中段", 战, 人); yield return 拍("战斗02_移动端冷却中段");
+            检查主动冷却暂停("移动", 场); yield return null;
+            推进主动验收秒(场, Mathf.Max(战.技能冷却剩余, 战.闪避冷却剩余) + .001f);
+            检查("移动-技能闪避冷却完成", 战.技能冷却剩余 == 0 && 战.闪避冷却剩余 == 0);
+            检查主动冷却HUD("移动冷却结束", 战, 人);
             ExecuteEvents.Execute(手势.gameObject, e, ExecuteEvents.pointerDownHandler); 游戏.界面.切换战斗暂停(); 游戏.界面.关闭战斗暂停();
-            for(int i=0;i<6;i++)场.战斗一步(.25f);
+            推进主动验收秒(场, 战.技能冷却剩余 + .001f);
             int 取消前 = 战.普通释放次数; ExecuteEvents.Execute(手势.gameObject,e,ExecuteEvents.pointerUpHandler); 场.战斗一步(.225f);
             检查("移动-暂停取消手势松手不补发", 战.普通释放次数 == 取消前);
             var 摇 = 游戏.界面.战斗摇杆; var jr=(RectTransform)摇.transform; e.pointerId=11;e.position=RectTransformUtility.WorldToScreenPoint(null,jr.TransformPoint(jr.rect.center))+Vector2.right*100;
@@ -268,7 +399,6 @@ public static partial class 天帝剩余概念验收
         游戏.返回主页();
         for(int i=0;i<900&&游戏.阶段==游戏阶段.战斗加载;i++)yield return null;
         检查("战斗-离场清理HUD与触控", 游戏.阶段==游戏阶段.主页 && 游戏.GetComponentsInChildren<天帝战斗触控技能>().Length==0 && !游戏.GetComponentsInChildren<Transform>().Any(x=>x.name=="主动战斗HUD"));
-        yield return 拍("战斗05_返回主页原美术保留");
     }
 }
 #endif

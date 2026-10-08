@@ -8,7 +8,8 @@ public partial class 天帝界面
     readonly Button[] 技能键 = new Button[6];
     readonly Text[] 技能标签 = new Text[6], 技能状态字 = new Text[6], 技能按键字 = new Text[6];
     readonly CanvasGroup[] 技能透明 = new CanvasGroup[6];
-    Image 生命液, 灵力液, 护盾环;
+    readonly Image[] 技能冷却遮罩 = new Image[6];
+    Image 生命液, 灵力液, 护盾环, 闪避冷却轨道, 闪避冷却进度;
     Text 生命球字, 灵力球字, 护盾球字, 闪避状态字, 操作反馈字, 操作提示字;
     CanvasGroup 闪避透明;
     Button 闪避键;
@@ -57,7 +58,10 @@ public partial class 天帝界面
                 HUD图(r, "圆形技能金边", 圆底, 5, 5, 42, 42, new Color(.82f, .73f, .46f));
                 HUD图(r, "圆形技能青玉底", 圆底, 6.5f, 6.5f, 39, 39, new Color(.10f, .30f, .27f));
             }
-            HUD图(r, "接口道纹图标", Resources.Load<Sprite>("山水首两页/导航_道纹"), 手机 ? 18 : 22, 手机 ? 10 : 10, 手机 ? 18 : 44, 手机 ? 18 : 44, Color.white);
+            var 技能图标 = HUD图(r, "接口道纹图标", Resources.Load<Sprite>("山水首两页/导航_道纹"), 手机 ? 18 : 22, 10, 手机 ? 18 : 44, 手机 ? 18 : 44, Color.white);
+            var 冷却片 = HUD图(r, "技能冷却径向进度", 手机 ? 圆底 : 技能图标.sprite, 手机 ? 6.5f : 22, 手机 ? 6.5f : 10, 手机 ? 39 : 44, 手机 ? 39 : 44, new Color(.02f, .07f, .07f, .78f));
+            冷却片.type = Image.Type.Filled; 冷却片.fillMethod = Image.FillMethod.Radial360; 冷却片.fillOrigin = 2; 冷却片.fillClockwise = true;
+            技能冷却遮罩[i] = 冷却片;
             技能标签[i] = HUD字(r, "接口技能名称", "灵力弹", 手机 ? 4 : 4, 手机 ? 28 : 59, 手机 ? 48 : 80, 手机 ? 16 : 32, 手机 ? 10 : 16, 手机 ? new Color(1, .97f, .84f) : 天帝剪纸界面皮肤.墨);
             技能状态字[i] = HUD字(r, "接口技能状态", "", 手机 ? 4 : 4, 手机 ? 42 : 92, 手机 ? 48 : 80, 手机 ? 12 : 28, 手机 ? 9 : 13, 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文);
             var 按键字 = HUD字(r, "接口按键", (i + 1).ToString(), 手机 ? 6 : 3, 手机 ? 4 : 0, 手机 ? 12 : 22, 手机 ? 15 : 30, 手机 ? 10 : 16, 手机 ? new Color(1, .97f, .84f) : 天帝剪纸界面皮肤.墨);
@@ -84,6 +88,13 @@ public partial class 天帝界面
         闪避键 = 按钮(闪避区, "闪避", 0, 0, 102, 58, () => 游戏.战斗场景.闪避(), true);
         闪避键.transition = Selectable.Transition.None; 闪避透明 = 闪避区.gameObject.AddComponent<CanvasGroup>();
         闪避状态字 = 闪避键.GetComponentInChildren<Text>(); 闪避状态字.fontSize = 手机 ? 13 : 18;
+        闪避冷却轨道 = HUD图((RectTransform)闪避键.transform, "闪避冷却轨道", null, 10, 49, 82, 3, new Color(.04f, .14f, .13f, .75f));
+        天帝响应布局.比例(闪避冷却轨道.rectTransform, .10f, .84f, .80f, .06f);
+        闪避冷却进度 = HUD图(闪避冷却轨道.rectTransform, "闪避冷却进度", null, 0, 0, 82, 3, new Color(.62f, .88f, .73f));
+        闪避冷却进度.rectTransform.anchorMin = Vector2.zero; 闪避冷却进度.rectTransform.anchorMax = Vector2.one;
+        闪避冷却进度.rectTransform.offsetMin = 闪避冷却进度.rectTransform.offsetMax = Vector2.zero;
+        闪避冷却轨道.gameObject.SetActive(false);
+        闪避状态字.transform.SetAsLastSibling();
         操作反馈区 = HUD区(主动HUD, "主动操作反馈", 0, 0, 380, 46);
         var 提示底 = 操作反馈区.gameObject.AddComponent<Image>(); 提示底.sprite = Resources.Load<Sprite>("山水首两页/墨绿按钮"); 提示底.type = Image.Type.Sliced; 提示底.raycastTarget = false;
         操作反馈字 = HUD字(操作反馈区, "技能失败提示", "", 16, 4, 348, 38, 手机 ? 13 : 22, new Color(1, .96f, .82f));
@@ -125,22 +136,33 @@ public partial class 天帝界面
         灵力液.color = 灵力闪色秒 > 0 ? Color.Lerp(灵力液色, new Color(1, .45f, .25f), .6f) : 灵力液色;
         for (int i = 0; i < 6; i++)
         {
-            bool 有链路 = 战.技能有链路(i), 开 = 战.技能已解封(i), 可 = 有链路 && !战.玩家死亡 && !战斗已暂停 && 战.技能冷却剩余 <= .00001f && 人.当前灵力 >= 天帝战斗系统.技能灵力消耗;
+            bool 有链路 = 战.技能有链路(i), 开 = 战.技能已解封(i);
+            float 冷却 = 战.技能冷却剩余;
+            bool 可操作非冷却 = 有链路 && 开 && !战.玩家死亡 && !战斗已暂停 && 人.当前灵力 >= 天帝战斗系统.技能灵力消耗;
+            bool 可 = 可操作非冷却 && 冷却 <= .00001f;
             // 仅把实际接入初始道纹的技能链路放入战斗栏；隐藏槽位同时关闭按钮和所有被提到技能区顶层的文字。
             技能键[i].gameObject.SetActive(有链路);
             技能标签[i].gameObject.SetActive(有链路);
             技能状态字[i].gameObject.SetActive(有链路);
             技能按键字[i].gameObject.SetActive(有链路);
             技能透明[i].blocksRaycasts = 有链路;
-            技能键[i].interactable = 可; 技能透明[i].alpha = 可 ? 1 : .5f;
+            技能键[i].interactable = 可; 技能透明[i].alpha = 可操作非冷却 ? 1 : .5f;
             技能标签[i].text = 战.技能名称(i);
             bool 手机 = 天帝移动适配.启用;
-            技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 战.技能冷却剩余 > .00001f ? 战.技能冷却剩余.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
+            bool 正在冷却 = 有链路 && 开 && 冷却 > .00001f;
+            技能冷却遮罩[i].gameObject.SetActive(正在冷却);
+            技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
+            技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
             技能状态字[i].color = 当前闪色槽 == i && 灵力闪色秒 > 0 ? new Color(.85f, .20f, .12f) : 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文;
         }
-        bool 闪可 = !战.玩家死亡 && !战斗已暂停 && 战.闪避冷却剩余 <= .00001f;
-        闪避键.interactable = 闪可; 闪避透明.alpha = 闪可 ? 1 : .5f;
-        闪避状态字.text = 战.闪避冷却剩余 > .00001f ? "闪避 " + 战.闪避冷却剩余.ToString("0.0") : 天帝移动适配.启用 ? "闪避" : "闪避 Space";
+        float 闪冷却 = 战.闪避冷却剩余;
+        bool 闪可操作非冷却 = !战.玩家死亡 && !战斗已暂停;
+        bool 闪可 = 闪可操作非冷却 && 闪冷却 <= .00001f;
+        闪避键.interactable = 闪可; 闪避透明.alpha = 闪可操作非冷却 ? 1 : .5f;
+        闪避冷却轨道.gameObject.SetActive(闪冷却 > .00001f);
+        float 闪进度 = Mathf.Clamp01(1 - 闪冷却 / Mathf.Max(.001f, 战.闪避冷却总时长));
+        闪避冷却进度.rectTransform.anchorMax = new Vector2(闪进度, 1);
+        闪避状态字.text = 闪冷却 > .00001f ? "闪避 " + 闪冷却.ToString("0.0") : 天帝移动适配.启用 ? "闪避" : "闪避 Space";
     }
     public void 显示战斗操作反馈(战斗操作结果 结果, int 槽, bool 闪)
     {
@@ -166,7 +188,8 @@ public partial class 天帝界面
     void 清理主动战斗HUD()
     {
         主动HUD = null; 操作反馈字 = 操作提示字 = null; 操作反馈秒 = 灵力闪色秒 = 0;
-        for (int i = 0; i < 6; i++) { 技能键[i] = null; 技能透明[i] = null; 技能标签[i] = 技能状态字[i] = 技能按键字[i] = null; }
+        闪避冷却轨道 = 闪避冷却进度 = null;
+        for (int i = 0; i < 6; i++) { 技能键[i] = null; 技能透明[i] = null; 技能冷却遮罩[i] = null; 技能标签[i] = 技能状态字[i] = 技能按键字[i] = null; }
     }
     void 更新主动战斗布局()
     {

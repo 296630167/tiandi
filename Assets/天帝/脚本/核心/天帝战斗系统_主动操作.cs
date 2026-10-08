@@ -12,6 +12,8 @@ public sealed partial class 天帝战斗系统
     bool 自动缺灵力已提示;
     double 战斗时钟, 无敌结束, 闪避冷却结束;
     public float 技能冷却剩余 => 发射冷却;
+    public float 技能冷却总时长 { get; private set; }
+    public float 闪避冷却总时长 { get; private set; }
     // 正式战斗默认自动攻击；编辑器手动操作验收可关闭自动驱动而复用同一套施法逻辑。
     public bool 自动攻击启用 { get; set; } = true;
     public float 闪避冷却剩余 => (float)System.Math.Max(0, 闪避冷却结束 - 战斗时钟);
@@ -46,7 +48,7 @@ public sealed partial class 天帝战斗系统
         if (!主角.尝试消耗灵力(技能灵力消耗)) return 战斗操作结果.灵力不足;
         玩家 = 位置; 当前通路 = 参数.通路; 前摇通路 = 参数.通路;
         前摇参数 = 参数; 前摇方向 = 方向.normalized; 前摇自动释放 = false;
-        发射冷却 = 参数.间隔;
+        发射冷却 = 技能冷却总时长 = 参数.间隔;
         前摇剩余 = Mathf.Min(射击前摇, 参数.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
         准备射击?.Invoke(前摇方向);
         if (前摇剩余 <= 0) { 前摇剩余 = -1; 完成主动释放(); }
@@ -72,7 +74,9 @@ public sealed partial class 天帝战斗系统
         if (玩家死亡) return 战斗操作结果.无法操作;
         if (闪避冷却剩余 > .00001f) return 战斗操作结果.冷却中;
         无敌结束 = 战斗时钟 + 天帝数值.取("player.dodge_invulnerability");
-        闪避冷却结束 = 战斗时钟 + 天帝数值.取("player.dodge_cooldown") / (1 + 主角.技能急速);
+        double 时长 = 天帝数值.取("player.dodge_cooldown") / (1 + 主角.技能急速);
+        闪避冷却总时长 = (float)时长;
+        闪避冷却结束 = 战斗时钟 + 时长;
         return 战斗操作结果.成功;
     }
     void 推进主动计时(float 秒)
@@ -127,7 +131,7 @@ public sealed partial class 天帝战斗系统
         var 参数 = 读取通路参数(技能通路(槽));
         当前通路 = 参数.通路; 前摇通路 = 参数.通路; 前摇参数 = 参数;
         前摇方向 = (敌人数据[目标].位置 - 玩家).normalized; 前摇自动释放 = true;
-        发射冷却 = 参数.间隔;
+        发射冷却 = 技能冷却总时长 = 参数.间隔;
         前摇剩余 = Mathf.Min(射击前摇, 参数.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
         准备射击?.Invoke(前摇方向);
         if (前摇剩余 <= 0) { 前摇剩余 = -1; 完成主动释放(); }

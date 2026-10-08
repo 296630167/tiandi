@@ -53,6 +53,9 @@ public static partial class 天帝剩余概念验收
     public static void 运行()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("需编辑模式");
+        for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+            if (UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty)
+                throw new InvalidOperationException("当前场景有未保存修改，未启动验收。");
         目录 = Environment.GetEnvironmentVariable("TIANDI_CAPTURE_DIR");
         if (string.IsNullOrEmpty(目录)) throw new InvalidOperationException("需独立验证输出目录");
         Directory.CreateDirectory(目录);

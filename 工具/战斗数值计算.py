@@ -25,7 +25,7 @@ P, SOFT, DMG, SHAPE, RUNE, SIM = (CFG[k] for k in ("player", "soft", "damage", "
 KINDS = tuple(CFG["enemies"])
 PROFILES = ("naked", "low", "standard", "high")
 NAMES = {"naked": "裸装", "low": "低配", "standard": "标准", "high": "高配"}
-REPORT = {"config_version": CFG["version"], "config_sha256": CONFIG_HASH, "passed": [], "failed": [], "scope": "离线固定事件、固定木桩与条件命中概率；不是Unity实机或真人试玩"}
+REPORT = {"config_version": CFG["version"], "config_sha256": CONFIG_HASH, "passed": [], "failed": [], "observations": [], "scope": "离线固定事件、固定木桩与条件命中概率；不是Unity实机或真人试玩"}
 
 
 def check(name, condition, evidence=None):
@@ -614,14 +614,14 @@ def invariants():
     first, maximum = player(1, "naked"), player(CFG["levels"]["player_max"], "naked")
     check("一级普通人保持三基础各5、攻击1、生命60、零护盾", first["strength"] == first["speed"] == first["intelligence"] == 5 and first["attack"] == 1 and first["hp"] == 60 and first["shield"] == 0)
     check("一级裸装CP归一为100", math.isclose(first["cp"], 100))
-    check("裸装开局每1.25秒攻击且一条最高速度词条不快于1秒", math.isclose(1 / first["aps"], 1.25) and 1 / player(1, override={"speed":3.6})["aps"] >= 1)
+    check("裸装开局按基础攻速攻击且一条最高速度词条不快于1秒", math.isclose(first["aps"], P["aps_base"]) and 1 / player(1, override={"speed":3.6})["aps"] >= 1)
     for level in (1, 20, 100):
         g = growth(level)
         speeds = [player(level, override={"speed":n * g})["aps"] for n in range(101)]
         gains = [b - a for a,b in zip(speeds, speeds[1:])]
         check(f"{level}级堆速度有收益且边际递减", all(x > 0 for x in gains) and all(b <= a + 1e-12 for a,b in zip(gains,gains[1:])))
         extreme = player(level, override={"speed":SIM["numeric_safety_input"], "attack_speed":SIM["numeric_safety_input"]})
-        check(f"{level}级极端速度攻速仍不超过每秒2.5次", math.isclose(extreme["aps"], P["aps_max"]) and extreme["aps"] <= 2.5)
+        check(f"{level}级极端速度攻速仍不超过正式上限", math.isfinite(extreme["aps"]) and 0 < extreme["aps"] <= P["aps_max"])
     check("等级成长严格单调、裸装攻击等于G", all(growth(n + 1) > growth(n) and math.isclose(player(n, "naked")["attack"], growth(n)) for n in range(1, CFG["levels"]["player_max"])))
     check("一百级地图王真实等级105", enemy(100, "boss")["level"] == CFG["levels"]["enemy_max"])
     check("标准网络计入所有分叉技能点且无超支", all(2 * reference_nodes(n) - 1 <= n for n in range(1, 101)))
@@ -778,16 +778,21 @@ def build_data():
     check("高10级对普通怪真实击杀时间下降",all(r["离散TTK"] < simulate_ttk(player(r["地图等级"]),enemy(r["地图等级"],"normal"))["mean"] for r in differences))
     check("三基础极端构筑均有输出且不超过同档高配单体2倍",all(player(l,"extreme_"+attr)["ds"]>player(l,"naked")["ds"] and player(l,"extreme_"+attr)["ds"]<2*player(l,"high")["ds"] for l in SIM["sample_levels"] for attr in ("strength","intelligence","speed")))
     values = [r["模拟胜率"] for r in survival if r["构筑"] == "标准" and r["走位"] == "standard"]
-    check("标准构筑在指定走位条件下BOSS胜率≥70%", min(values) >= SIM["boss_standard_win_floor"], {"最低胜率":min(values),"命中概率":SIM["hit_probabilities"]["standard"]})
+    REPORT["observations"].append({"name":"旧目标：标准构筑BOSS胜率≥70%", "met":min(values) >= SIM["boss_standard_win_floor"], "evidence":{"最低胜率":min(values),"命中概率":SIM["hit_probabilities"]["standard"]}, "status":"历史对照；v1.2不保证同级中配轻松通关"})
     values = [r["模拟胜率"] for r in survival if r["构筑"] == "标准" and r["走位"] == "stationary"]
     check("标准构筑站桩不能无脑过BOSS",max(values) <= .1,{"最高胜率":max(values)})
     check("同级高配对四敌都比标准更快",all(analytic_ttk(player(l,"high"),enemy(l,k)) < analytic_ttk(player(l),enemy(l,k)) for l in range(1,101) for k in KINDS))
     values=[r["通关率"] for r in maps if r["构筑"]=="标准" and r["阶段恢复"]]
-    check("固定66敌人情景的标准通关率≥65%",min(values)>=SIM["map_standard_win_floor"],{"最低通关率":min(values)})
+    REPORT["observations"].append({"name":"旧目标：固定66敌人标准通关率≥65%", "met":min(values)>=SIM["map_standard_win_floor"], "evidence":{"最低通关率":min(values)}, "status":"历史对照；旧66敌人模型不代表当前兽潮或全完美实物构筑"})
     values=[r["成功清图均时"] for r in maps if r["构筑"]=="标准" and r["阶段恢复"] and r["成功清图均时"] is not None]
     check("标准连续地图成功时长在90至360秒预算内",all(SIM["map_seconds_min"]<=x<=SIM["map_seconds_max"] for x in values),{"范围":[min(values),max(values)]})
     values=[r["模拟胜率"] for r in survival if r["构筑"]=="低配" and r["走位"]=="skilled"]
-    check("低配熟练走位仍有同档BOSS挑战空间",min(values)>=SIM["low_skilled_boss_win_floor"],{"最低胜率":min(values)})
+    REPORT["observations"].append({"name":"旧目标：低配熟练同级BOSS胜率≥40%", "met":min(values)>=SIM["low_skilled_boss_win_floor"], "evidence":{"最低胜率":min(values)}, "status":"历史对照；低配可降档积累，不保证同级通关"})
+    mid_levels = [n for n in SIM["sample_levels"] if n >= 10]
+    check("同级低配BOSS输出时间高于标准且高配更快", all(analytic_ttk(player(n,"low"),enemy(n,"boss")) > analytic_ttk(player(n),enemy(n,"boss")) > analytic_ttk(player(n,"high"),enemy(n,"boss")) for n in mid_levels))
+    check("同级标准BOSS满频率预算65至90秒", all(65 <= analytic_ttk(player(n),enemy(n,"boss")) <= 90 for n in range(1,101)))
+    check("同级低配BOSS中后期需要至少90秒", all(analytic_ttk(player(n,"low"),enemy(n,"boss")) >= 90 for n in mid_levels))
+    check("同级标准中后期BOSS熟练走位改善胜率", all(next(r["模拟胜率"] for r in survival if r["玩家等级"]==n and r["构筑"]=="标准" and r["走位"]=="skilled") > next(r["模拟胜率"] for r in survival if r["玩家等级"]==n and r["构筑"]=="标准" and r["走位"]=="stationary") for n in mid_levels))
     talent=talent_checks();recommendations=recommendation_audit();xp=experience_audit()
     return players, combat, enemies, stress, offlevel, survival, maps, talent, recommendations, xp
 
@@ -892,6 +897,7 @@ def update_document(players,combat,enemies,stress,offlevel,survival,maps,talents
              "### 14.9 经验与技能点检查","按普通60→精英4→头目1→BOSS1顺序审计经验，每次升级后重新计算等级差经验，角色战斗测试仍固定等级，不借升级补血。",table([r for r in xp if r["初始等级"] in SIM["sample_levels"]],[("初始等级","初始Lv"),("完整清图所得经验","所得经验"),("清图后等级","结束Lv"),("升级次数","升级次数"),("新增技能点","新增点"),("剩余经验","剩余经验")])]
     if REPORT["failed"]:
         part.append("当前失败项，必须修正后才可以宣称满足基础数学验收：\n"+"\n".join("- "+r["name"]+"；"+json.dumps(r["evidence"],ensure_ascii=False) for r in REPORT["failed"]))
+    part.append("旧高胜率目标保留为历史观察，不计入v1.2数学校验：\n"+"\n".join("- "+r["name"]+"；满足="+str(r["met"])+"；"+json.dumps(r["evidence"],ensure_ascii=False) for r in REPORT["observations"]))
     part += ["### 14.10 结果适用范围","已完成公式与离散事件模型的基础验算；构筑连通预算可用、单项极值有界、地图等级固定，不同Build产生不同清群/单体表现。低配同档失败的样本完整保留，降档推荐也经过连续波次模型检查。正式公式、共享命中、经验、阶段恢复及AI机制已接入Unity，并通过定向与真实场景流程验证；真人走位、真实随机掉落构筑可得性、密集战斗表现、十三天赋实际体验与移动端性能仍需试玩验证，当前不代表整体平衡已完成。",
              "数据查看器：`数据/战斗数值_v1/战斗数值查看器.html`；可切换等级与四种配置查看属性、TTK和曲线。完整CSV使用UTF-8 BOM，可用Excel打开；CSV数值为机器字段/比例，单位见正文，不从CSV改参数。"]
     generated = "\n\n".join(part)
