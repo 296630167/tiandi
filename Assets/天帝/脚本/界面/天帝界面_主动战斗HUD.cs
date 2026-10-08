@@ -87,14 +87,15 @@ public partial class 天帝界面
         闪避区 = HUD区(主动HUD, "闪避技能", 0, 0, 102, 58);
         闪避键 = 按钮(闪避区, "闪避", 0, 0, 102, 58, () => 游戏.战斗场景.闪避(), true);
         闪避键.transition = Selectable.Transition.None; 闪避透明 = 闪避区.gameObject.AddComponent<CanvasGroup>();
-        闪避状态字 = 闪避键.GetComponentInChildren<Text>(); 闪避状态字.fontSize = 手机 ? 13 : 18;
+        闪避状态字 = 闪避键.GetComponentInChildren<Text>();
+        if (闪避状态字 != null) 闪避状态字.fontSize = 手机 ? 13 : 18;
         闪避冷却轨道 = HUD图((RectTransform)闪避键.transform, "闪避冷却轨道", null, 10, 49, 82, 3, new Color(.04f, .14f, .13f, .75f));
         天帝响应布局.比例(闪避冷却轨道.rectTransform, .10f, .84f, .80f, .06f);
         闪避冷却进度 = HUD图(闪避冷却轨道.rectTransform, "闪避冷却进度", null, 0, 0, 82, 3, new Color(.62f, .88f, .73f));
         闪避冷却进度.rectTransform.anchorMin = Vector2.zero; 闪避冷却进度.rectTransform.anchorMax = Vector2.one;
         闪避冷却进度.rectTransform.offsetMin = 闪避冷却进度.rectTransform.offsetMax = Vector2.zero;
         闪避冷却轨道.gameObject.SetActive(false);
-        闪避状态字.transform.SetAsLastSibling();
+        if (闪避状态字 != null) 闪避状态字.transform.SetAsLastSibling();
         操作反馈区 = HUD区(主动HUD, "主动操作反馈", 0, 0, 380, 46);
         var 提示底 = 操作反馈区.gameObject.AddComponent<Image>(); 提示底.sprite = Resources.Load<Sprite>("山水首两页/墨绿按钮"); 提示底.type = Image.Type.Sliced; 提示底.raycastTarget = false;
         操作反馈字 = HUD字(操作反馈区, "技能失败提示", "", 16, 4, 348, 38, 手机 ? 13 : 22, new Color(1, .96f, .82f));
@@ -201,7 +202,7 @@ public partial class 天帝界面
         if (主动HUD == null) return;
         bool 手机 = 天帝移动适配.启用;
         float w = 战斗界面层.rect.width, h = 战斗界面层.rect.height;
-        void 置(RectTransform r, float x, float y, float 宽, float 高) => 天帝双端页面布局.固定(r, x, y, 宽, 高);
+        void 置(RectTransform r, float x, float y, float 宽, float 高) { if (r != null) 天帝双端页面布局.固定(r, x, y, 宽, 高); }
         float 球 = 手机 ? 60 : 172;
         void 球位(RectTransform r, float x, float y)
         { 置(r, x, y, 172, 172); r.localScale = Vector3.one * (球 / 172); }
@@ -242,7 +243,7 @@ public partial class 天帝界面
         置(操作提示字.rectTransform, 手机 ? w - 174 : w * .5f - 304, h - (手机 ? 138 : 190), 手机 ? 168 : 608, 手机 ? 18 : 32);
         var 地图状态 = 战斗界面层.Find("主角战斗状态") as RectTransform;
         置(地图状态, 手机 ? 10 : 18, 手机 ? 8 : 18, 手机 ? 148 : 290, 手机 ? 44 : 76);
-        foreach (var 文 in 地图状态.GetComponentsInChildren<Text>())
+        if (地图状态 != null) foreach (var 文 in 地图状态.GetComponentsInChildren<Text>())
         { if (文 == 战斗血量) continue; 天帝响应布局.比例(文.rectTransform, .05f, 文 == 战斗经验字 ? .50f : .04f, .9f, .40f); if (手机) 文.fontSize = 文 == 战斗经验字 ? 10 : 11; }
         天帝响应布局.比例(战斗经验底, .05f, .44f, .9f, .035f);
         bool 满级 = 游戏.主角属性.等级 >= 天帝数值.玩家上限;

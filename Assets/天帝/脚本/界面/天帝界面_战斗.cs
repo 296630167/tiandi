@@ -19,7 +19,7 @@ public partial class 天帝界面
     {
         var 文 = 字(父, 内容, x, y, 宽, 高, 字号, 色);
         文.alignment = TextAnchor.MiddleLeft; 文.horizontalOverflow = HorizontalWrapMode.Overflow;
-        文.verticalOverflow = VerticalWrapMode.Truncate; return 文;
+        文.verticalOverflow = VerticalWrapMode.Overflow; return 文;
     }
     void 建立紧凑战斗界面()
     {
@@ -50,7 +50,8 @@ public partial class 天帝界面
         var 暂停区 = 战斗角落("暂停入口", Vector2.one, new Vector2(-18, -140), new Vector2(94, 36));
         var 暂停键 = 按钮(暂停区, 天帝移动适配.启用 ? "暂停" : "暂停 Esc", 0, 0, 94, 36, 切换战斗暂停);
         暂停键.targetGraphic.color = Color.white;
-        var 暂停字 = 暂停键.GetComponentInChildren<Text>(); 暂停字.color = 天帝道纹美术.正文; 暂停字.fontSize = 16;
+        var 暂停字 = 暂停键 != null ? 暂停键.GetComponentInChildren<Text>() : null;
+        if (暂停字 != null) { 暂停字.color = 天帝道纹美术.正文; 暂停字.fontSize = 16; }
 
         bool 手机 = 使用移动控件(天帝移动适配.启用);
         var 小图框 = 战斗角落("战斗小地图底", Vector2.zero, new Vector2(18, 手机 ? 190 : 18), new Vector2(112, 112));
@@ -75,15 +76,17 @@ public partial class 天帝界面
 
         var 离开区 = 战斗角落("离开入口", new Vector2(1, 0), new Vector2(-18, 18), new Vector2(142, 44));
         战斗离开 = 按钮(离开区, "返回主页", 0, 0, 142, 44, 游戏.返回主页);
-        战斗离开.GetComponentInChildren<Text>().fontSize = 19;
+        var 离开字 = 战斗离开 != null ? 战斗离开.GetComponentInChildren<Text>() : null;
+        if (离开字 != null) 离开字.fontSize = 19;
         if (手机)
         {
             var 摇杆区 = 战斗角落("移动摇杆", Vector2.zero, new Vector2(18, 18), new Vector2(154, 154));
             战斗摇杆 = 摇杆区.gameObject.AddComponent<天帝移动摇杆>();
             var 跑步区 = 战斗角落("跑步入口", new Vector2(1, 0), new Vector2(-174, 18), new Vector2(106, 48));
             var 跑 = 按钮(跑步区, "跑步：关", 0, 0, 106, 48, () => 触控跑步 = !触控跑步);
-            移动跑步文字 = 跑.GetComponentInChildren<Text>(); var 标签 = 移动跑步文字; 标签.fontSize = 18;
-            跑.onClick.AddListener(() => 标签.text = 触控跑步 ? "跑步：开" : "跑步：关");
+            移动跑步文字 = 跑 != null ? 跑.GetComponentInChildren<Text>() : null; var 标签 = 移动跑步文字;
+            if (标签 != null) 标签.fontSize = 18;
+            if (跑 != null) 跑.onClick.AddListener(() => { if (标签 != null) 标签.text = 触控跑步 ? "跑步：开" : "跑步：关"; });
         }
         建立主动战斗HUD(); 更新移动战斗布局();
     }
@@ -145,8 +148,10 @@ public partial class 天帝界面
         掉落提示 = 战斗文字(收益, "", 20, 49, 824, 42, 20, 纸);
         战斗坐标 = 战斗文字(详情, "", 28, 495, 864, 34, 16, 天帝道纹美术.次文);
         字(详情, 天帝移动适配.启用 ? "摇杆移动 · 拖动技能瞄准 · 松手释放 · 闪避键" : "WASD移动 · 1—6施法 · 鼠标瞄准 · 空格闪避 · Esc暂停", 28, 539, 864, 32, 17, 天帝道纹美术.次文);
-        按钮(详情, "继续战斗", 80, 590, 340, 54, 关闭战斗暂停, true).GetComponentInChildren<Text>().fontSize = 23;
-        按钮(详情, "返回主页", 500, 590, 340, 54, 游戏.返回主页).GetComponentInChildren<Text>().fontSize = 23;
+        var 继续键 = 按钮(详情, "继续战斗", 80, 590, 340, 54, 关闭战斗暂停, true);
+        var 继续字 = 继续键 != null ? 继续键.GetComponentInChildren<Text>() : null; if (继续字 != null) 继续字.fontSize = 23;
+        var 返回键 = 按钮(详情, "返回主页", 500, 590, 340, 54, 游戏.返回主页);
+        var 返回字 = 返回键 != null ? 返回键.GetComponentInChildren<Text>() : null; if (返回字 != null) 返回字.fontSize = 23;
         刷新战斗暂停详情(游戏.战斗场景.战斗, 游戏.主角属性);
         if (天帝移动适配.启用)
         {

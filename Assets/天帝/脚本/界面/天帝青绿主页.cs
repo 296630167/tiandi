@@ -30,7 +30,7 @@ public partial class 天帝界面
         var r = 青绿区(父, 名, x, y, w, h);
         var 图 = r.gameObject.AddComponent<Image>(); 图.sprite = 天帝青绿皮肤.获取("QLUI_" + (主 ? "精修浅纸按钮" : "精修深青按钮"));
         图.type = Image.Type.Sliced; 图.pixelsPerUnitMultiplier = 3; 图.raycastTarget = true;
-        var b = r.gameObject.AddComponent<Button>(); b.targetGraphic = 图; b.onClick.AddListener(点击.Invoke); 天帝按钮声音.绑定(b);
+        var b = r.gameObject.AddComponent<Button>(); b.targetGraphic = 图; b.onClick.AddListener(() => 点击?.Invoke()); 天帝按钮声音.绑定(b);
         var 文 = 青绿字(r, 名, 0, 0, w, h, 天帝移动适配.启用 ? 19 : 28, !主);
         文.font = 游戏.美术?.主页标题字体 ?? 游戏.默认字体; 文.alignment = TextAnchor.MiddleCenter;
         天帝按钮文字区域.绑定(b);
@@ -126,7 +126,8 @@ public partial class 天帝界面
         地图等级下拉.onValueChanged.AddListener(i => { if (!游戏.选择地图等级(i + 1)) { 地图等级下拉.SetValueWithoutNotify(游戏.当前地图等级 - 1); 地图等级下拉.RefreshShownValue(); } });
         主页地图等级字 = 青绿字(左, 移 ? "掉落等级随地图等级提升" : "掉落物品等级随地图等级提升", 移 ? 12 : 30, 移 ? 180 : 526, 移 ? 181 : 476, 移 ? 24 : 36, 移 ? 14 : 20, true);
         var 开始 = 青绿键(左, "开始游戏", 移 ? 12 : 30, 移 ? 204 : 582, 移 ? 181 : 476, 移 ? 44 : 66, 请求进入地图, true);
-        var 开始文 = 开始.GetComponentInChildren<Text>(); 开始文.fontSize = 移 ? 20 : 36;
+        var 开始文 = 开始 != null ? 开始.GetComponentInChildren<Text>() : null;
+        if (开始文 != null) 开始文.fontSize = 移 ? 20 : 36;
         if (移) 青绿字(左, "↕", 178, 107, 16, 24, 14, true);
 
         青绿图(页面, "底部渐隐导航", "底部渐隐", 0, 移 ? 294 : 708, 宽, 移 ? 66 : 192, false);

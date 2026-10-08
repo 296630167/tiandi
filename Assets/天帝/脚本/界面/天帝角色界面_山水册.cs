@@ -14,13 +14,21 @@ public sealed partial class 天帝角色界面
         var 纸框=天帝图三四山水素材.图(框,"山水角色身份框","身份框",28,112,420,686);纸框.transform.SetAsFirstSibling();
         天帝图三四山水素材.图(框,"山水角色标题","角色标题",38,8,304,100).preserveAspect=true;
         定("关闭角色",1344,24,212,58);
-        定("角色立绘",48,140,196,498);天帝图三四山水素材.应用(框.Find("角色立绘").GetComponent<Image>(),"角色立绘");
+        定("角色立绘",48,140,196,498);
+        var 角色立绘图 = 框.Find("角色立绘")?.GetComponent<Image>();
+        if (角色立绘图 != null) 天帝图三四山水素材.应用(角色立绘图,"角色立绘");
         定("角色名字",250,146,178,52);姓名.fontSize=30;
         定("角色等级",250,204,178,120);状态.fontSize=20;状态.alignment=TextAnchor.UpperLeft;
         定("天赋标题",250,338,178,34);定("天赋名称",250,382,178,46);
-        定("天赋效果",250,446,172,132);框.Find("天赋效果").GetComponent<Text>().fontSize=21;
-        定("天赋说明",60,690,340,90);框.Find("天赋说明").GetComponent<Text>().fontSize=18;
-        var 身份净纸=天帝图三四山水素材.图(框,"山水天赋说明净纸","",48,682,378,102);身份净纸.sprite=天帝剪纸界面皮肤.素材("素纸");身份净纸.color=new Color(1,1,1,.88f);身份净纸.transform.SetSiblingIndex(框.Find("天赋说明").GetSiblingIndex());
+        定("天赋效果",250,446,172,132);
+        var 天赋效果字 = 框.Find("天赋效果")?.GetComponent<Text>();
+        if (天赋效果字 != null) { 天赋效果字.fontSize=21; 天赋效果字.verticalOverflow=VerticalWrapMode.Overflow; }
+        定("天赋说明",60,690,340,90);
+        var 天赋说明字 = 框.Find("天赋说明")?.GetComponent<Text>();
+        if (天赋说明字 != null) { 天赋说明字.fontSize=18; 天赋说明字.verticalOverflow=VerticalWrapMode.Overflow; }
+        var 身份净纸=天帝图三四山水素材.图(框,"山水天赋说明净纸","",48,682,378,102);身份净纸.sprite=天帝剪纸界面皮肤.素材("素纸");身份净纸.color=new Color(1,1,1,.88f);
+        var 天赋说明节点 = 框.Find("天赋说明");
+        if (天赋说明节点 != null) 身份净纸.transform.SetSiblingIndex(天赋说明节点.GetSiblingIndex());
         for(int i=0;i<4;i++)天帝图三四山水素材.定((RectTransform)页签[i].transform,478+i*268,112,256,56);
         天帝图三四山水素材.定(正文,486,196,1058,524);
         天帝图三四山水素材.定(评语.rectTransform,486,758,1048,56);评语.fontSize=22;
@@ -82,7 +90,7 @@ public sealed partial class 天帝角色界面
             天帝图三四山水素材.定(属性说明标题.rectTransform,28,12,486,52);属性说明标题.fontSize=24;
             if(触屏说明视口!=null){触屏说明视口.offsetMin=new Vector2(28,10);触屏说明视口.offsetMax=new Vector2(-28,-64);}
             天帝图三四山水素材.定(属性说明正文.rectTransform,0,0,486,136);属性说明正文.fontSize=17;
-            属性说明标题.gameObject.SetActive(true);属性说明正文.verticalOverflow=VerticalWrapMode.Truncate;
+            属性说明标题.gameObject.SetActive(true);属性说明正文.verticalOverflow=VerticalWrapMode.Overflow;
         }
         else if(触屏说明视口!=null)
         {触屏说明视口.offsetMin=new Vector2(32,28);触屏说明视口.offsetMax=new Vector2(-32,-72);}

@@ -6,7 +6,9 @@ public partial class 天帝界面
     bool 显示剪纸标题()
     {
         var 背景=天帝辅助页山水.素材("标题背景","剪纸界面/标题山水背景");if(背景==null)return false;
-        换页();页面背景.sprite=背景;页面背景.color=Color.white;
+        if (页面背景 == null) return false;
+        换页();
+        页面背景.sprite=背景;页面背景.color=Color.white;
         var 区=剪纸区(页面,"剪纸标题1920坐标",0,0,1920,1080);
         区.localScale=Vector3.one*(天帝移动适配.布局尺寸.x/1920f);
         var 标题=剪纸字(区,"游戏全名",天帝游戏.全名.Replace("到我为","到\n我为"),430,142,1060,292,76,天帝剪纸界面皮肤.墨);
@@ -17,7 +19,9 @@ public partial class 天帝界面
         void 键(string 名,float x,float y,float w,float h,System.Action 点击,bool 主=false)
         {
             var b=按钮(区,名,x,y,w,h,点击,主);
-            b.GetComponentInChildren<Text>().fontSize=主?48:30;
+            var 文 = b != null ? b.GetComponentInChildren<Text>() : null;
+            if (文 != null) 文.fontSize=主?48:30;
+            if (b == null) return;
             天帝辅助页山水.按钮(b,主);
             if(主)天帝辅助页山水.纸(b.targetGraphic as Image,"朱红按钮","剪纸界面/朱红按钮",false);
         }

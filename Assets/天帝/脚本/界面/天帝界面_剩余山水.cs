@@ -26,7 +26,7 @@ public partial class 天帝界面
         文.font = 标题 ? 游戏.美术?.主页标题字体 ?? 游戏.默认字体 : 游戏.默认字体;
         文.fontStyle = FontStyle.Normal; 文.color = 次要 ? 天帝剪纸界面皮肤.次墨 : 天帝剪纸界面皮肤.墨;
         文.alignment = 对齐; 文.resizeTextForBestFit = false;
-        文.horizontalOverflow = HorizontalWrapMode.Wrap; 文.verticalOverflow = VerticalWrapMode.Truncate;
+        文.horizontalOverflow = HorizontalWrapMode.Wrap; 文.verticalOverflow = VerticalWrapMode.Overflow;
         return 文;
     }
     Button 余键(RectTransform 父, string 文案, float x, float y, float w, float h, Action 回调,
@@ -47,7 +47,7 @@ public partial class 天帝界面
         var 文 = 键.GetComponentInChildren<Text>(); 文.font = 游戏.默认字体; 文.fontStyle = FontStyle.Normal;
         文.fontSize = 大小; 文.resizeTextForBestFit = false; 文.color = 主 ? new Color32(246, 235, 204, 255) : 天帝剪纸界面皮肤.墨;
         天帝响应布局.比例(文.rectTransform, .075f, 0, .85f, 1);
-        文.verticalOverflow = VerticalWrapMode.Truncate; return 键;
+        文.verticalOverflow = VerticalWrapMode.Overflow; return 键;
     }
     void 余分隔(RectTransform 父, float x, float y, float w)
     {

@@ -36,9 +36,11 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
     public bool 背包已打开 => 背包 != null && 背包.gameObject.activeSelf;
     public string 最近结果 => 结果字 != null ? 结果字.text : "";
     public bool 可执行 => 使用键 != null && 使用键.interactable;
+    int 可用材料数 => 通货 == null ? 0 : Mathf.Min(天帝通货.可用种类.Count, 通货键.Length);
 
     public void 初始化(天帝道纹 数据, 天帝通货 通货, Font 字体, Action 关闭)
     {
+        if (数据 == null || 通货 == null) return;
         this.数据 = 数据; this.通货 = 通货; this.字体 = 字体; this.关闭 = 关闭;
         var 根 = (RectTransform)transform;
         底(根, "遮罩", 0, 0, 1600, 900, new Color(0, 0, 0, .76f));
@@ -55,7 +57,7 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
         消耗提示.color = 淡字; 消耗提示.alignment = TextAnchor.MiddleRight;
         字(工具区, "升阶与赌阶", 24, 56, 300, 26, 17).color = 金;
         字(工具区, "词条改造", 24, 328, 300, 26, 17).color = 金;
-        for (int i = 0; i < 天帝通货.可用种类.Count; i++)
+        for (int i = 0; i < 可用材料数; i++)
         {
             var 种类 = 天帝通货.可用种类[i];
             bool 词条改造 = 种类 == 通货种类.添蕴砂 || 种类 == 通货种类.易纹砂 || 种类 == 通货种类.重铸石;
@@ -175,7 +177,7 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
     }
     public void 选目标(int 索引)
     {
-        if (索引 < 0 || 索引 >= 数据.道纹.Count) return;
+        if (数据 == null || 索引 < 0 || 数据.道纹 == null || 索引 >= 数据.道纹.Count) return;
         目标 = 数据.道纹[索引]; 词条索引 = 0; 当前通货 = (通货种类)(-1); 变化词条.Clear();
         结果标题.text = "本次结果"; 结果标题.color = 天帝道纹美术.正文; 结果字.text = "改造后在这里查看结果与消耗。"; 结果字.color = 淡字; 刷新();
     }
@@ -211,6 +213,7 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
     }
     public void 执行()
     {
+        if (通货 == null) return;
         var 材料 = 当前通货; var 纹 = 当前目标;
         var 之前 = new string[6];
         if (纹 != null) for (int i = 0; i < 纹.词条.Count && i < 6; i++) 之前[i] = 纹.词条[i].属性 + ":" + 纹.词条[i].实际数值;
@@ -237,9 +240,10 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
             default: return "";
         }
     }
-    bool 通货可选(通货种类 种类) => 通货.可使用(种类, 当前目标, 词条索引, out _);
+    bool 通货可选(通货种类 种类) => 通货 != null && 通货.可使用(种类, 当前目标, 词条索引, out _);
     public void 刷新()
     {
+        if (数据 == null || 通货 == null) return;
         var 纹 = 当前目标;
         int 词数 = 纹?.词条.Count ?? 0;
         词条索引 = Mathf.Clamp(词条索引, 0, Mathf.Max(0, 词数 - 1));
@@ -248,7 +252,7 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
             当前通货 = (通货种类)(-1);
             foreach (var 种类 in 材料顺序) if (通货可选(种类)) { 当前通货 = 种类; break; }
         }
-        for (int i = 0; i < 天帝通货.可用种类.Count; i++)
+        for (int i = 0; i < 可用材料数; i++)
         {
             var 种类 = 天帝通货.可用种类[i];
             bool 可选 = 通货可选(种类);

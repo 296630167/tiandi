@@ -44,7 +44,7 @@ public sealed class 天帝拾取提示 : IDisposable
         var 字 = 创建区(父, "文字", 内边, y, 宽 - 内边*2, 高度).gameObject.AddComponent<Text>();
         字.font = 字体; 字.text = 内容; 字.fontSize = 字号; 字.color = 色;
         字.alignment = TextAnchor.MiddleLeft; 字.raycastTarget = false;
-        字.horizontalOverflow = HorizontalWrapMode.Wrap; 字.verticalOverflow = VerticalWrapMode.Truncate;
+        字.horizontalOverflow = HorizontalWrapMode.Wrap; 字.verticalOverflow = VerticalWrapMode.Overflow;
         if(天帝剪纸界面皮肤.已启用)
         {
             // 纸雕按钮两端花饰与上下边线不能占用文字区；按实际条目比例适配双端。

@@ -78,7 +78,9 @@ public partial class 天帝界面
     }
     void 显示剪纸主页()
     {
-        换页(); 页面背景.enabled = false;
+        if (页面 == null) return;
+        换页();
+        if (页面背景 != null) 页面背景.enabled = false;
         剪纸主页根 = 剪纸区(页面, "剪纸主页1920原画坐标", 0, 0, 1920, 1080);
         剪纸主页根.localScale = Vector3.one * (天帝移动适配.布局尺寸.x / 1920f);
         剪纸图(剪纸主页根, "主页背景", 0, 0, 1920, 1080);
@@ -98,12 +100,19 @@ public partial class 天帝界面
         Action[] 点击 = { 显示角色, 游戏.打开道纹, 游戏.打开道纹改造, 显示回收, 显示图鉴, 显示宝盒, 显示作弊码 };
         for (int 序 = 0; 序 < 名称.Length; 序++)
             剪纸导航(剪纸主页根, 名称[序], 序, 点击[序]);
-        var 设置=按钮(剪纸主页根,"设置",1714,29,174,78,显示设置);设置.GetComponentInChildren<Text>().fontSize=30;
-        var 指引=按钮(剪纸主页根,"修行指引",1110,29,270,78,显示修行指引);指引.GetComponentInChildren<Text>().fontSize=30;
+        var 设置=按钮(剪纸主页根,"设置",1714,29,174,78,显示设置);
+        var 设置文 = 设置 != null ? 设置.GetComponentInChildren<Text>() : null;
+        if (设置文 != null) 设置文.fontSize=30;
+        var 指引=按钮(剪纸主页根,"修行指引",1110,29,270,78,显示修行指引);
+        var 指引文 = 指引 != null ? 指引.GetComponentInChildren<Text>() : null;
+        if (指引文 != null) 指引文.fontSize=30;
         天帝首两页山水素材.轻按钮(设置);天帝首两页山水素材.轻按钮(指引);
         foreach(var 键 in new[]{设置,指引})
         {
-            var 文=键.GetComponentInChildren<Text>();文.resizeTextForBestFit=false;文.font=游戏.默认字体;文.fontStyle=FontStyle.Normal;文.fontSize=26;文.color=天帝剪纸界面皮肤.墨;
+            if (键 == null) continue;
+            var 文=键.GetComponentInChildren<Text>();
+            if (文 == null) continue;
+            文.resizeTextForBestFit=false;文.font=游戏.默认字体;文.fontStyle=FontStyle.Normal;文.fontSize=26;文.color=天帝剪纸界面皮肤.墨;
             天帝双端页面布局.固定(文.rectTransform,20,0,((RectTransform)键.transform).rect.width-40,78);文.alignment=TextAnchor.MiddleCenter;
         }
         var 青岚=剪纸键(剪纸主页根, "青岚原", "地图_青岚原", 1302, 492, 153, 222, () =>
@@ -152,6 +161,7 @@ public partial class 天帝界面
     {
         var 等级标签=剪纸字(剪纸主页根,"地图等级标签","地图等级",1376,744,152,57,26,天帝剪纸界面皮肤.墨);等级标签.alignment=TextAnchor.MiddleCenter;
         地图等级下拉 = 创建等级下拉(剪纸主页根, 1544, 744, 192, 57);
+        if (地图等级下拉 == null) return;
         天帝双端页面布局.固定((RectTransform)地图等级下拉.transform, 1544, 744, 192, 57);
         var 底 = (Image)地图等级下拉.targetGraphic;
         天帝首两页山水素材.轻纸(底);
@@ -161,10 +171,12 @@ public partial class 天帝界面
         地图等级下拉.colors = 色;
         foreach (Transform 子 in 地图等级下拉.transform)
             if (子.GetComponent<Text>() is Text 文) 文.enabled = false;
-        地图等级下拉.GetComponent<天帝按钮文字区域>().enabled = false;
+        var 按钮文字区域 = 地图等级下拉.GetComponent<天帝按钮文字区域>();
+        if (按钮文字区域 != null) 按钮文字区域.enabled = false;
         var 箭头 = 剪纸字((RectTransform)地图等级下拉.transform, "等级展开箭头", "▾", 154, 0, 30, 57, 26, 天帝剪纸界面皮肤.墨);
         箭头.alignment = TextAnchor.MiddleCenter;
         var 菜单 = 地图等级下拉.template;
+        if (菜单 == null) return;
         菜单.anchorMin = 菜单.anchorMax = new Vector2(1,1); 菜单.pivot = new Vector2(1,0);
         菜单.anchoredPosition = new Vector2(0,8); 菜单.sizeDelta = new Vector2(360,474);
         var 纸框 = 菜单.GetComponent<Image>(); 天帝首两页山水素材.轻纸(纸框);
@@ -172,20 +184,31 @@ public partial class 天帝界面
         剪纸字(菜单,"等级菜单标题","选择地图等级",30,20,280,48,30,new Color32(18,55,47,255));
         剪纸字(菜单,"等级掉落提示","掉落等级随地图等级提升",30,64,290,34,22,new Color32(69,91,76,255));
         var 口 = (RectTransform)菜单.Find("Viewport");
+        if (口 == null) return;
         口.offsetMin = new Vector2(22,22); 口.offsetMax = new Vector2(-32,-108);
         var 项 = (RectTransform)口.Find("Content/Item");
-        项.GetComponent<Image>().color = new Color(1,1,1,.18f);
-        var 项色 = 项.GetComponent<Toggle>().colors;
-        项色.normalColor = Color.white; 项色.highlightedColor = new Color(.76f,.87f,.80f); 项.GetComponent<Toggle>().colors = 项色;
-        var 勾 = 项.Find("选中高亮").GetComponent<Image>(); 勾.color = new Color(.70f,.18f,.13f,.19f);
-        地图等级下拉.itemText.font = 游戏.默认字体;
-        地图等级下拉.itemText.color = new Color32(18,55,47,255); 地图等级下拉.itemText.fontSize = 30;
-        地图等级下拉.itemText.alignment = TextAnchor.MiddleLeft;
-        地图等级下拉.itemText.rectTransform.offsetMin = new Vector2(24,0);
+        if (项 == null) return;
+        var 项图 = 项.GetComponent<Image>(); if (项图 != null) 项图.color = new Color(1,1,1,.18f);
+        var 项勾选 = 项.GetComponent<Toggle>();
+        if (项勾选 != null)
+        {
+            var 项色 = 项勾选.colors;
+            项色.normalColor = Color.white; 项色.highlightedColor = new Color(.76f,.87f,.80f); 项勾选.colors = 项色;
+        }
+        var 勾 = 项.Find("选中高亮")?.GetComponent<Image>();
+        if (勾 != null) 勾.color = new Color(.70f,.18f,.13f,.19f);
+        if (地图等级下拉.itemText != null)
+        {
+            地图等级下拉.itemText.font = 游戏.默认字体;
+            地图等级下拉.itemText.color = new Color32(18,55,47,255); 地图等级下拉.itemText.fontSize = 30;
+            地图等级下拉.itemText.alignment = TextAnchor.MiddleLeft;
+            地图等级下拉.itemText.rectTransform.offsetMin = new Vector2(24,0);
+        }
         var 滑 = (RectTransform)菜单.Find("Scrollbar");
+        if (滑 == null) return;
         滑.offsetMin = new Vector2(-24,24); 滑.offsetMax = new Vector2(-16,-110);
-        滑.GetComponent<Image>().color = new Color(.18f,.27f,.23f,.16f);
-        滑.Find("Handle").GetComponent<Image>().color = new Color32(156,62,45,255);
+        var 滑图 = 滑.GetComponent<Image>(); if (滑图 != null) 滑图.color = new Color(.18f,.27f,.23f,.16f);
+        var 滑柄图 = 滑.Find("Handle")?.GetComponent<Image>(); if (滑柄图 != null) 滑柄图.color = new Color32(156,62,45,255);
         地图等级下拉.SetValueWithoutNotify(游戏.当前地图等级 - 1); 地图等级下拉.RefreshShownValue();
         地图等级下拉.onValueChanged.AddListener(序 =>
         {
@@ -195,6 +218,7 @@ public partial class 天帝界面
     }
     void 主页纸面(string 名,float x,float y,float w,float h,bool 深=false)
     {
+        if (剪纸主页根 == null) return;
         var 像=剪纸区(剪纸主页根,名,x,y,w,h).gameObject.AddComponent<Image>();
         像.sprite=天帝首两页山水素材.获取(深?"墨绿按钮":"材料面板");像.type=Image.Type.Simple;
         像.pixelsPerUnitMultiplier=深?1:2;像.raycastTarget=false;
@@ -203,12 +227,12 @@ public partial class 天帝界面
     {
         if (剪纸主页根 == null) return;
         var 人 = 游戏.主角属性; var 盒 = 游戏.宝盒数据;
-        剪纸数值["灵石"].显示(盒?.灵石显示 ?? "0");
-        剪纸数值["等级"].显示((人?.等级 ?? 游戏.道纹数据?.玩家等级 ?? 1).ToString());
-        剪纸数值["生命"].显示(剪纸数值文(人?.血量 ?? 0));
-        剪纸数值["攻击"].显示(剪纸数值文(人?.攻击力 ?? 0));
-        剪纸数值["灵力"].显示(剪纸数值文(人?.灵力 ?? 0));
-        剪纸数值["地图等级"].显示(游戏.当前地图等级.ToString());
+        if (剪纸数值.TryGetValue("灵石", out var 灵石)) 灵石.显示(盒?.灵石显示 ?? "0");
+        if (剪纸数值.TryGetValue("等级", out var 等级)) 等级.显示((人?.等级 ?? 游戏.道纹数据?.玩家等级 ?? 1).ToString());
+        if (剪纸数值.TryGetValue("生命", out var 生命)) 生命.显示(剪纸数值文(人?.血量 ?? 0));
+        if (剪纸数值.TryGetValue("攻击", out var 攻击)) 攻击.显示(剪纸数值文(人?.攻击力 ?? 0));
+        if (剪纸数值.TryGetValue("灵力", out var 灵力)) 灵力.显示(剪纸数值文(人?.灵力 ?? 0));
+        if (剪纸数值.TryGetValue("地图等级", out var 地图等级)) 地图等级.显示(游戏.当前地图等级.ToString());
         if (剪纸修行提示 != null) 剪纸修行提示.text = 天帝修行指引.下一步(游戏.道纹数据, 盒, 游戏.当前地图等级);
     }
     static string 剪纸数值文(float 值) => 值.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
@@ -236,6 +260,7 @@ sealed class 天帝剪纸主页数值
     { 文字 = 文; 原宽 = 宽; 字号 = 大小; 靠右 = 右; 最大宽 = 上限; }
     public void 显示(string 值)
     {
+        if (文字 == null) return;
         if (上次 == 值) return;
         上次 = 值; 文字.text = 值;
         文字.fontSize = 字号;
