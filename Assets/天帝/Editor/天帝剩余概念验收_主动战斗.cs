@@ -19,7 +19,7 @@ public static partial class 天帝剩余概念验收
         网.设置玩家等级(50);
         using (var 人 = new 天帝主角属性(天帝普攻.主角配置(), 网))
         {
-            var 战 = new 天帝战斗系统(地, 网, 人, 战斗难度.普通); 战.设置演示靶(new[] { Vector2.left * 3 });
+            var 战 = new 天帝战斗系统(地, 网, 人, 战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(new[] { Vector2.left * 3 });
             Vector2 发射方向 = Vector2.zero; 战.射击释放 += 向 => 发射方向 = 向;
             var 起 = 地.出生位置;
             for (int i = 0; i < 12; i++) 战.推进(起, .25f);
@@ -87,7 +87,7 @@ public static partial class 天帝剩余概念验收
         var 回网 = new 天帝道纹(42, 天帝天赋.获取((int)天赋种类.余响)); 回网.设置玩家等级(50);
         using (var 人 = new 天帝主角属性(天帝普攻.主角配置(),回网))
         {
-            var 战 = new 天帝战斗系统(地,回网,人,战斗难度.普通); 战.设置演示靶(Array.Empty<Vector2>());
+            var 战 = new 天帝战斗系统(地,回网,人,战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(Array.Empty<Vector2>());
             bool 方向对=true; 战.射击释放+=向=>方向对 &= Vector2.Dot(向,Vector2.up)>.999f;
             for(int i=0;i<5;i++){战.尝试释放技能(2,Vector2.up,地.出生位置);for(int n=0;n<6;n++)战.推进(地.出生位置,.25f);}
             检查("余响-五次手动施放追加一次且继承方向通路", 战.普通释放次数==5&&战.回响次数==1&&方向对&&战.当前通路==4&&战.通路释放次数[4]==5);
@@ -125,7 +125,7 @@ public static partial class 天帝剩余概念验收
             var 网=主动特性构筑(id);var 地=new 天帝战斗地图(42,true);
             using(var 人=new 天帝主角属性(天帝普攻.主角配置(),网))
             {
-                var 战=new 天帝战斗系统(地,网,人,战斗难度.普通);战.设置演示靶(new[]{Vector2.right*6});
+                var 战=new 天帝战斗系统(地,网,人,战斗难度.普通);战.自动攻击启用 = false;战.设置演示靶(new[]{Vector2.right*6});
                 天帝战斗扩展验证.设(战,"演示模式",false);foreach(var e in 战.敌人)天帝战斗扩展验证.设(e,"登场剩余秒",100f);
                 for(int n=0;n<120;n++)战.推进(地.出生位置,.25f);
                 检查("特性-无输入不自动施放-"+id,战.特性施放次数==0&&战.普通释放次数==0);
@@ -139,7 +139,7 @@ public static partial class 天帝剩余概念验收
                     var 对照网=主动特性构筑(id);
                     using(var 对照人=new 天帝主角属性(天帝普攻.主角配置(),对照网))
                     {
-                        var 对照=new 天帝战斗系统(地,对照网,对照人,战斗难度.普通);
+                        var 对照=new 天帝战斗系统(地,对照网,对照人,战斗难度.普通); 对照.自动攻击启用 = false;
                         对照.设置演示靶(new[]{Vector2.right*6});天帝战斗扩展验证.设(对照,"演示模式",false);
                         foreach(var e in 对照.敌人)天帝战斗扩展验证.设(e,"登场剩余秒",100f);
                         for(int n=0;n<120;n++)对照.推进(地.出生位置,.25f);
@@ -196,7 +196,7 @@ public static partial class 天帝剩余概念验收
         检查("HUD-资源球为独立素材动态液位", 游戏.GetComponentsInChildren<Image>().Count(x => x.name == "真实液位" && x.sprite != null && x.type == Image.Type.Filled) == 2);
         检查("HUD-不可用技能只整卡半透明", 游戏.GetComponentsInChildren<Button>().Where(x => x.name.StartsWith("技能") && x.name.Length == 3 && !x.interactable).All(x => x.GetComponent<CanvasGroup>().alpha == .5f));
         yield return 拍("战斗01_PC真实存档HUD");
-        var 人 = 游戏.主角属性; var 战 = 场.战斗;
+        var 人 = 游戏.主角属性; var 战 = 场.战斗; 战.自动攻击启用 = false;
         Vector2 发射向 = Vector2.zero; 战.射击释放 += 向 => 发射向 = 向;
         float 血 = 人.当前血量;
         场.设置触控瞄准(Vector2.up);
