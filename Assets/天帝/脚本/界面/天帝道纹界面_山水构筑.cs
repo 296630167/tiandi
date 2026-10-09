@@ -60,11 +60,21 @@ public sealed partial class 天帝道纹界面
         if(!山水构筑)return;
         if (i < 0 || i >= 候选卡.Count || 候选卡[i] == null) return;
         var 卡=(RectTransform)候选卡[i].transform;天帝图三四山水素材.定(卡,0,行*76,270,74);
-        var 底=卡.GetComponent<Image>();if (底 != null) { 底.sprite=天帝剪纸界面皮肤.素材("素纸");底.type=Image.Type.Simple;底.color=new Color(1,1,1,.18f); }
+        var 底=卡.GetComponent<Image>();
+        if (底 != null)
+        {
+            底.sprite=天帝剪纸界面皮肤.素材("素纸");底.type=Image.Type.Simple;
+            // 山水底图的浅色留白会吞掉卡片边界，尤其是低亮度显示器上。保留纸面透气感，
+            // 同时把卡片的可点击范围和文字层从背景里托出来。
+            bool 已放置 = 数据 != null && 数据.道纹 != null && i < 数据.道纹.Count && 数据.道纹[i] != null && 数据.道纹[i].格子.HasValue;
+            底.color=已放置?new Color(1,1,1,.40f):new Color(1,1,1,.30f);
+            var 描边=卡.GetComponent<Outline>() ?? 卡.gameObject.AddComponent<Outline>();
+            描边.effectColor=new Color(.16f,.32f,.27f,.34f); 描边.effectDistance=new Vector2(1f,-1f); 描边.useGraphicAlpha=true;
+        }
         if (i < 候选图.Count && 候选图[i] != null) { 天帝图三四山水素材.定(候选图[i].rectTransform,4,13,60,55);候选图[i].单纹半径=25; }
-        if (i < 候选品阶.Count && 候选品阶[i] != null) { 天帝图三四山水素材.定(候选品阶[i].rectTransform,72,4,168,24);候选品阶[i].fontSize=18;候选品阶[i].font=字体;候选品阶[i].fontStyle=FontStyle.Normal; }
-        if (i < 候选说明.Count && 候选说明[i] != null) { 天帝图三四山水素材.定(候选说明[i].rectTransform,72,25,190,25);候选说明[i].fontSize=15;候选说明[i].alignment=TextAnchor.MiddleLeft; }
-        if (i < 候选状态.Count && 候选状态[i] != null) { 天帝图三四山水素材.定(候选状态[i].rectTransform,72,51,190,20);候选状态[i].fontSize=14; }
+        if (i < 候选品阶.Count && 候选品阶[i] != null) { 天帝图三四山水素材.定(候选品阶[i].rectTransform,72,4,168,24);候选品阶[i].fontSize=18;候选品阶[i].font=字体;候选品阶[i].fontStyle=FontStyle.Normal;候选品阶[i].verticalOverflow=VerticalWrapMode.Overflow; }
+        if (i < 候选说明.Count && 候选说明[i] != null) { 天帝图三四山水素材.定(候选说明[i].rectTransform,72,26,190,24);候选说明[i].fontSize=15;候选说明[i].alignment=TextAnchor.MiddleLeft;候选说明[i].verticalOverflow=VerticalWrapMode.Overflow; }
+        if (i < 候选状态.Count && 候选状态[i] != null) { 天帝图三四山水素材.定(候选状态[i].rectTransform,72,51,190,21);候选状态[i].fontSize=14;候选状态[i].verticalOverflow=VerticalWrapMode.Overflow; }
         if (i < 候选状态图.Count && 候选状态图[i] != null) 候选状态图[i].gameObject.SetActive(false);
         var 选框=卡.Find("道纹选中框") as RectTransform;if(选框!=null)天帝图三四山水素材.定(选框,2,10,66,62);
         if (i < 候选锁.Count && 候选锁[i] != null) { var 锁=(RectTransform)候选锁[i].transform;锁.anchorMin=锁.anchorMax=锁.pivot=Vector2.one;锁.anchoredPosition=new Vector2(-2,-2);锁.sizeDelta=Vector2.one*30; }

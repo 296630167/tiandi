@@ -20,7 +20,8 @@ public static partial class 天帝剩余概念验收
         网.设置玩家等级(50);
         using (var 人 = new 天帝主角属性(天帝普攻.主角配置(), 网))
         {
-            var 战 = new 天帝战斗系统(地, 网, 人, 战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(new[] { Vector2.left * 3 });
+            var 战 = new 天帝战斗系统(地, 网, 人, 战斗难度.普通); 战.设置演示靶(new[] { Vector2.left * 3 });
+            检查("主动-默认关闭自动释放", !战.自动攻击启用);
             Vector2 发射方向 = Vector2.zero; 战.射击释放 += 向 => 发射方向 = 向;
             var 起 = 地.出生位置;
             for (int i = 0; i < 12; i++) 战.推进(起, .25f);
@@ -90,8 +91,10 @@ public static partial class 天帝剩余概念验收
         {
             var 战 = new 天帝战斗系统(地,回网,人,战斗难度.普通); 战.自动攻击启用 = false; 战.设置演示靶(Array.Empty<Vector2>());
             bool 方向对=true; 战.射击释放+=向=>方向对 &= Vector2.Dot(向,Vector2.up)>.999f;
-            for(int i=0;i<5;i++){战.尝试释放技能(2,Vector2.up,地.出生位置);推进主动验收秒(战,地.出生位置,战.技能冷却剩余+.001f);}
-            检查("余响-五次手动施放追加一次且继承方向通路", 战.普通释放次数==5&&战.回响次数==1&&方向对&&战.当前通路==4&&战.通路释放次数[4]==5);
+            // 余响夹具只保留一级默认已接通的第一接口，避免用未接通的第三槽误报。
+            for(int i=0;i<5;i++){战.尝试释放技能(0,Vector2.up,地.出生位置);推进主动验收秒(战,地.出生位置,战.技能冷却剩余+.001f);}
+            推进主动验收秒(战,地.出生位置,(float)天帝数值.取("talents.echo_delay")+.001f);
+            检查("余响-五次手动施放追加一次且继承方向通路", 战.普通释放次数==5&&战.回响次数==1&&方向对&&战.当前通路==0&&战.通路释放次数[0]==5);
         }
     }
     static void 推进主动验收秒(天帝战斗系统 战, Vector2 位置, float 秒)
@@ -163,8 +166,8 @@ public static partial class 天帝剩余概念验收
         bool 闪可 = !战.玩家死亡 && !游戏.界面.战斗已暂停, 闪冷 = 战.闪避冷却剩余 > .00001f;
         检查(阶段 + "-闪避细条按已过比例推进", 轨.gameObject.activeSelf == 闪冷 && !轨.raycastTarget && !条.raycastTarget
             && Mathf.Abs(条.rectTransform.anchorMax.x - Mathf.Clamp01(1 - 战.闪避冷却剩余 / Mathf.Max(.001f, 战.闪避冷却总时长))) < .0001f);
-        检查(阶段 + "-闪避冷却保持亮度其它禁用半透明", 闪.interactable == (闪可 && !闪冷)
-            && Mathf.Abs(主动HUD字段<CanvasGroup>("闪避透明").alpha - (闪可 ? 1 : .5f)) < .00001f);
+        检查(阶段 + "-闪避冷却与其它禁用态半透明", 闪.interactable == (闪可 && !闪冷)
+            && Mathf.Abs(主动HUD字段<CanvasGroup>("闪避透明").alpha - (闪可 && !闪冷 ? 1 : .5f)) < .00001f);
     }
     static void 检查冷却遮罩对齐(string 平台, bool 手机)
     {
@@ -353,6 +356,7 @@ public static partial class 天帝剩余概念验收
         检查("反馈-不足灵力真实操作拒绝", 场.释放技能(首槽) == 战斗操作结果.灵力不足 && 人.当前灵力 == 0);
         检查("反馈-文字声音视觉均来自失败事件", 游戏.GetComponentsInChildren<Text>().Any(x => x.name == "技能失败提示" && x.text == "灵力不足，无法释放") && UnityEngine.Object.FindAnyObjectByType<天帝声音>().音效播放次数 > 声前);
         检查主动冷却HUD("PC灵力不足", 战, 人);
+        yield return 拍("战斗03_PC灵力不足反馈");
         人.设置当前资源(人.当前血量, 人.灵力, 人.当前灵气护盾);
         bool? 移原 = 天帝移动适配.验证移动平台;
         try
@@ -382,7 +386,7 @@ public static partial class 天帝剩余概念验收
             推进主动验收秒(场, 战.技能冷却剩余 - 战.技能冷却总时长 * .5f);
             检查("移动-技能中段径向遮罩为半圈", Mathf.Abs(主动HUD字段<Image[]>("技能冷却遮罩")[移槽].fillAmount - .5f) < .001f);
             检查主动冷却HUD("移动冷却中段", 战, 人); yield return 拍("战斗02_移动端冷却中段");
-            检查主动冷却暂停("移动", 场); yield return null;
+            检查主动冷却暂停("移动", 场); yield return 拍("战斗04_移动端暂停"); yield return null;
             推进主动验收秒(场, Mathf.Max(战.技能冷却剩余, 战.闪避冷却剩余) + .001f);
             检查("移动-技能闪避冷却完成", 战.技能冷却剩余 == 0 && 战.闪避冷却剩余 == 0);
             检查主动冷却HUD("移动冷却结束", 战, 人);
@@ -394,6 +398,14 @@ public static partial class 天帝剩余概念验收
             ExecuteEvents.Execute(摇.gameObject,e,ExecuteEvents.pointerDownHandler);
             检查("移动-摇杆真实触控输入", 摇.方向.x > .5f); ExecuteEvents.Execute(摇.gameObject,e,ExecuteEvents.pointerUpHandler);
             检查("移动-摇杆松手归零", 摇.方向 == Vector2.zero);
+            e.position=RectTransformUtility.WorldToScreenPoint(null,jr.TransformPoint(jr.rect.center))+Vector2.right*100;
+            ExecuteEvents.Execute(摇.gameObject,e,ExecuteEvents.pointerDownHandler);
+            var 预期摇杆方向 = 摇.方向.sqrMagnitude > .000001f ? 摇.方向.normalized : Vector2.right;
+            var 闪避结果=场.闪避();
+            if (闪避结果 == 战斗操作结果.冷却中) { 推进主动验收秒(场, 战.闪避冷却剩余 + .001f); 闪避结果=场.闪避(); }
+            var 实际闪避方向=(Vector2)typeof(天帝战斗场景).GetField("闪避方向",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(场);
+            检查("移动-闪避方向优先跟随当前摇杆", 闪避结果==战斗操作结果.成功&&Vector2.Dot(实际闪避方向,预期摇杆方向)>.999f);
+            ExecuteEvents.Execute(摇.gameObject,e,ExecuteEvents.pointerUpHandler);
         }
         finally { 天帝移动适配.验证移动平台 = 移原; }
         游戏.界面.显示战斗(); yield return null;

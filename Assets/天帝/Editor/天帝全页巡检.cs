@@ -278,25 +278,47 @@ public static class 天帝全页巡检
             var 格=new Vector2Int(i==3?2:i+1,i==3?2:0);w.解锁格子(格);w.放置(纹,格);
         }
         游戏.界面.显示道纹(w);yield return 拍("S07构筑连接夹具");
-        var 页=游戏.界面.道纹页;页.指针移动(页.格屏幕位置(new Vector2Int(3,0)));yield return 拍("S08悬停有效链路");
-        页.指针离开();
-        var e=new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left,position=页.格屏幕位置(new Vector2Int(3,0))};
-        页.按下(null,true,e);页.开始拖动(true,e);e.position=页.格屏幕位置(Vector2Int.zero);页.拖动(e);
-        yield return 拍("S09拖放不可用反馈");页.取消拖动();
-        私调(页,"显示加成来源");yield return 拍("S10有内容加成来源");页.关闭筛选();
+        // Capture both card treatments against the same isolated build fixture and viewport.
+        var 构筑页=游戏.界面.道纹页;
+        var 构筑卡片=(List<GameObject>)typeof(天帝道纹界面).GetField("候选卡",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(构筑页);
+        var 卡片样式 = Enumerable.Range(0, w.道纹.Count).Select(i =>
+        {
+            var 卡 = i < 构筑卡片.Count ? 构筑卡片[i] : null;
+            var 图 = 卡 != null ? 卡.GetComponent<Image>() : null;
+            var 描边 = 卡 != null ? 卡.GetComponent<Outline>() : null;
+            return new { 图, 描边, 颜色 = 图 != null ? 图.color : Color.white, 描边启用 = 描边 != null && 描边.enabled };
+        }).ToArray();
+        foreach (var 样式 in 卡片样式)
+        {
+            if (样式.图 != null) 样式.图.color = new Color(1,1,1,.18f);
+            if (样式.描边 != null) 样式.描边.enabled = false;
+        }
+        yield return 拍("S07a同状态优化前");
+        foreach (var 样式 in 卡片样式)
+        {
+            if (样式.图 != null) 样式.图.color = 样式.颜色;
+            if (样式.描边 != null) 样式.描边.enabled = 样式.描边启用;
+        }
+        yield return 拍("S07b同状态优化后");
+        构筑页.指针移动(构筑页.格屏幕位置(new Vector2Int(3,0)));yield return 拍("S08悬停有效链路");
+        构筑页.指针离开();
+        var e=new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left,position=构筑页.格屏幕位置(new Vector2Int(3,0))};
+        构筑页.按下(null,true,e);构筑页.开始拖动(true,e);e.position=构筑页.格屏幕位置(Vector2Int.zero);构筑页.拖动(e);
+        yield return 拍("S09拖放不可用反馈");构筑页.取消拖动();
+        私调(构筑页,"显示加成来源");yield return 拍("S10有内容加成来源");构筑页.关闭筛选();
         for(int i=0;i<天帝道纹.方案槽数;i++)w.保存布局方案(i,"构筑审查"+(i+1));
-        页.打开布局方案();yield return 拍("S11已保存布局方案");
-        页.GetComponentsInChildren<Button>().First(x=>x.name=="检查 / 载入"&&x.interactable).onClick.Invoke();
+        构筑页.打开布局方案();yield return 拍("S11已保存布局方案");
+        构筑页.GetComponentsInChildren<Button>().First(x=>x.name=="检查 / 载入"&&x.interactable).onClick.Invoke();
         yield return 拍("S12方案载入预览");
         string 原方案=JsonUtility.ToJson(w.导出存档());
-        var 名称=页.GetComponentsInChildren<InputField>().First();名称.text="重命名构筑";
-        页.GetComponentsInChildren<Button>().First(x=>x.name=="保存当前"&&x.interactable).onClick.Invoke();
+        var 名称=构筑页.GetComponentsInChildren<InputField>().First();名称.text="重命名构筑";
+        构筑页.GetComponentsInChildren<Button>().First(x=>x.name=="保存当前"&&x.interactable).onClick.Invoke();
         yield return 拍("S13方案覆盖提示");检查("覆盖确认保留输入名称",名称.text=="重命名构筑");
-        页.GetComponentsInChildren<Button>().First(x=>x.name=="取消方案选择").onClick.Invoke();
+        构筑页.GetComponentsInChildren<Button>().First(x=>x.name=="取消方案选择").onClick.Invoke();
         检查("取消覆盖不修改方案和画布",原方案==JsonUtility.ToJson(w.导出存档()));
         名称.text="重命名构筑";
-        var 保存=页.GetComponentsInChildren<Button>().First(x=>x.name=="保存当前"&&x.interactable);
-        保存.onClick.Invoke();保存.onClick.Invoke();检查("确认覆盖使用新名称",w.布局方案[0].名称=="重命名构筑");页.关闭筛选();
+        var 保存=构筑页.GetComponentsInChildren<Button>().First(x=>x.name=="保存当前"&&x.interactable);
+        保存.onClick.Invoke();保存.onClick.Invoke();检查("确认覆盖使用新名称",w.布局方案[0].名称=="重命名构筑");构筑页.关闭筛选();
         var 材料=new 天帝通货(w,421,1);游戏.界面.显示道纹改造(w,材料);
         var 改=游戏.界面.改造页;改.选目标(0);改.选通货(通货种类.重铸石);yield return 拍("S14可执行改造");
         改.执行();yield return 拍("S15改造结果与消耗");

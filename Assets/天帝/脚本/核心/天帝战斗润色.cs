@@ -18,7 +18,9 @@ public static class 天帝战斗润色
         if(dt<=0)return 当前;
         // 松手立即停，反向快速响应，起步最多十余毫秒过渡；不让惯性妨碍躲避。
         if(目标.sqrMagnitude<.0001f)return Vector2.zero;
-        float rate=Vector2.Dot(当前,目标)<0?取("input_reverse"):取("input_acceleration");
+        // 同向减速使用专门的刹车参数；否则半推摇杆/收杆时会沿用起步加速度，产生拖滞。
+        float rate=Vector2.Dot(当前,目标)<0?取("input_reverse"):
+            目标.sqrMagnitude<当前.sqrMagnitude?取("input_brake"):取("input_acceleration");
         return Vector2.MoveTowards(当前,Vector2.ClampMagnitude(目标,1),rate*Mathf.Min(dt,.1f));
     }
 }

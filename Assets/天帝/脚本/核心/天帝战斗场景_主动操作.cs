@@ -36,7 +36,10 @@ public sealed partial class 天帝战斗场景
         var 结果 = 战斗.尝试闪避();
         if (结果 == 战斗操作结果.成功)
         {
-            闪避方向 = 瞄准方向;
+            // 手机端玩家通常先用左摇杆调整走位再按闪避；优先使用当前摇杆方向，
+            // 没有输入时继续沿技能拖拽或鼠标留下的瞄准方向。
+            var 摇杆 = 游戏.界面.战斗摇杆 != null ? 游戏.界面.战斗摇杆.方向 : Vector2.zero;
+            闪避方向 = 摇杆.sqrMagnitude > .000001f ? 摇杆.normalized : 瞄准方向;
             闪避剩余 = (float)天帝数值.取("player.dodge_duration"); 平滑输入 = Vector2.zero;
             天帝声音.提示("润色_跑步");
         }
@@ -57,8 +60,9 @@ public sealed partial class 天帝战斗场景
         if (战斗.玩家死亡) { 闪避剩余 = 0; return; }
         if (闪避剩余 <= 0) return;
         float 步 = Mathf.Min(秒, 闪避剩余); 闪避剩余 = Mathf.Max(0, 闪避剩余 - 步);
+        float 闪避时长 = Mathf.Max(.001f, (float)天帝数值.取("player.dodge_duration"));
         玩家位置 = 地图.直线闪避(玩家位置, 闪避方向,
-            步 * (float)天帝数值.取("player.dodge_distance") / (float)天帝数值.取("player.dodge_duration"));
+            步 * (float)天帝数值.取("player.dodge_distance") / 闪避时长);
         主角.position = new Vector3(玩家位置.x, 0, 玩家位置.y);
         美术?.移动反馈(闪避方向, true);
         游戏.界面.更新战斗位置(玩家位置, 地图.所在格(玩家位置));

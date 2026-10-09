@@ -57,7 +57,12 @@ public partial class 天帝界面
             {
                 // 圆形只占触控格的大部分，保留四周战场留白；触控格仍大于可见圆。
                 HUD图(r, "圆形技能金边", 圆底, 5, 5, 42, 42, new Color(.82f, .73f, .46f));
-                HUD图(r, "圆形技能青玉底", 圆底, 6.5f, 6.5f, 39, 39, new Color(.10f, .30f, .27f));
+                var 圆形技能底 = HUD图(r, "圆形技能青玉底", 圆底, 6.5f, 6.5f, 39, 39, new Color(.10f, .30f, .27f));
+                // 触控时给圆底明确的按下反馈；原按钮目标是透明底图，按下不会产生任何视觉变化。
+                b.targetGraphic = 圆形技能底;
+                b.transition = Selectable.Transition.ColorTint;
+                var 按键色 = b.colors; 按键色.normalColor = Color.white; 按键色.highlightedColor = new Color(1.05f, 1.05f, 1f);
+                按键色.pressedColor = new Color(.70f, .92f, .82f); 按键色.selectedColor = Color.white; 按键色.disabledColor = Color.white; 按键色.fadeDuration = .06f; b.colors = 按键色;
             }
             var 技能图标 = HUD图(r, "接口道纹图标", Resources.Load<Sprite>("山水首两页/导航_道纹"), 手机 ? 18 : 22, 10, 手机 ? 18 : 44, 手机 ? 18 : 44, Color.white);
             var 冷却片 = HUD图(r, "技能冷却径向进度", 手机 ? 圆底 : 技能图标.sprite, 手机 ? 6.5f : 22, 手机 ? 6.5f : 10, 手机 ? 39 : 44, 手机 ? 39 : 44, new Color(.02f, .07f, .07f, .78f));
@@ -87,7 +92,13 @@ public partial class 天帝界面
         }
         闪避区 = HUD区(主动HUD, "闪避技能", 0, 0, 102, 58);
         闪避键 = 按钮(闪避区, "闪避", 0, 0, 102, 58, () => 游戏.战斗场景.闪避(), true);
-        闪避键.transition = Selectable.Transition.None; 闪避透明 = 闪避区.gameObject.AddComponent<CanvasGroup>();
+        闪避键.transition = 手机 ? Selectable.Transition.ColorTint : Selectable.Transition.None;
+        if (手机)
+        {
+            var 闪避色 = 闪避键.colors; 闪避色.normalColor = Color.white; 闪避色.highlightedColor = new Color(1.05f, 1.05f, 1f);
+            闪避色.pressedColor = new Color(.70f, .92f, .82f); 闪避色.selectedColor = Color.white; 闪避色.disabledColor = Color.white; 闪避色.fadeDuration = .06f; 闪避键.colors = 闪避色;
+        }
+        闪避透明 = 闪避区.gameObject.AddComponent<CanvasGroup>();
         闪避状态字 = 闪避键.GetComponentInChildren<Text>();
         if (闪避状态字 != null) 闪避状态字.fontSize = 手机 ? 13 : 18;
         闪避冷却轨道 = HUD图((RectTransform)闪避键.transform, "闪避冷却轨道", null, 10, 49, 82, 3, new Color(.04f, .14f, .13f, .75f));
@@ -171,7 +182,7 @@ public partial class 天帝界面
         float 闪冷却 = 战.闪避冷却剩余;
         bool 闪可操作非冷却 = !战.玩家死亡 && !战斗已暂停;
         bool 闪可 = 闪可操作非冷却 && 闪冷却 <= .00001f;
-        闪避键.interactable = 闪可; 闪避透明.alpha = 闪可操作非冷却 ? 1 : .5f;
+        闪避键.interactable = 闪可; 闪避透明.alpha = 闪可 ? 1 : .5f;
         闪避冷却轨道.gameObject.SetActive(闪冷却 > .00001f);
         float 闪进度 = Mathf.Clamp01(1 - 闪冷却 / Mathf.Max(.001f, 战.闪避冷却总时长));
         闪避冷却进度.rectTransform.anchorMax = new Vector2(闪进度, 1);
@@ -254,7 +265,10 @@ public partial class 天帝界面
                 技能标签[i].fontSize = 8; 技能状态字[i].fontSize = 7; 技能按键字[i].fontSize = 9;
                 foreach (var 文 in new[] { 技能标签[i], 技能状态字[i], 技能按键字[i] })
                 {
-                    文.font = 游戏.默认字体; 文.color = Color.white; 文.fontStyle = FontStyle.Bold;
+                    文.font = 游戏.默认字体;
+                    // 排版刷新不应把禁用态同步的 alpha 重置回满亮。
+                    var 保留透明度 = 文.color; 保留透明度.r = 1; 保留透明度.g = 1; 保留透明度.b = 1; 文.color = 保留透明度;
+                    文.fontStyle = FontStyle.Bold;
                     文.horizontalOverflow = HorizontalWrapMode.Overflow; 文.verticalOverflow = VerticalWrapMode.Overflow;
                     文.resizeTextForBestFit = false;
                     文.canvasRenderer.cull = false; 文.enabled = true;

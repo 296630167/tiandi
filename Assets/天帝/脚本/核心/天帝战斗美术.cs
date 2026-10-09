@@ -48,6 +48,11 @@ public sealed class 天帝战斗美术 : IDisposable
     public Bounds 玩家绘制范围 => 玩家图?.像 != null ? 玩家图.像.bounds : new Bounds();
     public bool 玩家遮挡提示可见 => 玩家遮挡提示 != null && 玩家遮挡提示.enabled;
     readonly 天帝八方向播放 主角帧播放;
+    readonly 天帝战斗帧动画 主角方向配置;
+    readonly 天帝战斗帧播放 主角方向播放;
+    bool 主角攻击中, 主角攻击已释放, 主角释放待绘制, 主角使用新帧;
+    float 主角攻击秒, 主角前摇秒, 主角回收秒;
+    Vector2 主角攻击方向;
     readonly 天帝战斗系统 动画事件源;
     readonly 天帝战斗系统 战斗源;
     readonly 天帝敌人动作 敌动作=new 天帝敌人动作();
@@ -78,6 +83,15 @@ public sealed class 天帝战斗美术 : IDisposable
             主角帧播放 = new 天帝八方向播放(素材.主角移动动画);
             玩家图.像.sprite = 主角帧播放.当前精灵;
             玩家图.比例 = 素材.主角移动动画.展示高度 / 玩家图.像.sprite.bounds.size.y;
+        }
+        var 新主角配置 = Resources.Load<天帝战斗帧动画>("角色帧动画/HERO");
+        if (新主角配置 != null && 新主角配置.可用)
+        {
+            主角方向配置 = 新主角配置;
+            主角方向播放 = new 天帝战斗帧播放(新主角配置);
+        }
+        if (主角帧播放 != null || 主角方向播放 != null)
+        {
             动画事件源 = 战斗;
             动画事件源.准备射击 += 准备主角射击;
             动画事件源.射击释放 += 释放主角射击;
@@ -203,8 +217,49 @@ public sealed class 天帝战斗美术 : IDisposable
         }
     }
     public void 移动反馈(Vector2 方向, bool 跑步) { 移动方向 = 方向; 跑步中 = 跑步; }
-    void 准备主角射击(Vector2 方向) => 主角帧播放?.准备射击(方向, Mathf.Min(动画事件源.射击前摇, 动画事件源.当前普攻.间隔 * (float)天帝数值.取("player.attack_windup_fraction")));
-    void 释放主角射击(Vector2 方向) => 主角帧播放?.释放射击();
+    void 准备主角射击(Vector2 方向)
+    {
+        float 前摇 = Mathf.Min(动画事件源.射击前摇, 动画事件源.当前普攻.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
+        主角帧播放?.准备射击(方向, 前摇);
+        var 攻击 = 主角方向配置?.获取(天帝八方向播放.方向转朝向(方向), 战斗帧动作.攻击);
+        主角攻击中 = 主角方向播放 != null && 攻击 != null && 方向.sqrMagnitude > .0001f;
+        if (!主角攻击中) return;
+        主角攻击方向 = 方向; 主角攻击秒 = 0; 主角前摇秒 = Mathf.Max(.001f, 前摇);
+        主角回收秒 = Mathf.Max(.001f, 攻击.总秒 - 攻击.释放秒); 主角攻击已释放 = 主角释放待绘制 = false;
+    }
+    void 释放主角射击(Vector2 方向)
+    {
+        主角帧播放?.释放射击();
+        if (主角攻击中) { 主角攻击已释放 = 主角释放待绘制 = true; 主角攻击秒 = 0; }
+    }
+    bool 推进主角方向帧(Vector2 位移, float 秒, bool 存活, out Sprite 帧)
+    {
+        帧 = null;
+        if (主角方向播放 == null) return false;
+        if (!存活) { 主角攻击中 = false; 帧 = 玩家图.像.sprite; return 主角使用新帧; }
+        if (主角攻击中)
+        {
+            // A paused frame must keep the already displayed release pose. A real
+            // release event still passes through the pending branch below once.
+            if (!主角释放待绘制 && 秒 <= 0 && 位移.sqrMagnitude <= .00000001f && 主角使用新帧)
+            { 帧 = 玩家图.像.sprite; return true; }
+            if (主角释放待绘制)
+            {
+                主角释放待绘制 = false;
+                主角攻击秒 += 秒;
+                return 主角方向播放.尝试攻击(主角攻击方向, 0, true, out 帧);
+            }
+            主角攻击秒 += 秒;
+            float 时长 = 主角攻击已释放 ? 主角回收秒 : 主角前摇秒;
+            if (主角攻击秒 <= 时长 + (主角攻击已释放 ? 0 : .15f) &&
+                主角方向播放.尝试攻击(主角攻击方向, 主角攻击秒 / 时长, 主角攻击已释放, out 帧)) return true;
+            主角攻击中 = false;
+        }
+        bool 移动 = 秒 > 0 && 位移.sqrMagnitude > .00000001f;
+        var 动作 = !移动 ? 战斗帧动作.待机 : 跑步中 ? 战斗帧动作.奔跑 : 战斗帧动作.移动;
+        float 速度倍率 = 移动 ? Mathf.Clamp(位移.magnitude / Mathf.Max(.0001f, 秒 * 主角方向配置.参考移速), .35f, 1.8f) : 1;
+        return 主角方向播放.尝试推进(动作, 位移, 秒, out 帧, 速度倍率);
+    }
     public void 命中(Vector2 点, bool 玩家受伤)
     {
         if (!可用) return;
@@ -243,18 +298,24 @@ public sealed class 天帝战斗美术 : IDisposable
         秒 = Mathf.Clamp(秒, 0, .25f); 总秒 += 秒; 玩家闪白 = Mathf.Max(0, 玩家闪白 - 秒); 回弹秒 = Mathf.Max(0, 回弹秒 - 秒);
         if (战斗.普通释放次数 != 上次发射)
         { 上次发射 = 战斗.普通释放次数; 回弹秒 = .12f; }
-        if (主角帧播放 != null)
+        var 玩家位移 = 玩家 - 玩家图.上次位置;
+        var 旧主角帧 = 主角帧播放?.推进(玩家位移, 秒, !战斗.玩家死亡);
+        主角使用新帧 = 推进主角方向帧(玩家位移, 秒, !战斗.玩家死亡, out var 新主角帧);
+        if (主角使用新帧)
         {
-            var 帧 = 主角帧播放.推进(玩家 - 玩家图.上次位置, 秒, !战斗.玩家死亡);
-            if (帧 != null)
-            {
-                玩家图.像.sprite = 帧;
-                // 不同方向可处于不同分辨率的样例阶段，按统一画布换算，不能按人物包围盒逐帧撑满。
-                玩家图.比例 = 素材.主角移动动画.展示高度 / Mathf.Max(.01f, 帧.bounds.size.y);
-            }
+            玩家图.像.sprite = 新主角帧;
+            玩家图.比例 = 主角方向配置.固定缩放;
         }
+        else if (旧主角帧 != null)
+        {
+            玩家图.像.sprite = 旧主角帧;
+            玩家图.比例 = 素材.主角移动动画.展示高度 / Mathf.Max(.01f, 旧主角帧.bounds.size.y);
+        }
+        else if (主角方向播放 != null)
+        { 玩家图.像.sprite = 素材.获取("CH02"); 玩家图.比例 = 3.7f / 玩家图.像.sprite.bounds.size.x; }
         推进受击(玩家图,秒);
-        更新单位(玩家图, 玩家, !战斗.玩家死亡, 战斗.玩家死亡 ? .5f : 0, 玩家闪白, false, 主角帧播放 == null && 回弹秒 > 0 ? -3 : 0, 0, 主角帧播放 != null);
+        bool 玩家方向帧 = 主角使用新帧 || 主角帧播放 != null;
+        更新单位(玩家图, 玩家, !战斗.玩家死亡, 战斗.玩家死亡 ? .5f : 0, 玩家闪白, false, !玩家方向帧 && 回弹秒 > 0 ? -3 : 0, 0, 玩家方向帧);
         尘雾冷却 -= 秒;
         if (移动方向.sqrMagnitude > .01f && !战斗.玩家死亡 && 尘雾冷却 <= 0 && (玩家 - 玩家图.上次位置).sqrMagnitude > .00001f)
         {
@@ -275,15 +336,19 @@ public sealed class 天帝战斗美术 : IDisposable
             {当前图.动作编号=敌.物种 == 14 ? "BTB" + 敌.显示形态.ToString("00") : 天帝敌种配置.美术编号(敌);当前图.动作物种=敌.物种;当前图.动作形态=敌.显示形态;}
             string code=当前图.动作编号;
             var 新图 = 敌动作.读取(code,敌,(敌.位置-敌图[i].上次位置).sqrMagnitude>.00001f,总秒+i*.07f)??素材.获取(code);
-            if (新图 != null && 敌图[i].像.sprite != 新图)
-            { 敌图[i].像.sprite = 新图; 敌图[i].像.name = 敌.名称; 敌图[i].比例 = 天帝敌种配置.物种(敌.物种, "width") / 新图.bounds.size.x; }
-            更新单位(敌图[i], 敌.位置, 敌.存活, 敌.死亡秒, 敌.闪白秒, 敌.行动 == 敌人行动.蓄力, 敌.行动 == 敌人行动.后摇 ? -6 : 0, i, false, 天帝敌种配置.立绘颜色(敌.物种));
+            bool 使用方向帧 = 敌动作.当前使用方向帧(敌);
+            if (新图 != null)
+            {
+                当前图.像.sprite = 新图; 当前图.像.name = 敌.名称;
+                当前图.比例 = 使用方向帧 ? 敌动作.获取方向配置(code).固定缩放 : 天帝敌种配置.物种(敌.物种, "width") / 新图.bounds.size.x;
+            }
+            更新单位(当前图, 敌.位置, 敌.存活, 敌.死亡秒, 敌.闪白秒, 敌.行动 == 敌人行动.蓄力, !使用方向帧 && 敌.行动 == 敌人行动.后摇 ? -6 : 0, i, 使用方向帧, 天帝敌种配置.立绘颜色(敌.物种));
             if (敌.存活)
             {
                 var 图=敌图[i];var 位移=敌.位置-图.上次位置;
                 if(位移.sqrMagnitude>.00001f)图.朝向=位移.normalized;
                 if(敌.行动==敌人行动.蓄力)图.朝向=敌.锁定方向;
-                图.像.flipX=图.朝向.x<0;
+                if (!使用方向帧) 图.像.flipX=图.朝向.x<0;
                 if(图.上次行动==敌人行动.蓄力&&敌.行动==敌人行动.后摇)图.反冲秒=天帝敌种配置.取("presentation.enemy_recoil_seconds");
                 图.反冲秒=Mathf.Max(0,图.反冲秒-秒);图.步尘冷却=Mathf.Max(0,图.步尘冷却-秒);
                 图.点缀冷却=Mathf.Max(0,图.点缀冷却-秒);
@@ -297,11 +362,16 @@ public sealed class 天帝战斗美术 : IDisposable
                 }
                 if(位移.sqrMagnitude>.00001f)
                 {
-                    float 步=Mathf.Abs(Mathf.Sin(总秒*(天帝敌种配置.角色(敌.物种)==2?17:13)+i));
-                    图.像.transform.position+=new Vector3(0,0,步*天帝敌种配置.取("presentation.enemy_gait_bob"));
+                    if (!使用方向帧)
+                    {
+                        float 步=Mathf.Abs(Mathf.Sin(总秒*(天帝敌种配置.角色(敌.物种)==2?17:13)+i));
+                        图.像.transform.position+=new Vector3(0,0,步*天帝敌种配置.取("presentation.enemy_gait_bob"));
+                    }
                     if(尘预算>0&&图.步尘冷却<=0&&(敌.位置-玩家).sqrMagnitude<Mathf.Pow(天帝敌种配置.取("presentation.enemy_dust_range"),2))
                     {发特效("FX04",敌.位置-图.朝向*.25f,.6f,.3f,new Color(1,1,1,.25f));尘预算--;图.步尘冷却=天帝敌种配置.取("presentation.enemy_step_interval")*(1+i%3*.15f);}
                 }
+                if (!使用方向帧)
+                {
                 float 蓄 = 敌.行动 == 敌人行动.蓄力 ? Mathf.Clamp01(1 - 敌.蓄力 / Mathf.Max(.01f, 敌.蓄力总秒)) : 0;
                 float 挤 = 蓄 * 天帝敌种配置.取("presentation.windup_squash");
                 float 击 = Mathf.Clamp01((图.有受击快照?图.受击闪白秒:敌.闪白秒) / 天帝受击表现.取("flash_seconds")) * 天帝敌种配置.取("presentation.hit_stretch");
@@ -309,6 +379,7 @@ public sealed class 天帝战斗美术 : IDisposable
                 敌图[i].像.transform.localScale = new Vector3(比例.x * (1 + 挤 - 击), 比例.y * (1 - 挤 + 击), 1);
                 if (蓄 > 0 || 击 > 0) 敌图[i].像.transform.rotation = 平面旋转 * Quaternion.Euler(0, 0, (敌.锁定方向.x < 0 ? 1 : -1) * (蓄 * 9 + 击 * 45));
                 else if(图.反冲秒>0)图.像.transform.rotation=平面旋转*Quaternion.Euler(0,0,(图.朝向.x<0?1:-1)*天帝敌种配置.取("presentation.enemy_recoil_angle")*图.反冲秒/天帝敌种配置.取("presentation.enemy_recoil_seconds"));
+                }
             }
             else 敌图[i].像.transform.rotation=平面旋转*Quaternion.Euler(0,0,(i%2==0?1:-1)*天帝敌种配置.取("presentation.enemy_death_angle")*Mathf.Clamp01(敌.死亡秒/.65f));
             敌图[i].像.transform.position += new Vector3(0, 0, 敌.跳跃高度);
@@ -363,7 +434,7 @@ public sealed class 天帝战斗美术 : IDisposable
         }
         图.像.transform.position = new Vector3(点.x, .12f, 点.y + (动 && !使用方向帧 ? Mathf.Abs(Mathf.Sin(总秒 * 13)) * .035f : 0));
         图.像.transform.rotation = 平面旋转 * Quaternion.Euler(0, 0, 倾);
-        图.像.transform.localScale = new Vector3(图.比例 * 缩, 图.比例 * 缩 * (蓄力 ? .96f : 呼吸), 1);
+        图.像.transform.localScale = new Vector3(图.比例 * 缩, 图.比例 * 缩 * (蓄力 && !使用方向帧 ? .96f : 呼吸), 1);
         图.像.sortingOrder = 深度(点);
         Color 色 = !活 ? new Color(.36f, .39f, .40f, Mathf.Clamp01(1 - 死亡秒 / .65f)) : 蓄力 ? new Color(1, .74f, .58f) : Color.white;
         if (活) 色 *= 基色 ?? Color.white;
@@ -373,8 +444,11 @@ public sealed class 天帝战斗美术 : IDisposable
             float 弹=天帝受击表现.回弹(图.受击秒,天帝受击表现.取("recoil_seconds"))*图.受击力度;
             var 偏移=图.受击方向*弹*天帝受击表现.取("recoil_distance");
             图.像.transform.position+=new Vector3(偏移.x,0,偏移.y);
-            float 挤=Mathf.Abs(弹)*.055f;
-            var 大小=图.像.transform.localScale;图.像.transform.localScale=new Vector3(大小.x*(1+挤),大小.y*(1-挤),1);
+            if (!使用方向帧)
+            {
+                float 挤=Mathf.Abs(弹)*.055f;
+                var 大小=图.像.transform.localScale;图.像.transform.localScale=new Vector3(大小.x*(1+挤),大小.y*(1-挤),1);
+            }
             色=Color.Lerp(色,图.受击色,闪*.45f);
         }
         染色(图.像, 色, 闪*.85f, 图.参数);

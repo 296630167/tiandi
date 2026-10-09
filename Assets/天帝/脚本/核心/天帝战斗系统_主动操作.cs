@@ -14,8 +14,8 @@ public sealed partial class 天帝战斗系统
     public float 技能冷却剩余 => 发射冷却;
     public float 技能冷却总时长 { get; private set; }
     public float 闪避冷却总时长 { get; private set; }
-    // 正式战斗默认自动攻击；编辑器手动操作验收可关闭自动驱动而复用同一套施法逻辑。
-    public bool 自动攻击启用 { get; set; } = true;
+    // 正式战斗由玩家输入触发；自动释放仅保留给隔离验收或明确启用的夹具。
+    public bool 自动攻击启用 { get; set; } = false;
     public float 闪避冷却剩余 => (float)System.Math.Max(0, 闪避冷却结束 - 战斗时钟);
     public float 闪避无敌剩余 => (float)System.Math.Max(0, 无敌结束 - 战斗时钟);
     public bool 闪避无敌中 => 无敌结束 - 战斗时钟 > .000001;
