@@ -97,6 +97,9 @@ public partial class 天帝界面
         适配.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         适配.referenceResolution = 天帝移动适配.固定分辨率;
         适配.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        // 适配到整数像素时，文字和纸材边线不再落在半像素上；非整数比例由
+        // CanvasScaler 正常插值，避免改变 16:9 设计区的比例。
+        界面画布.pixelPerfect = true;
         响应布局 = 根.AddComponent<天帝响应布局>();
         for (int i = 0; i < 留边.Length; i++)
         {
@@ -856,9 +859,9 @@ public partial class 天帝界面
         if (!变化 && !适配待刷新 && 上次布局修订 == 响应布局.修订号) return;
         适配待刷新 = false; 上次移动平台 = 天帝移动适配.启用; 上次布局尺寸 = 布局尺寸;
         适配排版次数++;
-        // 与CanvasScaler的Expand结果一致；先同步本帧，避免安全区重排读取上帧画布尺寸。
-        if (界面画布.renderMode != RenderMode.WorldSpace)
-            界面画布.scaleFactor = 天帝移动适配.显示比例(new Rect(0, 0, 尺寸.x, 尺寸.y));
+        // CanvasScaler 是唯一的屏幕缩放来源。这里仅调整安全区和设计区，避免
+        // 每帧手写 scaleFactor 与 CanvasScaler 在不同执行顺序下互相覆盖。
+        界面画布.pixelPerfect = 天帝移动适配.启用;
         if (区 != 上次安全区 || 尺寸 != 上次尺寸)
         {
             上次安全区 = 区; 上次尺寸 = 尺寸;

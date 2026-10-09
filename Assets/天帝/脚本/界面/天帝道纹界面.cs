@@ -579,13 +579,14 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
     void OnDestroy() { if (数据 != null) 数据.状态改变 -= 刷新; }
 }
 
-public sealed class 天帝道纹输入 : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler, IInitializePotentialDragHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IScrollHandler, IPointerMoveHandler, IPointerEnterHandler, IPointerExitHandler
+public sealed class 天帝道纹输入 : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler, IInitializePotentialDragHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IScrollHandler, IPointerMoveHandler, IPointerEnterHandler, IPointerExitHandler, ICancelHandler
 {
     public 天帝道纹界面 页面;
     public 道纹实例 道纹;
     public bool 是画布;
     public void OnPointerDown(PointerEventData e) { if (!天帝移动适配.启用 || 页面.触屏按下(是画布, e)) 页面.按下(道纹, 是画布, e); }
-    public void OnPointerUp(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) 页面.松开(); if (天帝移动适配.启用) 页面.触屏抬起(e); }
+    public void OnPointerUp(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left && (!天帝移动适配.启用 || 页面.触屏指针可操作(e))) 页面.松开(); if (天帝移动适配.启用) 页面.触屏抬起(e); }
+    public void OnCancel(BaseEventData e) { 页面.松开(); 页面.取消触屏选择(); }
     public void OnPointerClick(PointerEventData e)
     { if (天帝移动适配.启用 && !页面.触屏点击可操作(e)) return; if (天帝移动适配.启用 && !是画布 && 道纹 != null && !e.dragging) 页面.触屏选择(道纹, e.position); else 页面.点击(是画布, e); }
     ScrollRect 候选滚动 => 天帝移动适配.启用 && !是画布 ? GetComponentInParent<ScrollRect>() : null;

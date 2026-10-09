@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 // 多指互不抢占：技能手势独立于左侧移动摇杆，失焦或暂停取消而不补发。
-public sealed class 天帝战斗触控技能 : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+public sealed class 天帝战斗触控技能 : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler, ICancelHandler
 {
     public Action<Vector2> 瞄准;
     public Action 释放;
@@ -28,6 +28,7 @@ public sealed class 天帝战斗触控技能 : MonoBehaviour, IPointerDownHandle
         OnDrag(e); if (指针 == int.MinValue) return;
         取消(); if (可以操作?.Invoke() == true) 释放?.Invoke();
     }
+    public void OnCancel(BaseEventData e) => 取消();
     public void 取消() => 指针 = int.MinValue;
     void OnDisable() => 取消();
     void OnApplicationFocus(bool 有焦点) { if (!有焦点) 取消(); }

@@ -3,7 +3,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(CanvasRenderer))]
-public sealed class 天帝移动摇杆 : MaskableGraphic, IPointerDownHandler, IDragHandler, IPointerUpHandler
+public sealed class 天帝移动摇杆 : MaskableGraphic, IPointerDownHandler, IDragHandler, IPointerUpHandler, ICancelHandler
 {
     public Vector2 方向 { get; private set; }
     int 指针 = int.MinValue;
@@ -20,6 +20,7 @@ public sealed class 天帝移动摇杆 : MaskableGraphic, IPointerDownHandler, I
         }
     }
     public void OnPointerUp(PointerEventData e) { if (指针 == e.pointerId) 归零(); }
+    public void OnCancel(BaseEventData e) => 归零();
     void 归零() { 指针 = int.MinValue; 方向 = Vector2.zero; SetVerticesDirty(); }
     public void 重置输入() => 归零();
     void OnApplicationFocus(bool 焦点) { if (!焦点) 归零(); }

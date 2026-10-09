@@ -12,6 +12,7 @@ public sealed class 天帝青绿素材导入 : AssetPostprocessor
         t.spritePixelsPerUnit = 100; t.alphaIsTransparency = true; t.mipmapEnabled = false;
         t.wrapMode = TextureWrapMode.Clamp; t.filterMode = FilterMode.Bilinear;
         t.textureCompression = TextureImporterCompression.Uncompressed; t.maxTextureSize = 2048;
+        设置移动平台无损(t, "Android"); 设置移动平台无损(t, "iPhone"); 设置移动平台无损(t, "Standalone");
         bool 面 = assetPath.Contains("面板") || assetPath.Contains("内衬") || assetPath.Contains("卡框");
         bool 键 = assetPath.Contains("按钮") || assetPath.Contains("页签") || assetPath.Contains("输入框");
         t.spriteBorder = 面 ? new Vector4(28,28,28,28) : 键 ? new Vector4(64,20,64,20) : Vector4.zero;
@@ -19,6 +20,12 @@ public sealed class 天帝青绿素材导入 : AssetPostprocessor
             t.spriteBorder = 面 ? new Vector4(96,96,96,96) : 键 ? new Vector4(80,42,80,42) : Vector4.zero;
         var s = new TextureImporterSettings(); t.ReadTextureSettings(s);
         s.spriteMeshType = SpriteMeshType.FullRect; t.SetTextureSettings(s);
+    }
+    static void 设置移动平台无损(TextureImporter t, string 平台)
+    {
+        var s = t.GetPlatformTextureSettings(平台); s.name = 平台; s.overridden = true;
+        s.maxTextureSize = 2048; s.textureCompression = TextureImporterCompression.Uncompressed;
+        s.crunchedCompression = false; s.compressionQuality = 100; t.SetPlatformTextureSettings(s);
     }
 }
 #endif

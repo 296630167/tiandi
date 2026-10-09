@@ -15,6 +15,7 @@ public partial class 天帝界面
     Button 闪避键;
     float 操作反馈秒, 拒绝音效冷却, 灵力闪色秒;
     int 当前闪色槽 = -1;
+    int 上次手机技能掩码 = -1;
     static readonly Color 生命液色 = new Color(.72f, .23f, .18f), 灵力液色 = new Color(.12f, .55f, .64f);
     RectTransform HUD区(RectTransform 父, string 名, float x, float y, float w, float h)
     {
@@ -128,6 +129,7 @@ public partial class 天帝界面
     void 刷新主动战斗HUD(天帝战斗系统 战, 天帝主角属性 人)
     {
         if (主动HUD == null) return;
+        bool 手机 = 天帝移动适配.启用;
         生命液.fillAmount = 人.当前血量 / Mathf.Max(1, 人.血量); 灵力液.fillAmount = 人.当前灵力 / Mathf.Max(1, 人.灵力);
         生命球字.text = 战斗短数(人.当前血量) + " / " + 战斗短数(人.血量);
         灵力球字.text = 战斗短数(人.当前灵力) + " / " + 战斗短数(人.灵力);
@@ -149,7 +151,6 @@ public partial class 天帝界面
             技能透明[i].blocksRaycasts = 有链路;
             技能键[i].interactable = 可; 技能透明[i].alpha = 可操作非冷却 ? 1 : .5f;
             技能标签[i].text = 战.技能名称(i);
-            bool 手机 = 天帝移动适配.启用;
             bool 正在冷却 = 有链路 && 开 && 冷却 > .00001f;
             技能冷却遮罩[i].gameObject.SetActive(正在冷却);
             技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
@@ -160,6 +161,12 @@ public partial class 天帝界面
             var 标签色 = 技能标签[i].color; 标签色.a = 文字Alpha; 技能标签[i].color = 标签色;
             var 状态色 = 技能状态字[i].color; 状态色.a = 文字Alpha; 技能状态字[i].color = 状态色;
             var 按键色 = 技能按键字[i].color; 按键色.a = 文字Alpha; 技能按键字[i].color = 按键色;
+        }
+        if (手机)
+        {
+            int 掩码 = 0;
+            for (int i = 0; i < 6; i++) if (技能键[i].gameObject.activeSelf) 掩码 |= 1 << i;
+            if (掩码 != 上次手机技能掩码) { 上次手机技能掩码 = 掩码; 更新主动战斗布局(); }
         }
         float 闪冷却 = 战.闪避冷却剩余;
         bool 闪可操作非冷却 = !战.玩家死亡 && !战斗已暂停;
@@ -193,7 +200,7 @@ public partial class 天帝界面
     }
     void 清理主动战斗HUD()
     {
-        主动HUD = null; 操作反馈字 = 操作提示字 = null; 操作反馈秒 = 灵力闪色秒 = 0;
+        主动HUD = null; 操作反馈字 = 操作提示字 = null; 操作反馈秒 = 灵力闪色秒 = 0; 上次手机技能掩码 = -1;
         闪避冷却轨道 = 闪避冷却进度 = null;
         for (int i = 0; i < 6; i++) { 技能键[i] = null; 技能透明[i] = null; 技能冷却遮罩[i] = null; 技能标签[i] = 技能状态字[i] = 技能按键字[i] = null; }
     }
@@ -208,11 +215,31 @@ public partial class 天帝界面
         { 置(r, x, y, 172, 172); r.localScale = Vector3.one * (球 / 172); }
         球位(生命球区, 手机 ? 148 : w * .5f - 500, h - 球 - (手机 ? 12 : 28));
         球位(灵力球区, 手机 ? 222 : w * .5f + 328, h - 球 - (手机 ? 12 : 28));
-        // 手机六枚圆形技能保持 56px 触控热区，同时向左扩展一格，给右侧通知和闪避留安全边距。
-        置(技能区, 手机 ? w - 184 : w * .5f - 304, h - (手机 ? 128 : 152), 手机 ? 168 : 608, 手机 ? 116 : 128);
+        // 手机只排列实际接通的技能链路，隐藏槽位不再留下空洞；触控格仍保持56逻辑像素。
+        int 可见技能数 = 0;
+        if (手机) for (int i = 0; i < 6; i++) if (技能键[i] != null && 技能键[i].gameObject.activeSelf) 可见技能数++;
+        int 技能列数 = 手机 ? Mathf.Clamp(Mathf.Min(3, Mathf.Max(1, 可见技能数)), 1, 3) : 6;
+        int 技能行数 = 手机 ? Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(1, 可见技能数) / 3f)) : 1;
+        float 技能宽 = 手机 ? 技能列数 * 56 : 608;
+        float 技能高 = 手机 ? 技能行数 * 56 : 128;
+        置(技能区, 手机 ? w - 技能宽 - 12 : w * .5f - 304, h - (手机 ? 技能高 + 12 : 152), 技能宽, 技能高);
+        int 手机技能序 = 0;
         for (int i = 0; i < 6; i++)
         {
-            float x = 手机 ? i % 3 * 56 : i * 102, y = 手机 ? i / 3 * 56 : 0;
+            float x, y;
+            if (手机)
+            {
+                if (!技能键[i].gameObject.activeSelf)
+                {
+                    // 隐藏槽位仍保持稳定坐标，重新显示时不会继承上一次的随机位置。
+                    x = y = -1000;
+                }
+                else
+                {
+                    x = 手机技能序 % 3 * 56; y = 手机技能序 / 3 * 56; 手机技能序++;
+                }
+            }
+            else { x = i * 102; y = 0; }
             var r = (RectTransform)技能键[i].transform; 置(r, x, y, 手机 ? 56 : 88, 手机 ? 56 : 128); r.localScale = Vector3.one;
             if (手机)
             {
@@ -233,6 +260,15 @@ public partial class 天帝界面
                     文.canvasRenderer.cull = false; 文.enabled = true;
                 }
                 技能标签[i].transform.SetAsLastSibling(); 技能状态字[i].transform.SetAsLastSibling(); 技能按键字[i].transform.SetAsLastSibling();
+            }
+            else
+            {
+                // 编辑器切换到PC验证或热切平台时，把移动端提到顶层的文字还原到技能格。
+                foreach (var 文 in new[] { 技能标签[i], 技能状态字[i], 技能按键字[i] })
+                    if (文.transform.parent != r.transform) 文.transform.SetParent(r.transform, false);
+                天帝双端页面布局.固定(技能标签[i].rectTransform, 4, 59, 80, 32);
+                天帝双端页面布局.固定(技能状态字[i].rectTransform, 4, 92, 80, 28);
+                天帝双端页面布局.固定(技能按键字[i].rectTransform, 3, 0, 22, 30);
             }
         }
         置(闪避区, 手机 ? 342 : w * .5f + 516, h - (手机 ? 51 : 103), 手机 ? 54 : 102, 手机 ? 39 : 58);
@@ -262,7 +298,8 @@ public partial class 天帝界面
             }
         }
         var 暂停区 = 战斗界面层.Find("暂停入口") as RectTransform;
-        if (手机) 置(暂停区, w - 70, 58, 60, 30);
+        // 暂停是高频触控入口，保持至少44逻辑像素的可点击高度，避免被状态栏挤成细条。
+        if (手机) 置(暂停区, w - 70, 56, 60, 44);
         var 小图 = 战斗界面层.Find("战斗小地图底") as RectTransform;
         置(小图, 手机 ? 10 : 18, 手机 ? 58 : h - 138, 手机 ? 48 : 112, 手机 ? 48 : 112);
         if (手机 && 战斗小地图 != null) 天帝响应布局.比例(战斗小地图.rectTransform, .08f, .08f, .84f, .84f);
@@ -280,6 +317,7 @@ public partial class 天帝界面
             float 提示左 = 手机 ? Mathf.Max(10, Mathf.Min(w - 提示宽 - 10, w - 184 - 提示宽 - 8)) : w - 380;
             置(拾取列表.区域, 提示左, 手机 ? 120 : h - 440, 提示宽, 手机 ? 216 : 150);
         }
-        if (手机 && 战斗摇杆 != null) 置((RectTransform)战斗摇杆.transform, 10, h - 90, 82, 82);
+        // 摇杆视觉与触控区域统一，避免前一个响应布局把它二次缩成82逻辑像素。
+        if (手机 && 战斗摇杆 != null) 置((RectTransform)战斗摇杆.transform, 10, h - 114, 104, 104);
     }
 }

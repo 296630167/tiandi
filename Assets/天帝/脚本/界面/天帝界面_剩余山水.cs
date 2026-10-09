@@ -72,8 +72,12 @@ public partial class 天帝界面
 
     void 余手机字(Text 文, float 左, float 上, float 宽, float 高, int 大小 = 14)
     {
+        if (文 == null) return;
         天帝双端页面布局.固定(文.rectTransform, 左, 上, 宽, 高);
-        文.fontSize = 大小; 文.resizeTextForBestFit = false;
+        // 640x360 逻辑画布会以约 2 倍映射到常见 1280x720 手机截图；
+        // 弹窗沿用桌面字号会让标题和正文变成两倍视觉重量，先压到手机阅读档。
+        文.fontSize = Mathf.Clamp(Mathf.RoundToInt(大小 * .72f), 11, 18);
+        文.resizeTextForBestFit = false;
         文.horizontalOverflow = HorizontalWrapMode.Wrap; 文.verticalOverflow = VerticalWrapMode.Overflow;
     }
 
@@ -494,8 +498,8 @@ public partial class 天帝界面
                 float 宽 = 面板.rect.width, 高 = 面板.rect.height, 内宽 = 宽 - 64, 半宽 = (内宽 - 16) / 2;
                 余手机字(标题, 32, 8, 内宽, 44, 22);
                 天帝双端页面布局.固定(正文口, 32, 64, 内宽, 高 - 138); 更新正文();
-                天帝双端页面布局.按键(继续键.transform as RectTransform, 32, 高 - 64, 半宽, 48);
-                天帝双端页面布局.按键(返回键.transform as RectTransform, 48 + 半宽, 高 - 64, 半宽, 48);
+                天帝双端页面布局.按键(继续键.transform as RectTransform, 32, 高 - 64, 半宽, 52);
+                天帝双端页面布局.按键(返回键.transform as RectTransform, 48 + 半宽, 高 - 64, 半宽, 52);
             });
         }
     }
