@@ -24,8 +24,10 @@ public sealed partial class 天帝通货界面
     void 装配首两页山水()
     {
         if(!天帝首两页山水素材.已启用)return;
+        if(山水已装配)return;
         if(面板==null||通货键==null||名称字==null||数量字==null)return;
-        山水已装配=true;
+        if(通货键.Length!=名称字.Length||通货键.Length!=数量字.Length)return;
+        for(int i=0;i<通货键.Length;i++)if(通货键[i]==null||名称字[i]==null||数量字[i]==null)return;
         var 背景=transform.Find("剪纸改造底图");if(背景!=null)天帝首两页山水素材.应用(背景.GetComponent<Image>(),"改造背景");
         RectTransform 找(string 名)
         {
@@ -62,7 +64,7 @@ public sealed partial class 天帝通货界面
         天帝首两页山水素材.应用(托区.GetComponent<Image>(),"六边纸托");托区.GetComponent<Image>().raycastTarget=false;
         var 示意=new GameObject("空目标示意",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();示意.SetParent(目标图.transform.parent,false);
         山水位置(示意,2,2,84,76);空目标图示=示意.GetComponent<Image>();天帝首两页山水素材.应用(空目标图示,"导航_道纹");空目标图示.raycastTarget=false;
-        if(天帝移动适配.启用)return;
+        if(天帝移动适配.启用){山水已装配=true;return;}
         天帝首两页山水素材.轻按钮(关闭键);
         天帝首两页山水素材.轻纸(结果.GetComponent<Image>());
         山水位置(面板,0,0,1600,900);
@@ -147,6 +149,7 @@ public sealed partial class 天帝通货界面
         山水文字(使用键.GetComponentInChildren<Text>(),45,0,263,65,22,TextAnchor.MiddleCenter);
         山水文字(原因字,1206,654,285,65,20);
         山水位置(结果,841,734,661,87);山水文字(结果标题,24,4,615,32,21);山水文字(结果字,24,38,613,39,18);
+        山水已装配=true;
     }
     void 刷新山水改造状态()
     {
@@ -158,13 +161,14 @@ public sealed partial class 天帝通货界面
             if(键==null)continue;
             bool 可用=键.interactable;
             bool 选中=可用&&天帝通货.可用种类[i]==当前通货;
-            if(天帝移动适配.启用)天帝首两页山水素材.应用(键.GetComponent<Image>(),选中?"材料选中":"材料默认");
+            var 卡图=键.GetComponent<Image>();
+            if(天帝移动适配.启用){if(卡图!=null)天帝首两页山水素材.应用(卡图,选中?"材料选中":"材料默认");}
             else 天帝首两页山水素材.轻按钮(键,选中);
             var 色=键.colors;色.disabledColor=Color.white;键.colors=色;
             天帝首两页山水素材.按钮透明度(键);
             通货标记[i].enabled=false;
             foreach(var 文 in 键.GetComponentsInChildren<Text>())文.color=天帝剪纸界面皮肤.墨;
-            数量字[i].color=new Color32(13,45,37,255);
+            if(数量字[i]!=null)数量字[i].color=new Color32(13,45,37,255);
             var 图标=键.transform.Find("图标")?.GetComponent<Image>();
             if(图标!=null)图标.color=Color.white;
         }
@@ -175,7 +179,7 @@ public sealed partial class 天帝通货界面
         if(!天帝移动适配.启用)
         {
             var 文=使用键.GetComponentInChildren<Text>();山水文字(文,45,0,263,65,22,TextAnchor.MiddleCenter);
-            文.color=new Color32(246,230,192,255);
+            if(文!=null)文.color=new Color32(246,230,192,255);
         }
         // 不可点击时仅降低整颗按钮的CanvasGroup透明度。
         for(int d=0;d<6;d++)
@@ -187,7 +191,7 @@ public sealed partial class 天帝通货界面
         for(int i=0;i<词条键.Length;i++)if(词条键[i]!=null&&词条键[i].gameObject.activeSelf)
         {
             var 键=词条键[i];
-            if(天帝移动适配.启用)天帝首两页山水素材.应用(键.GetComponent<Image>(),词条标记[i].enabled?"材料选中":"材料默认");
+            if(天帝移动适配.启用){var 图=键.GetComponent<Image>();if(图!=null)天帝首两页山水素材.应用(图,词条标记[i].enabled?"材料选中":"材料默认");}
             else
             {
                 天帝首两页山水素材.轻按钮(键,词条标记[i].enabled);

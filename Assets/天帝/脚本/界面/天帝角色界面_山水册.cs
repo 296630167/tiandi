@@ -29,9 +29,9 @@ public sealed partial class 天帝角色界面
         var 身份净纸=天帝图三四山水素材.图(框,"山水天赋说明净纸","",48,682,378,102);身份净纸.sprite=天帝剪纸界面皮肤.素材("素纸");身份净纸.color=new Color(1,1,1,.88f);
         var 天赋说明节点 = 框.Find("天赋说明");
         if (天赋说明节点 != null) 身份净纸.transform.SetSiblingIndex(天赋说明节点.GetSiblingIndex());
-        for(int i=0;i<4;i++)天帝图三四山水素材.定((RectTransform)页签[i].transform,478+i*268,112,256,56);
-        天帝图三四山水素材.定(正文,486,196,1058,524);
-        天帝图三四山水素材.定(评语.rectTransform,486,758,1048,56);评语.fontSize=22;
+        for(int i=0;i<4;i++)if(页签[i]!=null)天帝图三四山水素材.定((RectTransform)页签[i].transform,478+i*268,112,256,56);
+        if(正文!=null)天帝图三四山水素材.定(正文,486,196,1058,524);
+        if(评语!=null){天帝图三四山水素材.定(评语.rectTransform,486,758,1048,56);评语.fontSize=22;}
         var 提示框=天帝图三四山水素材.图(框,"山水属性说明占位框","属性说明框",1010,626,534,196);
         var 提示净纸=天帝图三四山水素材.图(提示框.rectTransform,"说明净纸","",20,16,494,164);提示净纸.sprite=天帝剪纸界面皮肤.素材("素纸");提示净纸.color=new Color(1,1,1,.9f);
         字文(提示框.rectTransform,"属性说明提示","属性说明\n悬停属性查看说明，点击查看完整公式。",44,40,446,104,20,次墨);
@@ -42,7 +42,8 @@ public sealed partial class 天帝角色界面
     void 装配山水角色正文(int 页)
     {
         if(!山水角色册)return;
-        for(int i=0;i<4;i++)天帝图三四山水素材.按钮(页签[i],i==页);
+        for(int i=0;i<4;i++)if(页签[i]!=null)天帝图三四山水素材.按钮(页签[i],i==页);
+        if(正文==null)return;
         foreach(Transform 子 in 正文)if(子.name=="重点属性衬底")子.gameObject.SetActive(false);
         foreach(var 文 in 正文.GetComponentsInChildren<Text>())if(文.name.StartsWith("数值-")){文.color=墨;文.fontStyle=FontStyle.Bold;文.resizeTextMaxSize=24;文.fontSize=24;}
         if(页==0)
@@ -65,24 +66,37 @@ public sealed partial class 天帝角色界面
             if(!文.name.StartsWith("标签-"))continue;
             string 名=文.name.Substring(3);var 素材=天帝图三四山水素材.获取("图标-"+名);if(素材==null)continue;
             var r=文.rectTransform;float x=r.anchoredPosition.x,y=-r.anchoredPosition.y;
-            var 标=天帝图三四山水素材.图(正文,"山水属性图标-"+名,"图标-"+名,x,y+10,30,32);标.preserveAspect=true;
-            天帝图三四山水素材.定(r,x+48,y,r.sizeDelta.x-48,42);
+            // 切页时旧正文已停用并等待帧末销毁，只复用当前页仍活动的装饰。
+            RectTransform 标=null;
+            foreach(Transform 子 in 正文)if(子.name=="山水属性图标-"+名&&子.gameObject.activeSelf){标=子 as RectTransform;break;}
+            bool 首次装配=标==null;
+            if(标==null)标=天帝图三四山水素材.图(正文,"山水属性图标-"+名,"图标-"+名,x,y+10,30,32).rectTransform;
+            else x=标.anchoredPosition.x;
+            天帝图三四山水素材.定(标,x,y+10,30,32);var 标图=标.GetComponent<Image>();if(标图!=null)标图.preserveAspect=true;
+            if(首次装配||页==0)天帝图三四山水素材.定(r,x+48,y,r.sizeDelta.x-48,42);
             文.color=墨;文.font=字体;文.fontSize=22;文.fontStyle=FontStyle.Normal;文.resizeTextForBestFit=false;文.alignment=TextAnchor.MiddleLeft;
             var 数=正文.Find("数值-"+名)?.GetComponent<Text>();
             if(数!=null){数.font=字体;数.fontSize=22;数.fontStyle=FontStyle.Bold;数.resizeTextForBestFit=false;数.alignment=TextAnchor.MiddleRight;}
         }
         var 概况=正文.Find("画布概况") as RectTransform;if(概况!=null)天帝图三四山水素材.定(概况,0,424,500,78);
-        if(页==0)foreach(float x in new[]{382f,1000f})天帝图三四山水素材.图(正文,"属性栏花枝","图标-花枝",x,10,42,22).preserveAspect=true;
+        if(页==0)foreach(float x in new[]{382f,1000f})
+        {
+            string 名="属性栏花枝"+(x>500?"右":"左");
+            Image 已有=null;foreach(Transform 子 in 正文)if(子.name==名&&子.gameObject.activeSelf){已有=子.GetComponent<Image>();break;}
+            var 花=已有??天帝图三四山水素材.图(正文,名,"图标-花枝",x,10,42,22);
+            if(花!=null)花.preserveAspect=true;
+        }
     }
     void 装配山水属性说明()
     {
         if(!山水角色册||属性浮窗==null)return;
-        天帝图三四山水素材.应用(属性浮窗.GetComponent<Image>(),"属性说明框");
+        var 浮窗图=属性浮窗.GetComponent<Image>(); if(浮窗图!=null)天帝图三四山水素材.应用(浮窗图,"属性说明框");
         var 净纸=属性浮窗.Find("山水公式净纸") as RectTransform;
         if(净纸==null){var 像=天帝图三四山水素材.图(属性浮窗,"山水公式净纸","",20,14,500,190);像.sprite=天帝剪纸界面皮肤.素材("素纸");像.color=new Color(1,1,1,.93f);净纸=像.rectTransform;净纸.SetAsFirstSibling();}
+        if(属性说明标题==null || 属性说明正文==null || 说明关闭键==null) return;
         属性说明标题.font=字体;属性说明标题.fontStyle=FontStyle.Bold;
         天帝图三四山水素材.定(属性说明标题.rectTransform,28,12,属性浮窗.sizeDelta.x-200,52);
-        if(详细说明已打开)天帝图三四山水素材.应用(属性浮窗.GetComponent<Image>(),"身份框");
+        if(详细说明已打开 && 浮窗图!=null)天帝图三四山水素材.应用(浮窗图,"身份框");
         天帝图三四山水素材.按钮(说明关闭键);
         if(!详细说明已打开)
         {

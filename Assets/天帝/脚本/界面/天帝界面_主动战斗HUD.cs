@@ -100,7 +100,7 @@ public partial class 天帝界面
         var 提示底 = 操作反馈区.gameObject.AddComponent<Image>(); 提示底.sprite = Resources.Load<Sprite>("山水首两页/墨绿按钮"); 提示底.type = Image.Type.Sliced; 提示底.raycastTarget = false;
         操作反馈字 = HUD字(操作反馈区, "技能失败提示", "", 16, 4, 348, 38, 手机 ? 13 : 22, new Color(1, .96f, .82f));
         操作反馈区.gameObject.SetActive(false);
-        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 手机 ? "拖动技能瞄准 · 松手释放" : "1—6 释放道纹 · 鼠标瞄准 · 空格闪避", 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
+        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 手机 ? "自动索敌 · 摇杆移动 · 闪避避让" : "自动索敌 · WASD移动 · 空格闪避", 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
         var 阴影 = 操作提示字.gameObject.AddComponent<Shadow>(); 阴影.effectColor = new Color(.02f, .07f, .06f, .9f); 阴影.effectDistance = new Vector2(1, -1);
         操作提示字.gameObject.SetActive(!手机);
         操作反馈秒 = 灵力闪色秒 = 拒绝音效冷却 = 0; 当前闪色槽 = -1;
@@ -156,7 +156,7 @@ public partial class 天帝界面
             技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
             技能状态字[i].color = 当前闪色槽 == i && 灵力闪色秒 > 0 ? new Color(.85f, .20f, .12f) : 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文;
             // 移动端文字为便于显示会挂到技能区顶层，单独同步 CanvasGroup alpha，禁用态保持整枚技能一致变灰。
-            float 文字Alpha = 技能透明[i].alpha;
+            float 文字Alpha = 手机 ? 技能透明[i].alpha : 1;
             var 标签色 = 技能标签[i].color; 标签色.a = 文字Alpha; 技能标签[i].color = 标签色;
             var 状态色 = 技能状态字[i].color; 状态色.a = 文字Alpha; 技能状态字[i].color = 状态色;
             var 按键色 = 技能按键字[i].color; 按键色.a = 文字Alpha; 技能按键字[i].color = 按键色;
@@ -267,7 +267,7 @@ public partial class 天帝界面
         置(小图, 手机 ? 10 : 18, 手机 ? 58 : h - 138, 手机 ? 48 : 112, 手机 ? 48 : 112);
         if (手机 && 战斗小地图 != null) 天帝响应布局.比例(战斗小地图.rectTransform, .08f, .08f, .84f, .84f);
         var 目标 = 战斗界面层.Find("战斗目标") as RectTransform;
-        置(目标, 手机 ? 10 : 18, 手机 ? 112 : h - 202, 手机 ? 160 : 274, 手机 ? 24 : 60);
+        置(目标, 手机 ? 10 : 18, 手机 ? 112 : h - 202, 手机 ? 168 : 274, 手机 ? 34 : 60);
         if (战斗目标 != null)
         {
             战斗目标.fontSize = 手机 ? 10 : 16; 战斗目标.horizontalOverflow = HorizontalWrapMode.Overflow;

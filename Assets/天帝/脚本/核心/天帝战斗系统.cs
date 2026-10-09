@@ -392,9 +392,16 @@ public sealed partial class 天帝战斗系统
     public void 推进(Vector2 玩家位置, float 秒)
     {
         if (float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0 || !地图.可站立(玩家位置)) return;
+        开始战斗帧();
+        推进细步(玩家位置, 秒);
+    }
+    internal void 开始战斗帧() => 敌人AI.开始帧();
+    // 场景先开启帧预算，再逐步同步闪避位置；一个渲染帧内的子步共享寻路额度和统计。
+    internal void 推进细步(Vector2 玩家位置, float 秒)
+    {
+        if (float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0 || !地图.可站立(玩家位置)) return;
         玩家 = 玩家位置;
         推进波次(Mathf.Min(秒, .25f));
-        敌人AI.开始帧();
         // 有界细步长：暂停恢复不累计攻击，低帧率弹体也不穿墙。
         float 剩余 = Mathf.Min(秒, .25f);
         while (剩余 > .00001f) { float 步 = Mathf.Min(.025f, 剩余); 一步(步); 剩余 -= 步; }

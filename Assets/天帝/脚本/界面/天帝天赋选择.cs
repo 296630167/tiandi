@@ -24,7 +24,7 @@ public class 天帝天赋选择 : MonoBehaviour
     RectTransform 详情遮罩;
     public bool 详情已打开 => 详情遮罩 != null && 详情遮罩.gameObject.activeSelf;
     Text 提示, 次数;
-    Text 固定详情标题, 固定详情效果, 固定详情说明, 固定详情倾向;
+    Text 固定详情标题, 固定详情效果, 固定详情说明, 固定详情倾向, 固定详情规则;
     Button 刷新按钮, 确认按钮;
     天帝游戏 游戏;
     bool 衔接序章;
@@ -135,24 +135,57 @@ public class 天帝天赋选择 : MonoBehaviour
         固定详情效果 = 字(详情区, "", 326, 30, 586, 43, 23, 天帝剪纸界面皮肤.墨);
         固定详情说明 = 字(详情区, "", 326, 76, 586, 70, 19, 天帝剪纸界面皮肤.墨);
         固定详情效果.alignment = 固定详情说明.alignment = TextAnchor.MiddleLeft;
-        var 规则 = 字(详情区, "源纹固定中心 · 确认后本局不可更换", 952, 25, 320, 52, 18, 天帝剪纸界面皮肤.墨);
-        规则.alignment = TextAnchor.MiddleLeft;
+        固定详情规则 = 字(详情区, "源纹固定中心 · 确认后本局不可更换", 952, 25, 320, 52, 18, 天帝剪纸界面皮肤.墨);
+        固定详情规则.alignment = TextAnchor.MiddleLeft;
         固定详情倾向 = 字(详情区, "", 952, 80, 320, 74, 16, 天帝剪纸界面皮肤.次墨);
         固定详情倾向.alignment = TextAnchor.MiddleLeft;
         刷新按钮 = 按钮(根, "刷新天赋", "刷新天赋", 284, 752, 300, 80, () => 游戏.刷新天赋(), false);
         确认按钮 = 按钮(根, "确认天赋", "确认选择", 616, 744, 368, 88, 确认选中, true);
         var 返回 = 按钮(根, "返回标题", "返回标题", 1016, 752, 300, 80, 游戏.返回标题, false);
         天帝辅助页山水.按钮(刷新按钮); 天帝辅助页山水.按钮(确认按钮, true); 天帝辅助页山水.按钮(返回);
-        foreach (var 键 in new[] { 刷新按钮, 确认按钮, 返回 }) 键.GetComponentInChildren<Text>().fontSize = 28;
-        可选择 = false; 刷新按钮.interactable = false; 刷新候选();
+        foreach (var 键 in new[] { 刷新按钮, 确认按钮, 返回 }) { var 文 = 键?.GetComponentInChildren<Text>(); if (文 != null) 文.fontSize = 28; }
+        可选择 = false; if (刷新按钮 != null) 刷新按钮.interactable = false; 刷新候选();
         if (天帝移动适配.启用)
         {
             var 卡列 = new System.Collections.Generic.List<RectTransform>(衔接卡);
             天帝响应布局.横向卡列(根, 卡列, .025f, .22f, .95f, .43f);
-            天帝响应布局.比例(详情区, .025f, .67f, .95f, .18f);
+            天帝响应布局.比例(详情区, .025f, .65f, .95f, .22f);
             天帝响应布局.比例((RectTransform)刷新按钮.transform, .14f, .87f, .22f, .11f);
             天帝响应布局.比例((RectTransform)确认按钮.transform, .38f, .87f, .26f, .11f);
             天帝响应布局.比例((RectTransform)返回.transform, .66f, .87f, .22f, .11f);
+            // 手机详情区按两行重排，避免桌面 176 高面板缩放后标题和解封规则挤成一团。
+            var 详情布局 = 详情区.gameObject.AddComponent<天帝移动排版>();
+            详情布局.排版 = 面板 =>
+            {
+                float 宽 = 面板.rect.width, 高 = 面板.rect.height;
+                天帝双端页面布局.固定(固定详情标题.rectTransform, 12, 4, Mathf.Min(132, 宽 * .24f), 30);
+                固定详情标题.fontSize = 20; 固定详情标题.alignment = TextAnchor.MiddleLeft;
+                天帝双端页面布局.固定(固定详情效果.rectTransform, Mathf.Min(144, 宽 * .27f), 4, 宽 * .70f, 28);
+                固定详情效果.fontSize = 15; 固定详情效果.alignment = TextAnchor.MiddleLeft;
+                天帝双端页面布局.固定(固定详情说明.rectTransform, 12, 36, 宽 * .68f, Mathf.Max(30, 高 - 42));
+                固定详情说明.fontSize = 12; 固定详情说明.alignment = TextAnchor.MiddleLeft;
+                天帝双端页面布局.固定(固定详情规则.rectTransform, 宽 * .68f, 4, 宽 * .30f, 24);
+                固定详情规则.text = "源纹固定中心 · 本局不可更换"; 固定详情规则.fontSize = 10; 固定详情规则.alignment = TextAnchor.MiddleLeft;
+                天帝双端页面布局.固定(固定详情倾向.rectTransform, 宽 * .68f, 32, 宽 * .30f, Mathf.Max(34, 高 - 36));
+                固定详情倾向.fontSize = 10; 固定详情倾向.alignment = TextAnchor.MiddleLeft;
+                固定详情倾向.text = "解锁顺序：右下→左下→左→左上→右上";
+                foreach (var 文 in 面板.GetComponentsInChildren<Text>(true))
+                {
+                    if (文 == 固定详情标题 || 文 == 固定详情效果 || 文 == 固定详情说明 || 文 == 固定详情倾向 || 文 == 固定详情规则) continue;
+                    if (string.IsNullOrWhiteSpace(文.text)) continue;
+                    天帝双端页面布局.固定(文.rectTransform, 宽 * .72f, 4, 宽 * .25f, 26);
+                    文.fontSize = 11; 文.alignment = TextAnchor.MiddleLeft;
+                }
+            };
+            var 顶部布局 = 根.gameObject.AddComponent<天帝移动排版>();
+            顶部布局.排版 = 面板 =>
+            {
+                float 宽 = 面板.rect.width;
+                天帝双端页面布局.固定(标题.rectTransform, 46, 6, 宽 - 92, 34);
+                标题.fontSize = 24; 标题.alignment = TextAnchor.MiddleCenter;
+                天帝双端页面布局.固定(提示.rectTransform, 46, 42, 宽 - 92, 24);
+                提示.fontSize = 14; 提示.alignment = TextAnchor.MiddleCenter;
+            };
         }
         StartCoroutine(山水降临());
     }
@@ -167,17 +200,17 @@ public class 天帝天赋选择 : MonoBehaviour
         }
         可选择 = true; foreach (var 键 in 卡按钮) 键.interactable = true;
         foreach (var 组 in 衔接透明) 组.alpha = 1;
-        刷新按钮.interactable = true; 更新山水按键();
+        if (刷新按钮 != null) 刷新按钮.interactable = true; 更新山水按键();
     }
     void 更新山水按键()
     {
-        if (!山水天赋) return;
+        if (!山水天赋 || 游戏 == null || 游戏.天赋池 == null) return;
         天帝辅助页山水.按钮(刷新按钮); 天帝辅助页山水.按钮(确认按钮, true);
-        提示.text="五条可能的人生 · 已刷新 "+游戏.天赋池.刷新次数+" 次 · 选择一枚作为起点";
+        if (提示 != null) 提示.text="五条可能的人生 · 已刷新 "+游戏.天赋池.刷新次数+" 次 · 选择一枚作为起点";
         for (int i = 0; i < 5; i++)
         {
-            名字[i].color = new Color(.99f,.97f,.88f);
-            标记[i].text = i == 选中槽位 ? "已选" : "";
+            if (名字[i] != null) 名字[i].color = new Color(.99f,.97f,.88f);
+            if (标记[i] != null) 标记[i].text = i == 选中槽位 ? "已选" : "";
         }
     }
     void 初始化序章选择(RectTransform 根)
@@ -197,7 +230,7 @@ public class 天帝天赋选择 : MonoBehaviour
         固定详情标题.alignment = 固定详情效果.alignment = 固定详情说明.alignment = 固定详情倾向.alignment = TextAnchor.MiddleLeft;
         按钮(详情区, "返回标题", "返回", 42, 189, 118, 54, 游戏.返回标题, false);
         刷新按钮 = 按钮(详情区, "刷新天赋", "刷新天赋", 176, 189, 118, 54, () => 游戏.刷新天赋(), false);
-        刷新按钮.GetComponentInChildren<Text>().fontSize = 19;
+        var 刷新字 = 刷新按钮?.GetComponentInChildren<Text>(); if (刷新字 != null) 刷新字.fontSize = 19;
         确认按钮 = 按钮(详情区, "确认天赋", "确认选择", 1324, 178, 226, 64, 确认选中, true);
         for (int i = 0; i < 5; i++)
         {
@@ -270,31 +303,32 @@ public class 天帝天赋选择 : MonoBehaviour
         选中槽位 = 悬停槽位 = -1; 隐藏详情(); 关闭选中详情();
         for (int i = 0; i < 5; i++)
         {
-            var 天赋 = 游戏.天赋池.候选[i];
-            名字[i].text = 天赋.名称;
-            天帝界面美术.标题(名字[i]);
-            if (衔接序章) { 名字[i].color = 浅; 选中线[i].gameObject.SetActive(false); 效果[i].text = 天赋.效果; 倾向[i].text = 天赋.倾向; 标记[i].text = "点击查看并选择"; }
-            else { 效果[i].text = 天赋.效果; 倾向[i].text = 天赋.倾向; 标记[i].text = "查看并选择"; }
-            if (纹字[i] != null) 纹字[i].text = 天帝美术资源.已接入 ? "" : 天赋.名称.Substring(0, 1);
+            var 天赋 = 游戏.天赋池.候选 != null && i < 游戏.天赋池.候选.Count ? 游戏.天赋池.候选[i] : null;
+            if (天赋 == null) { if (名字[i] != null) 名字[i].text = "暂无天赋"; if (效果[i] != null) 效果[i].text = "暂无可用候选"; continue; }
+            var 名称 = string.IsNullOrEmpty(天赋.名称) ? "未命名天赋" : 天赋.名称;
+            if (名字[i] != null) { 名字[i].text = 名称; 天帝界面美术.标题(名字[i]); }
+            if (衔接序章) { if (名字[i] != null) 名字[i].color = 浅; if (选中线[i] != null) 选中线[i].gameObject.SetActive(false); if (效果[i] != null) 效果[i].text = 天赋.效果 ?? "暂无效果说明"; if (倾向[i] != null) 倾向[i].text = 天赋.倾向 ?? ""; if (标记[i] != null) 标记[i].text = "点击查看并选择"; }
+            else { if (效果[i] != null) 效果[i].text =天赋.效果 ?? "暂无效果说明"; if (倾向[i] != null) 倾向[i].text = 天赋.倾向 ?? ""; if (标记[i] != null) 标记[i].text = "查看并选择"; }
+            if (纹字[i] != null) 纹字[i].text = 天帝美术资源.已接入 ? "" : (string.IsNullOrEmpty(名称) ? "·" : 名称.Substring(0, 1));
             if (图纹[i] != null) { 图纹[i].编号 = 天赋.编号; 图纹[i].SetVerticesDirty(); }
             if (衔接图纹[i] != null) { 衔接图纹[i].编号 = 天赋.编号; 衔接图纹[i].SetVerticesDirty(); }
-            卡背景[i].color = 普通卡色();
-            卡选中边[i].enabled = false;
+            if (卡背景[i] != null) 卡背景[i].color = 普通卡色();
+            if (卡选中边[i] != null) 卡选中边[i].enabled = false;
         }
-        确认按钮.interactable = false;
-        确认按钮.GetComponentInChildren<Text>().text = "先选择天赋";
-        if (山水天赋) 次数.text = "已刷新 " + 游戏.天赋池.刷新次数 + " 次";
-        if (衔接序章) { 更新固定详情(); if (可选择) 提示.text = "五条可能的人生 · 已刷新 " + 游戏.天赋池.刷新次数 + " 次 · 选择一枚作为起点"; }
+        if (确认按钮 != null) 确认按钮.interactable = false;
+        var 确认字 = 确认按钮?.GetComponentInChildren<Text>(); if (确认字 != null) 确认字.text = "先选择天赋";
+        if (山水天赋 && 次数 != null) 次数.text = "已刷新 " + 游戏.天赋池.刷新次数 + " 次";
+        if (衔接序章) { 更新固定详情(); if (可选择 && 提示 != null) 提示.text = "五条可能的人生 · 已刷新 " + 游戏.天赋池.刷新次数 + " 次 · 选择一枚作为起点"; }
         else
         {
-            次数.text = "天赋池 " + 天帝天赋.全部.Count + " 种  ·  已刷新 " + 游戏.天赋池.刷新次数 + " 次";
-            if (可选择) 提示.text = "选择一枚天赋，或刷新寻找想玩的构筑。";
+            if (次数 != null) 次数.text = "天赋池 " + 天帝天赋.全部.Count + " 种  ·  已刷新 " + 游戏.天赋池.刷新次数 + " 次";
+            if (可选择 && 提示 != null) 提示.text = "选择一枚天赋，或刷新寻找想玩的构筑。";
         }
         更新山水按键();
     }
     public void 选中(int 槽)
     {
-        if (!可选择 || 槽 < 0 || 槽 >= 5 || 游戏.天赋池.已选天赋 != null) return;
+        if (!可选择 || 槽 < 0 || 槽 >= 5 || 游戏?.天赋池 == null || 游戏.天赋池.候选 == null || 槽 >= 游戏.天赋池.候选.Count || 游戏.天赋池.候选[槽] == null || 游戏.天赋池.已选天赋 != null) return;
         选中槽位 = 槽;
         for (int i = 0; i < 5; i++)
         {
@@ -305,8 +339,8 @@ public class 天帝天赋选择 : MonoBehaviour
         }
         if (衔接序章) 更新固定详情();
         else 提示.text = "已选「" + 游戏.天赋池.候选[槽].名称 + "」 · 确认后本局不可更换";
-        确认按钮.interactable = true;
-        确认按钮.GetComponentInChildren<Text>().text = "确认「" + 游戏.天赋池.候选[槽].名称 + "」";
+        if (确认按钮 != null) 确认按钮.interactable = true;
+        var 确认选择字 = 确认按钮?.GetComponentInChildren<Text>(); if (确认选择字 != null) 确认选择字.text = "确认「" + 游戏.天赋池.候选[槽].名称 + "」";
         if (!衔接序章) 显示选中详情();
         更新山水按键();
     }
@@ -328,7 +362,7 @@ public class 天帝天赋选择 : MonoBehaviour
         var 效果正文 = 字(效果框, 天赋.效果, 20, 44, 604, 64, 26, 浅); 效果正文.fontStyle = FontStyle.Bold; 效果正文.alignment = TextAnchor.MiddleLeft;
         字(框, 天赋.说明, 38, 286, 644, 62, 19, 天帝道纹美术.次文).alignment = TextAnchor.MiddleLeft;
         字(框, "源纹固定中心 · 确认后本局不可更换", 38, 358, 466, 32, 17, 天帝道纹美术.次文).alignment = TextAnchor.MiddleLeft;
-        var 解封 = 字(框, "初始开放右接口。10/20/30/40/50级依次解封右上、左上、左、左下、右下接口。", 38, 408, 644, 72, 17, 天帝道纹美术.次文); 解封.gameObject.SetActive(false);
+        var 解封 = 字(框, "初始开放右接口。10/20/30/40/50级依次解封右下、左下、左、左上、右上接口。", 38, 408, 644, 72, 17, 天帝道纹美术.次文); 解封.gameObject.SetActive(false);
         按钮(框, "天赋解封规则", "解封规则", 538, 358, 144, 34, () => 解封.gameObject.SetActive(!解封.gameObject.activeSelf), false);
         var 返回键=按钮(框, "返回选择", "返回选择", 74, 506, 260, 58, 关闭选中详情, false);
         var 确认键=按钮(框, "确认源道纹", "确认「" + 天赋.名称 + "」", 386, 506, 260, 58, 确认选中, true);
@@ -362,8 +396,9 @@ public class 天帝天赋选择 : MonoBehaviour
     }
     void 确认选中()
     {
-        if (!可选择 || 选中槽位 < 0) return;
-        游戏.选择天赋(游戏.天赋池.候选[选中槽位].编号, 游戏.天赋池.轮次);
+        if (!可选择 || 游戏 == null || 游戏.天赋池 == null || 选中槽位 < 0 || 游戏.天赋池.候选 == null || 选中槽位 >= 游戏.天赋池.候选.Count) return;
+        var 天赋 = 游戏.天赋池.候选[选中槽位]; if (天赋 == null) return;
+        游戏.选择天赋(天赋.编号, 游戏.天赋池.轮次);
     }
     IEnumerator 降临()
     {
@@ -386,13 +421,14 @@ public class 天帝天赋选择 : MonoBehaviour
     }
     public void 显示详情(int 槽, Vector2 屏幕)
     {
-        if (!可选择 || 详情已打开 || 槽 < 0 || 槽 >= 5 || 游戏.天赋池 == null) return;
+        if (!可选择 || 详情已打开 || 槽 < 0 || 槽 >= 5 || 游戏 == null || 游戏.天赋池 == null || 游戏.天赋池.候选 == null || 槽 >= 游戏.天赋池.候选.Count || 游戏.天赋池.候选[槽] == null) return;
         if (衔接序章)
         {
             if (悬停槽位 != 槽) { 悬停槽位 = 槽; 更新固定详情(); }
             return;
         }
         if (浮窗 == null) return;
+        if (浮窗卡 == null || 浮窗卡区 == null) return;
         浮窗卡.设置(天帝道纹.创建天赋源纹(游戏.天赋池.候选[槽]));
         浮窗卡区.gameObject.SetActive(true);
         float 高 = Mathf.Clamp(浮窗卡.高度, 360, 760);
@@ -412,15 +448,17 @@ public class 天帝天赋选择 : MonoBehaviour
     {
         if (!衔接序章 || 固定详情标题 == null || 游戏?.天赋池 == null) return;
         int 槽 = 悬停槽位 >= 0 ? 悬停槽位 : 选中槽位;
-        var 天赋 = 槽 >= 0 ? 游戏.天赋池.候选[槽] : null;
+        var 天赋 = 游戏 != null && 游戏.天赋池 != null && 游戏.天赋池.候选 != null && 槽 >= 0 && 槽 < 游戏.天赋池.候选.Count ? 游戏.天赋池.候选[槽] : null;
         固定详情标题.text = 天赋 == null ? "选择一枚源道纹" : 天赋.名称 + (槽 == 选中槽位 ? "  ·  已选定" : "  ·  预览");
         固定详情效果.text = 天赋 == null ? "" : 天赋.效果;
-        固定详情说明.text = 天赋 == null ? "天赋决定本局的源道纹起点。可以刷新候选，五枚均可选择；确认之后，再把自己的路一步步连接起来。" : 天赋.说明;
+        固定详情说明.text = 天帝移动适配.启用
+            ? (天赋 == null ? "选择本局起始源纹，确认后不可更换。" : (天赋.效果 ?? "暂无效果说明"))
+            : (天赋 == null ? "天赋决定本局的源道纹起点。可以刷新候选，五枚均可选择；确认之后，再把自己的路一步步连接起来。" : 天赋.说明);
         固定详情倾向.text = 天赋 == null ? "" : "构筑倾向  " + 天赋.倾向;
         if (山水天赋)
         {
             固定详情标题.text = 天赋 == null ? "选择源纹" : 天赋.名称;
-            固定详情倾向.text = "初始开放右接口。10/20/30/40/50级\n依次解封右上、左上、左、左下、右下。";
+            固定详情倾向.text = 天帝移动适配.启用 ? "解锁顺序：右下→左下→左→左上→右上" : "初始开放右接口。10/20/30/40/50级\n依次解封右下、左下、左、左上、右上。";
         }
     }
     RectTransform 区(RectTransform 父, string 名, float x, float y, float w, float h)

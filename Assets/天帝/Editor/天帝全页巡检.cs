@@ -28,30 +28,44 @@ public static class 天帝全页巡检
     static EnterPlayModeOptions 原选项;
     static double 截止;
     static bool 仅回收, 仅层级补拍;
+    static string 原场景路径;
     static EditorWindow 补拍窗口;
     static int 补拍原尺寸;
     static Rect? 补拍原安全区;
     static 天帝游戏 游戏;
-    static string 指纹(string p){if(!File.Exists(p))return "无文件";using(var h=SHA256.Create())return Convert.ToBase64String(h.ComputeHash(File.ReadAllBytes(p)));}
+    static string 指纹(string p){if(string.IsNullOrEmpty(p)||!File.Exists(p))return "无文件";using(var h=SHA256.Create())return Convert.ToBase64String(h.ComputeHash(File.ReadAllBytes(p)));}
+    static void 写报告()
+    {
+        if(string.IsNullOrEmpty(目录)) return;
+        Directory.CreateDirectory(目录);
+        File.WriteAllText(Path.Combine(目录,"report.json"),JsonUtility.ToJson(报告 ?? new 巡检报告(),true));
+    }
     public static string 启动()=>启动(false);
     public static string 启动回收()=>启动(true);
     public static string 启动层级补拍()=>启动(false, true);
     static string 启动(bool 回收, bool 层级补拍 = false)
     {
+        原场景路径=SceneManager.GetActiveScene().path;
         if(EditorApplication.isPlayingOrWillChangePlaymode||Enumerable.Range(0,SceneManager.sceneCount).Any(i=>SceneManager.GetSceneAt(i).isDirty))throw new InvalidOperationException("需编辑模式且场景无未保存修改。");
-        if(SceneManager.GetActiveScene().path!="Assets/天帝/场景/天帝.unity")
+        const string 主场景="Assets/天帝/场景/天帝.unity";
+        if(!File.Exists(Path.Combine(天帝构建工具.项目根, 主场景)))
+            throw new FileNotFoundException("巡检所需主场景不存在", 主场景);
+        if(SceneManager.GetActiveScene().path!=主场景)
         {
             if(SceneManager.GetActiveScene().isDirty)throw new InvalidOperationException("当前场景有未保存修改，请先保存。");
             // 命令行或新开的编辑器通常没有加载主场景；干净场景可直接切换，避免巡检入口误报中断。
-            EditorSceneManager.OpenScene("Assets/天帝/场景/天帝.unity");
+            var 打开=EditorSceneManager.OpenScene(主场景);
+            if(!打开.IsValid()) throw new InvalidOperationException("主场景打开失败："+主场景);
         }
         天帝数值同步检查.校验();
         仅回收=回收;
         仅层级补拍=层级补拍;
-        目录=Path.Combine(天帝构建工具.项目根,"生成/验证/全页巡检-"+DateTime.Now.ToString("yyyyMMdd-HHmmss"));Directory.CreateDirectory(目录);
+        string 根目录=Path.Combine(天帝构建工具.项目根,"生成/验证");Directory.CreateDirectory(根目录);
+        string 前缀="全页巡检-"+DateTime.Now.ToString("yyyyMMdd-HHmmss-fff");
+        目录=Path.Combine(根目录,前缀);int 序号=1;while(Directory.Exists(目录))目录=Path.Combine(根目录,前缀+"-"+(序号++));Directory.CreateDirectory(目录);
         真实路径=Path.Combine(Application.persistentDataPath,"天帝进度.json");报告=new 巡检报告{原存档=指纹(真实路径)};
         string 隔离=Path.Combine(目录,"隔离存档");Directory.CreateDirectory(隔离);
-        if(File.Exists(真实路径))File.Copy(真实路径,Path.Combine(隔离,"天帝进度.json"));
+        if(File.Exists(真实路径))File.Copy(真实路径,Path.Combine(隔离,"天帝进度.json"),true);
         else
         {
             var 网=new 天帝道纹(42,天帝天赋.获取((int)天赋种类.普通人));
@@ -70,21 +84,37 @@ public static class 天帝全页巡检
     static void 设置补拍视图()
     {
         var a=typeof(Editor).Assembly;var flags=BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic;
-        补拍窗口=EditorWindow.GetWindow(a.GetType("UnityEditor.GameView"));
-        补拍原尺寸=(int)补拍窗口.GetType().GetProperty("selectedSizeIndex",flags).GetValue(补拍窗口);
+        var gameViewType=a.GetType("UnityEditor.GameView");
+        if(gameViewType==null) throw new InvalidOperationException("当前 Unity 版本找不到 GameView，无法进行截图巡检。");
+        补拍窗口=EditorWindow.GetWindow(gameViewType);
+        var sizeProperty=补拍窗口.GetType().GetProperty("selectedSizeIndex",flags);
+        if(sizeProperty==null||!sizeProperty.CanRead||!sizeProperty.CanWrite) throw new InvalidOperationException("当前 Unity 版本不支持设置 GameView 尺寸。");
+        补拍原尺寸=(int)sizeProperty.GetValue(补拍窗口);
         var t=a.GetType("UnityEditor.GameViewSizes");
-        var 单=typeof(ScriptableSingleton<>).MakeGenericType(t).GetProperty("instance",BindingFlags.Public|BindingFlags.Static).GetValue(null);
-        var 组=t.GetMethod("GetGroup").Invoke(单,new[]{Enum.ToObject(a.GetType("UnityEditor.GameViewSizeGroupType"),0)});
-        var 大小=a.GetType("UnityEditor.GameViewSize").GetConstructor(flags,null,new[]{a.GetType("UnityEditor.GameViewSizeType"),typeof(int),typeof(int),typeof(string)},null)
-            .Invoke(new[]{Enum.ToObject(a.GetType("UnityEditor.GameViewSizeType"),1),(object)1920,1080,"信息层级审查1080p"});
-        组.GetType().GetMethod("AddCustomSize").Invoke(组,new[]{大小});
-        int 索引=(int)组.GetType().GetMethod("GetBuiltinCount").Invoke(组,null)+(int)组.GetType().GetMethod("GetCustomCount").Invoke(组,null)-1;
-        补拍窗口.GetType().GetProperty("selectedSizeIndex",flags).SetValue(补拍窗口,索引);补拍窗口.Focus();
+        if(t==null) throw new InvalidOperationException("当前 Unity 版本找不到 GameViewSizes。");
+        var instanceProperty=typeof(ScriptableSingleton<>).MakeGenericType(t).GetProperty("instance",BindingFlags.Public|BindingFlags.Static);
+        if(instanceProperty==null) throw new InvalidOperationException("当前 Unity 版本无法读取 GameView 尺寸组。");
+        var 单=instanceProperty.GetValue(null);
+        var groupMethod=t.GetMethod("GetGroup");var groupType=a.GetType("UnityEditor.GameViewSizeGroupType");
+        if(groupMethod==null||groupType==null) throw new InvalidOperationException("当前 Unity 版本缺少 GameView 尺寸组 API。");
+        var 组=groupMethod.Invoke(单,new[]{Enum.ToObject(groupType,0)});
+        if(组==null) throw new InvalidOperationException("当前 Unity 版本没有可用的 GameView 尺寸组。");
+        var sizeType=a.GetType("UnityEditor.GameViewSize");var sizeKind=a.GetType("UnityEditor.GameViewSizeType");
+        if(sizeType==null||sizeKind==null) throw new InvalidOperationException("当前 Unity 版本缺少 GameViewSize 类型。");
+        var ctor=sizeType.GetConstructor(flags,null,new[]{sizeKind,typeof(int),typeof(int),typeof(string)},null);
+        if(ctor==null) throw new InvalidOperationException("当前 Unity 版本无法创建自定义 GameView 尺寸。");
+        var 大小=ctor.Invoke(new[]{Enum.ToObject(sizeKind,1),(object)1920,1080,"信息层级审查1080p"});
+        var addSize=组.GetType().GetMethod("AddCustomSize");
+        var getBuiltin=组.GetType().GetMethod("GetBuiltinCount");var getCustom=组.GetType().GetMethod("GetCustomCount");
+        if(addSize==null||getBuiltin==null||getCustom==null) throw new InvalidOperationException("当前 Unity 版本缺少 GameView 尺寸 API。");
+        addSize.Invoke(组,new[]{大小});
+        int 索引=(int)getBuiltin.Invoke(组,null)+(int)getCustom.Invoke(组,null)-1;
+        sizeProperty.SetValue(补拍窗口,索引);补拍窗口.Focus();
         补拍原安全区=天帝移动适配.验证安全区;天帝移动适配.验证安全区=new Rect(0,0,1920,1080);
     }
     static void 等待()
     {
-        if(结束)return;if(EditorApplication.timeSinceStartup>截止){报告.错误.Add("巡检超时");完成();return;}
+        if(结束)return;if(EditorApplication.timeSinceStartup>截止){报告.错误.Add("巡检超时");写报告();完成();return;}
         if(!EditorApplication.isPlaying)return;Application.runInBackground=true;EditorApplication.QueuePlayerLoopUpdate();
         if(开始)return;游戏=UnityEngine.Object.FindAnyObjectByType<天帝游戏>();if(游戏==null||游戏.阶段!=游戏阶段.标题)return;
         开始=true;var 输入=游戏.GetComponentInChildren<InputSystemUIInputModule>();if(输入!=null)输入.enabled=false;游戏.StartCoroutine(保护(巡视()));
@@ -102,9 +132,9 @@ public static class 天帝全页巡检
         var 页=new 页面记录{名称=名};var 图=游戏.GetComponentsInChildren<Image>();
         页.图片数=图.Length;页.素材数=图.Count(x=>x.sprite!=null);页.素材=图.Where(x=>x.sprite!=null).Select(x=>x.name+"="+x.sprite.name).Distinct().ToList();
         var 弹层=游戏.GetComponentsInChildren<RectTransform>().FirstOrDefault(x=>x.name=="设置层");
-        var 顶层=游戏.界面.回收页!=null&&游戏.界面.回收页.确认已打开?游戏.界面.回收页.transform.Find("回收确认层"):游戏.界面.宝盒概率已打开?弹层.Find("宝盒概率层"):弹层;
+        var 顶层=游戏.界面.回收页!=null&&游戏.界面.回收页.确认已打开?游戏.界面.回收页.transform.Find("回收确认层"):游戏.界面.宝盒概率已打开&&弹层!=null?弹层.Find("宝盒概率层"):弹层;
         var 模态=游戏.GetComponentsInChildren<RectTransform>().LastOrDefault(x=>x.name=="源道纹详情遮罩"||x.name=="道纹背包窗口"||x.name=="布局方案面板");
-        var 文字=模态!=null?模态.GetComponentsInChildren<Text>():弹层!=null&&Enumerable.Range(0,弹层.childCount).Any(i=>弹层.GetChild(i).gameObject.activeSelf)?顶层.GetComponentsInChildren<Text>():游戏.GetComponentsInChildren<Text>();
+        var 文字=模态!=null?模态.GetComponentsInChildren<Text>():弹层!=null&&Enumerable.Range(0,弹层.childCount).Any(i=>弹层.GetChild(i).gameObject.activeSelf)&&顶层!=null?顶层.GetComponentsInChildren<Text>():游戏.GetComponentsInChildren<Text>();
         foreach(var 文 in 文字.Where(x=>x.enabled&&!string.IsNullOrEmpty(x.text)))
         {
             if(文.GetComponentsInParent<CanvasGroup>().Any(x=>x.alpha<.1f))continue;
@@ -113,8 +143,9 @@ public static class 天帝全页巡检
             页.文字数++;if(文.verticalOverflow==VerticalWrapMode.Truncate&&!文.resizeTextForBestFit&&文.preferredHeight>文.rectTransform.rect.height+2)
                 页.溢出.Add(文.transform.parent.name+"/"+文.name+"："+文.text+" ["+文.preferredHeight+"/"+文.rectTransform.rect.height+"]");
         }
-        报告.页面.Add(页);var t=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(目录,名+".jpg"),t.EncodeToJPG(86));UnityEngine.Object.Destroy(t);
-        File.WriteAllText(Path.Combine(目录,"report.json"),JsonUtility.ToJson(报告,true));
+        报告.页面.Add(页);var t=ScreenCapture.CaptureScreenshotAsTexture();
+        if(t!=null){File.WriteAllBytes(Path.Combine(目录,名+".jpg"),t.EncodeToJPG(86));UnityEngine.Object.Destroy(t);}else 报告.错误.Add("截图失败："+名);
+        写报告();
     }
     static bool 在视口(RectTransform 区)
     {
@@ -124,19 +155,23 @@ public static class 天帝全页巡检
     static void 检查(string 名,bool 对)=>(对?报告.通过:报告.失败).Add(名);
     static void 检查图鉴浮窗()
     {
-        var 页=游戏.界面.图鉴页;var 根=(RectTransform)页.transform;
+        var 页=游戏!=null&&游戏.界面!=null?游戏.界面.图鉴页:null;
+        if(页==null){报告.错误.Add("图鉴页缺失，无法检查浮窗");return;}
+        var 根=(RectTransform)页.transform;
         var 框=根.Find("道纹悬停详情") as RectTransform;var 角=new Vector3[4];
+        if(框==null){报告.错误.Add("图鉴悬停详情节点缺失");return;}
         foreach(var 点 in new[]{new Vector2(根.rect.xMin,根.rect.yMin),new Vector2(根.rect.xMin,根.rect.yMax),new Vector2(根.rect.xMax,根.rect.yMin),new Vector2(根.rect.xMax,根.rect.yMax)})
         {
             页.显示详情(道纹属性.力量,false,RectTransformUtility.WorldToScreenPoint(null,根.TransformPoint(点)));
             Canvas.ForceUpdateCanvases();框.GetWorldCorners(角);
             检查("图鉴浮窗四角完整-"+点,角.All(x=>{var p=根.InverseTransformPoint(x);return p.x>=根.rect.xMin+11.9f&&p.x<=根.rect.xMax-11.9f&&p.y>=根.rect.yMin+11.9f&&p.y<=根.rect.yMax-11.9f;}));
-            var 文=框.GetComponentInChildren<Text>();检查("图鉴浮窗正文完整-"+点,文.preferredHeight<=文.rectTransform.rect.height+.1f);
+            var 文=框.GetComponentInChildren<Text>();检查("图鉴浮窗正文完整-"+点,文!=null&&文.preferredHeight<=文.rectTransform.rect.height+.1f);
         }
         页.隐藏详情();
     }
     static void 点(string 名)
     {
+        if(游戏==null||EventSystem.current==null)throw new InvalidOperationException("巡检输入系统未初始化："+名);
         var b=游戏.GetComponentsInChildren<Button>().FirstOrDefault(x=>x.name==名&&x.interactable);
         if(b==null)throw new InvalidOperationException("巡检按钮不存在："+名);
         Canvas.ForceUpdateCanvases();var r=(RectTransform)b.transform;var e=new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left,position=RectTransformUtility.WorldToScreenPoint(null,r.TransformPoint(r.rect.center))};
@@ -147,6 +182,7 @@ public static class 天帝全页巡检
     static void 私调(object o,string 名)=>o.GetType().GetMethod(名,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Invoke(o,null);
     static void 勾(string 名)
     {
+        if(游戏==null||EventSystem.current==null)throw new InvalidOperationException("巡检输入系统未初始化："+名);
         var t=游戏.GetComponentsInChildren<Toggle>().FirstOrDefault(x=>x.name==名&&x.interactable);
         if(t==null)throw new InvalidOperationException("巡检复选框不存在："+名);
         Canvas.ForceUpdateCanvases();var r=(RectTransform)t.transform;
@@ -355,21 +391,25 @@ public static class 天帝全页巡检
         var 六=天帝道纹生成.创建(1,道纹分类.属性,道纹品阶.传说,随机,道纹属性分组.基础,100);while(六.词条.Count<6)六.词条.Add(天帝道纹属性.抽非五行词条(随机,100));w.获得道纹(六);
         var 改=改根.gameObject.AddComponent<天帝通货界面>();改.初始化(w,new 天帝通货(w,1,1),游戏.默认字体,()=>{});改.选目标(w.道纹.IndexOf(六));改.选通货(通货种类.问天石);yield return 拍("37改造六词条与长说明");改根.gameObject.SetActive(false);UnityEngine.Object.Destroy(改根.gameObject);
     }
-    static void 记错(string 文,string 栈,LogType 类){if(类==LogType.Error||类==LogType.Exception){报告.错误.Add(文+"\n"+栈);完成();}}
-    static void 完成(){if(结束)return;结束=true;EditorApplication.update-=等待;Application.logMessageReceived-=记错;EditorApplication.isPlaying=false;}
+    static void 记错(string 文,string 栈,LogType 类){if(类==LogType.Error||类==LogType.Exception){if(报告!=null)报告.错误.Add(文+"\n"+栈);写报告();完成();}}
+    static void 完成(){if(结束)return;结束=true;EditorApplication.update-=等待;Application.logMessageReceived-=记错;if(EditorApplication.isPlaying)EditorApplication.isPlaying=false;}
     static void 清理(PlayModeStateChange 状态)
     {
-        if(状态!=PlayModeStateChange.EnteredEditMode)return;报告.结束存档=指纹(真实路径);
+        if(状态!=PlayModeStateChange.EnteredEditMode)return;
+        if(报告==null)报告=new 巡检报告();报告.结束存档=指纹(真实路径);
         检查("完整巡检完成",报告.完整巡检);检查("真实存档未改写",报告.原存档==报告.结束存档);
         天帝存档.验证目录=原目录;EditorSettings.enterPlayModeOptionsEnabled=原选项开;EditorSettings.enterPlayModeOptions=原选项;Application.runInBackground=原后台;
         if(补拍窗口!=null)
         {
             天帝移动适配.验证安全区=补拍原安全区;
-            if(补拍窗口!=null)补拍窗口.GetType().GetProperty("selectedSizeIndex",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).SetValue(补拍窗口,补拍原尺寸);
+            var p=补拍窗口.GetType().GetProperty("selectedSizeIndex",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);if(p!=null&&p.CanWrite)p.SetValue(补拍窗口,补拍原尺寸);
         }
         if(原字幕存在)PlayerPrefs.SetInt("Tiandi.Menu.Subtitles",原字幕);else PlayerPrefs.DeleteKey("Tiandi.Menu.Subtitles");
         if(原序章存在)PlayerPrefs.SetInt("Tiandi.Menu.PrologueSeen",原序章);else PlayerPrefs.DeleteKey("Tiandi.Menu.PrologueSeen");PlayerPrefs.Save();
-        EditorApplication.update-=等待;EditorApplication.playModeStateChanged-=清理;Application.logMessageReceived-=记错;File.WriteAllText(Path.Combine(目录,"report.json"),JsonUtility.ToJson(报告,true));
+        EditorApplication.update-=等待;EditorApplication.playModeStateChanged-=清理;Application.logMessageReceived-=记错;
+        if(!string.IsNullOrEmpty(原场景路径)&&原场景路径!="Assets/天帝/场景/天帝.unity"&&File.Exists(Path.Combine(天帝构建工具.项目根,原场景路径)))
+            EditorSceneManager.OpenScene(原场景路径);
+        写报告();
     }
 }
 #endif

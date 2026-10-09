@@ -29,20 +29,31 @@ public sealed partial class 天帝道纹图鉴
         天帝图录回收山水素材.纸(根.Find("剪纸图鉴底图")?.GetComponent<Image>(),"图鉴背景","图鉴背景",false);
         var 标题=框.Find("审批剪纸标题")?.GetComponent<Text>();
         if(标题!=null){定(标题.rectTransform,108,0,520,88);标题.fontSize=48;}
-        定(框.Find("收录说明") as RectTransform,108,93,940,30);天帝图录回收山水素材.文字(框.Find("收录说明").GetComponent<Text>(),字体,20);
-        定(框.Find("关闭图鉴") as RectTransform,1361,28,166,52);
-        定(框.Find("查看共通规则") as RectTransform,918,29,198,40);
-        定(框.Find("等级查询标签") as RectTransform,1170,28,156,32);天帝图录回收山水素材.文字(框.Find("等级查询标签").GetComponent<Text>(),字体,20);
-        定(框.Find("物品等级输入") as RectTransform,1132,71,212,45);天帝首两页山水素材.轻纸(等级输入.targetGraphic as Image);
-        定(等级输入.textComponent.rectTransform,12,0,188,45);天帝图录回收山水素材.文字(等级输入.textComponent,字体,22);
-        框.Find("等级查询范围").gameObject.SetActive(false);
+        var 收录 = 框.Find("收录说明"); 定(收录 as RectTransform,108,93,940,30);
+        var 收录字 = 收录?.GetComponent<Text>(); if(收录字 != null) 天帝图录回收山水素材.文字(收录字,字体,20);
+        var 关闭对象 = 框.Find("关闭图鉴"); 定(关闭对象 as RectTransform,1361,28,166,52);
+        var 关闭键 = 关闭对象?.GetComponent<Button>(); if(关闭键 != null) 天帝图录回收山水素材.按钮(关闭键);
+        var 共通对象 = 框.Find("查看共通规则"); 定(共通对象 as RectTransform,918,29,198,40);
+        var 共通键 = 共通对象?.GetComponent<Button>(); if(共通键 != null) 天帝图录回收山水素材.按钮(共通键,false,true);
+        var 等级标签对象 = 框.Find("等级查询标签"); 定(等级标签对象 as RectTransform,1170,28,156,32);
+        var 等级标签字 = 等级标签对象?.GetComponent<Text>(); if(等级标签字 != null) 天帝图录回收山水素材.文字(等级标签字,字体,20);
+        var 输入对象 = 框.Find("物品等级输入"); 定(输入对象 as RectTransform,1132,71,212,45);
+        if(等级输入 != null)
+        {
+            天帝首两页山水素材.轻纸(等级输入.targetGraphic as Image);
+            if(等级输入.textComponent != null)
+            {
+                定(等级输入.textComponent.rectTransform,12,0,188,45);
+                天帝图录回收山水素材.文字(等级输入.textComponent,字体,22);
+            }
+        }
+        var 查询范围 = 框.Find("等级查询范围"); if(查询范围 != null) 查询范围.gameObject.SetActive(false);
         for(int i=0;i<分类名.Length;i++)
         {
-            var b=分类按钮[分类名[i]];定((RectTransform)b.transform,72+i*168,133,159,47);天帝图录回收山水素材.按钮(b);
-            var 文=b.GetComponentInChildren<Text>();定(文.rectTransform,8,0,143,47);天帝图录回收山水素材.文字(文,字体,21);
+            if(!分类按钮.TryGetValue(分类名[i], out var b) || b == null) continue;
+            定((RectTransform)b.transform,72+i*168,133,159,47);天帝图录回收山水素材.按钮(b);
+            var 文=b.GetComponentInChildren<Text>(); if(文 != null){定(文.rectTransform,8,0,143,47);天帝图录回收山水素材.文字(文,字体,21);}
         }
-        天帝图录回收山水素材.按钮(框.Find("关闭图鉴").GetComponent<Button>());
-        天帝图录回收山水素材.按钮(框.Find("查看共通规则").GetComponent<Button>(),false,true);
         string 分类 = null;
         foreach (RectTransform 行 in 内容)
         {
@@ -85,39 +96,47 @@ public sealed partial class 天帝道纹图鉴
         var 分隔=底(山水详情规则,"图鉴规则分隔",0,0,400,1,null,new Color(.28f,.43f,.37f,.6f));分隔.GetComponent<Image>().raycastTarget=false;
         var 规则键=按钮(山水详情规则,"图鉴通用规则入口","通用规则",0,13,168,37,展示剪纸共通规则);天帝图录回收山水素材.按钮(规则键,false,true);
         var 摘要=字(山水详情规则,"图鉴规则摘要","品阶决定词条容量；接口方向随机，可旋转。",0,57,400,44,18,天帝剪纸界面皮肤.次墨);天帝图录回收山水素材.文字(摘要,字体,18);
-        var 底注=框.Find("图鉴底注").GetComponent<Text>();定(底注.rectTransform,75,852,1448,27);天帝图录回收山水素材.文字(底注,字体,16);
-        显示剪纸分类("功能道纹");
+        var 底注=框.Find("图鉴底注")?.GetComponent<Text>();
+        if(底注 != null){定(底注.rectTransform,75,852,1448,27);天帝图录回收山水素材.文字(底注,字体,16);}
+        显示剪纸分类(剪纸分类行.ContainsKey("功能道纹") ? "功能道纹" : 剪纸分类行.Keys.FirstOrDefault());
     }
     bool 显示剪纸分类(string 分类)
     {
-        if(!剪纸分类行.ContainsKey(分类))return false;
+        if(string.IsNullOrEmpty(分类) || !剪纸分类行.ContainsKey(分类))return false;
         剪纸当前分类=分类;剪纸页=0;刷新剪纸图鉴();选择剪纸条目(0);return true;
     }
     void 刷新剪纸图鉴()
     {
-        var 列=剪纸分类行[剪纸当前分类]; int 总页=Mathf.Max(1,Mathf.CeilToInt(列.Count/9f)); 剪纸页=Mathf.Clamp(剪纸页,0,总页-1);
+        if(string.IsNullOrEmpty(剪纸当前分类) || !剪纸分类行.TryGetValue(剪纸当前分类, out var 列)) return;
+        int 总页=Mathf.Max(1,Mathf.CeilToInt(列.Count/9f)); 剪纸页=Mathf.Clamp(剪纸页,0,总页-1);
         for(int i=0;i<9;i++)
         {
-            int n=剪纸页*9+i; 剪纸图鉴卡[i].gameObject.SetActive(n<列.Count);if(n>=列.Count)continue;
+            if(i >= 剪纸图鉴卡.Count || i >= 剪纸图鉴图.Count || i >= 剪纸道纹单字.Count || i >= 剪纸图鉴名.Count) continue;
+            int n=剪纸页*9+i; if(剪纸图鉴卡[i] == null) continue; 剪纸图鉴卡[i].gameObject.SetActive(n<列.Count);if(n>=列.Count)continue;
             var 行=列[n];var 原图=行.GetComponentInChildren<天帝道纹绘图>(true);
             剪纸图鉴图[i].单纹=原图?.单纹;剪纸图鉴图[i].SetVerticesDirty();
             剪纸道纹单字[i].text=天帝道纹美术.单字(原图?.单纹);
-            剪纸图鉴名[i].text=行.Find("道纹名称").GetComponent<Text>().text;
-            天帝图录回收山水素材.纸((Image)剪纸图鉴卡[i].targetGraphic,"图录卡","轻纸框");
-            ((Image)剪纸图鉴卡[i].targetGraphic).color=行==剪纸详情目标?new Color(.78f,.88f,.76f):Color.white;
+            var 名字=行?.Find("道纹名称")?.GetComponent<Text>(); 剪纸图鉴名[i].text=名字 != null ? 名字.text : "未命名道纹";
+            var 卡图=剪纸图鉴卡[i].targetGraphic as Image;
+            if(卡图 != null){天帝图录回收山水素材.纸(卡图,"图录卡","轻纸框");卡图.color=行==剪纸详情目标?new Color(.78f,.88f,.76f):Color.white;}
         }
-        剪纸页码.text=(剪纸页+1)+" / "+总页; 剪纸上页.interactable=剪纸页>0;剪纸下页.interactable=剪纸页+1<总页;
-        foreach(var 项 in 分类按钮)天帝图录回收山水素材.按钮(项.Value,项.Key==剪纸当前分类);
-        天帝图录回收山水素材.禁用(剪纸上页);天帝图录回收山水素材.禁用(剪纸下页);
+        if(剪纸页码 != null) 剪纸页码.text=(剪纸页+1)+" / "+总页;
+        if(剪纸上页 != null) 剪纸上页.interactable=剪纸页>0;
+        if(剪纸下页 != null) 剪纸下页.interactable=剪纸页+1<总页;
+        foreach(var 项 in 分类按钮) if(项.Value != null) 天帝图录回收山水素材.按钮(项.Value,项.Key==剪纸当前分类);
+        if(剪纸上页 != null) 天帝图录回收山水素材.禁用(剪纸上页);
+        if(剪纸下页 != null) 天帝图录回收山水素材.禁用(剪纸下页);
     }
     void 选择剪纸条目(int 槽)
     {
-        var 列=剪纸分类行[剪纸当前分类];int n=剪纸页*9+槽;if(n<列.Count)展示剪纸详情(列[n]);刷新剪纸图鉴();
+        if(string.IsNullOrEmpty(剪纸当前分类) || !剪纸分类行.TryGetValue(剪纸当前分类,out var 列)) return;
+        int n=剪纸页*9+槽;if(槽 < 0) return; if(n<列.Count && 列[n] != null)展示剪纸详情(列[n]);刷新剪纸图鉴();
     }
     void 展示剪纸详情(RectTransform 行)
     {
-        剪纸详情目标=行;剪纸详情名.text=行.Find("道纹名称").GetComponent<Text>().text;
-        山水详情类别.text=行.Find("道纹类别").GetComponent<Text>().text;
+        if(行 == null || 剪纸详情名 == null || 山水详情类别 == null || 剪纸详情图 == null || 剪纸详情文 == null) return;
+        剪纸详情目标=行;剪纸详情名.text=行.Find("道纹名称")?.GetComponent<Text>()?.text ?? "未命名道纹";
+        山水详情类别.text=行.Find("道纹类别")?.GetComponent<Text>()?.text ?? "道纹";
         山水详情类别.gameObject.SetActive(true);山水详情图区.gameObject.SetActive(true);山水详情规则.gameObject.SetActive(true);
         天帝双端页面布局.固定(山水详情视口,42,300,400,198);
         剪纸详情图.单纹=行.GetComponentInChildren<天帝道纹绘图>(true)?.单纹;剪纸详情图.SetVerticesDirty();
@@ -127,14 +146,19 @@ public sealed partial class 天帝道纹图鉴
     }
     void 展示剪纸共通规则()
     {
+        if(剪纸详情名 == null || 剪纸详情图 == null || 剪纸详情文 == null || 山水详情视口 == null) return;
         剪纸详情目标=null;剪纸详情名.text="品阶与连接规则";剪纸详情图.单纹=null;剪纸详情图.SetVerticesDirty();
-        剪纸详情单字.text="";
-        山水详情类别.gameObject.SetActive(false);山水详情图区.gameObject.SetActive(false);山水详情规则.gameObject.SetActive(false);
+        if(剪纸详情单字 != null) 剪纸详情单字.text="";
+        if(山水详情类别 != null) 山水详情类别.gameObject.SetActive(false);
+        if(山水详情图区 != null) 山水详情图区.gameObject.SetActive(false);
+        if(山水详情规则 != null) 山水详情规则.gameObject.SetActive(false);
         天帝双端页面布局.固定(山水详情视口,42,101,400,498);
-        剪纸详情文.text=string.Join("\n\n",new[]{"品阶容量说明","连接机制说明"}.SelectMany(n=>内容.Find(n).GetComponentsInChildren<Text>(true)).Select(t=>t.text));排剪纸详情();
+        var 规则文本=new[]{"品阶容量说明","连接机制说明"}.SelectMany(n=>内容.Find(n)?.GetComponentsInChildren<Text>(true) ?? new Text[0]).Select(t=>t.text);
+        剪纸详情文.text=string.Join("\n\n",规则文本);排剪纸详情();
     }
     void 排剪纸详情()
     {
+        if(剪纸详情文 == null || 山水详情视口 == null || 剪纸详情滚动 == null) return;
         剪纸详情文.rectTransform.sizeDelta=new Vector2(400,Mathf.Max(山水详情视口.rect.height,剪纸详情文.preferredHeight+12));
         Canvas.ForceUpdateCanvases();剪纸详情滚动.verticalNormalizedPosition=1;
     }

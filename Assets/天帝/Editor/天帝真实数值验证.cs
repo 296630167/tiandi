@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -41,7 +42,7 @@ public static class 天帝真实数值验证
             检查("导出指纹一致", 输入.配置指纹 == 天帝数值配置.配置指纹);
             foreach (var 人 in 输入.玩家) 对照玩家(人);
             foreach (var 敌 in 输入.敌人) 对照敌人(敌);
-            连接构筑(); 物品与迁移(目录); 伤害与释放(); 攻速与弹量(目录); 敌人机制();
+            连接构筑(); 物品与迁移(目录); 存档边界(目录); 伤害与释放(); 攻速与弹量(目录); 敌人机制();
         }
         catch (Exception 异常) { 结果.错误.Add(异常.ToString()); }
         File.WriteAllText(Path.Combine(目录, "report.json"), JsonUtility.ToJson(结果, true));
@@ -151,6 +152,41 @@ public static class 天帝真实数值验证
         检查("隔离保存回读与备份", 存.保存(新) && 存.读取().画布.道纹.Count == 网.道纹.Count && File.ReadAllText(存.备份路径) == 序列);
         旧.画布.玩家等级 = 200; int 技能点 = 旧.画布.技能点; 天帝存档.迁移(旧);
         检查("超上限旧等级保留来源与点数", 旧.画布.玩家等级 == 100 && 旧.画布.迁移前等级 == 200 && 旧.画布.技能点 == 技能点);
+    }
+    static void 存档边界(string 目录)
+    {
+        var 网 = new 天帝道纹(42, 天赋("普通人"));
+        天帝存档数据 数据(int 灵石) => new 天帝存档数据
+        { 序章已完成 = true, 主角 = 天帝普攻.主角配置(), 画布 = 网.导出存档(), 通货 = new int[13], 灵石 = 灵石 };
+        var 存 = new 天帝存档(Path.Combine(目录, "隔离存档边界"));
+        检查("存档边界-有效主档和备份建立", 存.保存(数据(500)) && 存.保存(数据(600)));
+        byte[] 备份 = File.ReadAllBytes(存.备份路径);
+        foreach (int 版本 in new[] { 0, -1 })
+        {
+            var 坏 = 数据(700); 坏.版本 = 版本;
+            File.WriteAllText(存.路径, JsonUtility.ToJson(坏), new UTF8Encoding(false));
+            byte[] 原档 = File.ReadAllBytes(存.路径);
+            var 回 = 存.读取();
+            检查("存档边界-损坏版本回退有效备份-" + 版本, 回 != null && 回.灵石 == 500);
+            检查("存档边界-读取损坏版本不修改文件-" + 版本,
+                原档.SequenceEqual(File.ReadAllBytes(存.路径)) && 备份.SequenceEqual(File.ReadAllBytes(存.备份路径)));
+        }
+        var 未来 = 数据(700); 未来.版本 = 天帝存档.当前版本 + 1;
+        File.WriteAllText(存.路径, JsonUtility.ToJson(未来), new UTF8Encoding(false));
+        byte[] 未来原档 = File.ReadAllBytes(存.路径);
+        检查("存档边界-未来版本拒绝旧备份回退", 存.读取() == null && 存.提示.Contains("其他版本"));
+        检查("存档边界-未来版本主档和备份保留",
+            未来原档.SequenceEqual(File.ReadAllBytes(存.路径)) && 备份.SequenceEqual(File.ReadAllBytes(存.备份路径)));
+        检查("存档边界-恢复正常隔离主档", 存.保存(数据(800)));
+        byte[] 有效原档 = File.ReadAllBytes(存.路径), 有效备份 = File.ReadAllBytes(存.备份路径);
+        var 超大 = 数据(900); 超大.主角.名字 = new string('界', 天帝存档.最大存档字节数 / 3 + 1);
+        检查("存档边界-大小按UTF8字节而非字符判断", 超大.主角.名字.Length < 天帝存档.最大存档字节数
+            && Encoding.UTF8.GetByteCount(JsonUtility.ToJson(超大, true)) > 天帝存档.最大存档字节数);
+        检查("存档边界-超上限保存失败且提示明确", !存.保存(超大) && 存.提示.Contains("上限"));
+        检查("存档边界-超上限保存不改变主档备份或创建临时档",
+            有效原档.SequenceEqual(File.ReadAllBytes(存.路径)) && 有效备份.SequenceEqual(File.ReadAllBytes(存.备份路径))
+            && !File.Exists(存.路径 + ".tmp"));
+        检查("存档边界-失败后原主档仍可读取", 存.读取()?.灵石 == 800);
     }
     static void 伤害与释放()
     {

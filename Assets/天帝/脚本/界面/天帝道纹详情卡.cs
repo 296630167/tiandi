@@ -14,6 +14,7 @@ public sealed class 天帝道纹详情卡 : MonoBehaviour
     Font 字体;
     RectTransform 根;
     RectTransform 触屏外框;
+    ScrollRect 触屏滚动;
     float 完整高度;
     readonly System.Collections.Generic.List<(RectTransform 区, float x, float 宽, float 父宽)> 触屏行 = new System.Collections.Generic.List<(RectTransform, float, float, float)>();
     Outline 边框;
@@ -47,7 +48,7 @@ public sealed class 天帝道纹详情卡 : MonoBehaviour
             根.anchorMin = 根.anchorMax = 根.pivot = new Vector2(0, 1); 根.sizeDelta = new Vector2(宽度, 440);
             var 命中 = 触屏外框.gameObject.AddComponent<Image>(); 命中.color = 背景; 命中.raycastTarget = true;
             触屏外框.gameObject.AddComponent<RectMask2D>();
-            var 滚 = 触屏外框.gameObject.AddComponent<ScrollRect>(); 滚.viewport = 触屏外框; 滚.content = 根;
+            var 滚 = 触屏滚动 = 触屏外框.gameObject.AddComponent<ScrollRect>(); 滚.viewport = 触屏外框; 滚.content = 根;
             滚.horizontal = false; 滚.vertical = true; 滚.movementType = ScrollRect.MovementType.Clamped; 滚.scrollSensitivity = 32;
         }
         var 底 = 根.gameObject.AddComponent<Image>(); 底.color = 背景; 底.raycastTarget = false;
@@ -120,6 +121,7 @@ public sealed class 天帝道纹详情卡 : MonoBehaviour
             foreach (var 词 in 纹.词条) 签名 = (签名 * 31 + (int)词.属性) * 31 + 词.实际数值.GetHashCode();
         }
         if (当前道纹 == 纹 && 上次签名 == 签名 && 上次状态 == 状态覆盖) return;
+        bool 切换道纹 = 当前道纹 != 纹;
         当前道纹 = 纹; 上次签名 = 签名; 上次状态 = 状态覆盖;
         Color 品阶色 = 纹.是天赋 ? 天帝道纹绘图.源色 : 天帝道纹品阶.边颜色(纹.品阶, 0);
         顶线.color = 构筑皮肤 ? new Color(品阶色.r,品阶色.g,品阶色.b,.5f) : 品阶色; 边框.effectColor = 品阶色 * .7f;
@@ -178,7 +180,7 @@ public sealed class 天帝道纹详情卡 : MonoBehaviour
         介绍区.anchoredPosition = new Vector2(20, -介绍顶);
         float 状态顶 = 介绍顶 + (有介绍 ? 说明高 + 34 : 0);
         状态区.anchoredPosition = new Vector2(20, -状态顶);
-        状态.text = 纹.是特性道纹 ? 纹.特性状态 : 状态覆盖 ?? (纹.是源纹 ? "固定起点 · 不可移动、旋转或卸载" : !纹.格子.HasValue ? "未放置 · 等待接入源纹" :
+        状态.text = 纹.是特性道纹 ? (string.IsNullOrEmpty(状态覆盖) ? 纹.特性状态 : 状态覆盖 + "\n" + 纹.特性状态) : 状态覆盖 ?? (纹.是源纹 ? "固定起点 · 不可移动、旋转或卸载" : !纹.格子.HasValue ? "未放置 · 等待接入源纹" :
             纹.生效 ? "已接入源纹 · 属性生效" : "未接入源纹 · 暂不生效");
         float 状态高 = Mathf.Max(35,状态.preferredHeight);
         状态区.sizeDelta = 状态.rectTransform.sizeDelta = new Vector2(420, 状态高);
@@ -211,6 +213,11 @@ public sealed class 天帝道纹详情卡 : MonoBehaviour
         }
         根.sizeDelta = new Vector2(宽度, 高度);
         完整高度 = 高度; 更新触屏高度();
+        if (切换道纹 && 触屏滚动 != null)
+        {
+            触屏滚动.StopMovement();
+            根.anchoredPosition = new Vector2(根.anchoredPosition.x, 0);
+        }
     }
     // 固定山水窄栏仍使用同一份真实详情，按可读字号重新流式排列。
     public void 山水窄栏布局(float 宽)

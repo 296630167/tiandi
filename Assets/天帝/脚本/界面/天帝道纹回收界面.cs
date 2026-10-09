@@ -168,7 +168,7 @@ public sealed partial class 天帝道纹回收界面 : MonoBehaviour
         钱.预览回收(选择.ToList(),out int 金额,out _);总回收灵石=金额;
         汇总.text="已勾选  "+选择.Count+" 枚";总价.text="总回收灵石  "+金额;
         卖出.interactable=选择.Count>0&&!操作框已打开;
-        if(焦点==null||!数据.道纹.Contains(焦点))焦点=列表.FirstOrDefault();
+        if(焦点==null||!列表.Contains(焦点))焦点=列表.FirstOrDefault();
         if(焦点!=null){详情.设置(焦点,数据.可回收(焦点,out string 原因)?"回收价 "+天帝数值.道纹回收价(焦点)+" 灵石":原因);详情.gameObject.SetActive(true);}
         else 详情.gameObject.SetActive(false);
         刷新山水回收();

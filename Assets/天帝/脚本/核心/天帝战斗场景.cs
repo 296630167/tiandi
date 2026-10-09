@@ -235,12 +235,7 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         if (战斗 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || 游戏.界面.新手指引冻结战斗) return;
         受击镜头秒=Mathf.Max(0,受击镜头秒-秒);受击镜头冷却=Mathf.Max(0,受击镜头冷却-秒);
         if (float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0) return;
-        float 剩余 = Mathf.Min(秒, .25f);
-        while (剩余 > .000001f)
-        {
-            float 步 = Mathf.Min(.025f, 剩余);
-            推进闪避位移(步); 战斗.推进(玩家位置, 步); 剩余 -= 步;
-        }
+        推进战斗模型(秒);
         游戏.界面.推进战斗操作反馈(Mathf.Min(秒, .25f));
         foreach (var 敌 in 战斗.敌人) if (敌.已生成 && 敌.布点.级别 != 战斗敌人级别.普通 && 已播登场.Add(敌)) 天帝声音.提示("ZD04_强敌登场");
         if (战斗.本局升级次数 > 已播升级次数) { 已播升级次数 = 战斗.本局升级次数; 天帝声音.提示("ZD06_升级"); }
@@ -248,6 +243,16 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         游戏.界面.更新战斗状态();
         游戏.界面.更新战斗目标();
         if (战斗.玩家死亡 && !已显示死亡) { 已显示死亡 = true; 天帝声音.提示("ZD08_失败"); 主角.localScale = Vector3.one * .65f; 游戏.界面.显示战斗失败(); }
+    }
+    internal void 推进战斗模型(float 秒)
+    {
+        float 剩余 = Mathf.Min(秒, .25f);
+        战斗.开始战斗帧();
+        while (剩余 > .000001f)
+        {
+            float 步 = Mathf.Min(.025f, 剩余);
+            推进闪避位移(步); 战斗.推进细步(玩家位置, 步); 剩余 -= 步;
+        }
     }
     void 敌人死亡(战斗敌人 敌)
     {

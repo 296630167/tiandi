@@ -7,6 +7,7 @@ public sealed partial class 天帝道纹回收界面
 {
     readonly 天帝回收范围 批选范围=new 天帝回收范围();
     RectTransform 范围层;
+    Dictionary<Selectable, bool> 范围原状态;
     bool 操作框已打开=>确认已打开||范围层!=null;
     public 天帝回收范围 当前批选范围=>批选范围.副本();
     public bool 范围已打开=>范围层!=null;
@@ -17,22 +18,23 @@ public sealed partial class 天帝道纹回收界面
     }
     IEnumerable<道纹实例> 范围候选(天帝回收范围 范围)
     {
-        IEnumerable<道纹实例> 来源=范围.位置==0?数据.道纹:范围.位置==1?列表:列表.Skip(页*每页).Take(每页);
-        return 来源.Where(范围.匹配);
+        if(数据 == null || 范围 == null) return Enumerable.Empty<道纹实例>();
+        IEnumerable<道纹实例> 来源=范围.位置==0?(数据.道纹 ?? Enumerable.Empty<道纹实例>()):范围.位置==1?(列表 ?? Enumerable.Empty<道纹实例>()):(列表 ?? Enumerable.Empty<道纹实例>()).Skip(Mathf.Max(0,页)*每页).Take(每页);
+        return (来源 ?? Enumerable.Empty<道纹实例>()).Where(x => x != null && 范围.匹配(x));
     }
     public void 一键选中()
     {
         if(操作框已打开)return;
         选择.Clear();int 跳过=0;
         foreach(var 纹 in 范围候选(批选范围))
-            if(数据.可回收(纹,out _))选择.Add(纹);else 跳过++;
-        刷新();提示.text="已选 "+选择.Count+" 枚 · 跳过受保护 "+跳过+" 枚";
+            if(数据 != null && 数据.可回收(纹,out _))选择.Add(纹);else 跳过++;
+        刷新(); if(提示 != null) 提示.text="已选 "+选择.Count+" 枚 · 跳过受保护 "+跳过+" 枚";
     }
     public void 打开范围()
     {
         if(操作框已打开)return;
-        var 原状态=GetComponentsInChildren<Selectable>().ToDictionary(x=>x,x=>x.interactable);
-        foreach(var 控件 in 原状态.Keys)控件.interactable=false;
+        范围原状态=GetComponentsInChildren<Selectable>().ToDictionary(x=>x,x=>x.interactable);
+        foreach(var 控件 in 范围原状态.Keys)控件.interactable=false;
         var 草稿=批选范围.副本();var 根=(RectTransform)transform;
         范围层=区块(根,"回收范围层",0,0,1600,900);
         var 遮=图(范围层,"范围遮罩",0,0,1600,900,null,new Color(0,0,0,.72f));遮.raycastTarget=true;
@@ -58,33 +60,28 @@ public sealed partial class 天帝道纹回收界面
             for(int i=0;i<8;i++)
             {
                 bool 选=(草稿.品阶掩码&(1<<i))!=0;
-                var 名称=品阶键[i].transform.Find("批选品阶名称")?.GetComponent<Text>()??品阶键[i].GetComponentInChildren<Text>();
-                名称.text=(山水回收?"":选?"✓ ":"")+((道纹品阶)i);
+                var 品阶按钮 = 品阶键[i]; if(品阶按钮 == null) continue;
+                var 名称=品阶按钮.transform.Find("批选品阶名称")?.GetComponent<Text>()??品阶按钮.GetComponentInChildren<Text>();
+                if(名称 != null) 名称.text=(山水回收?"":选?"✓ ":"")+((道纹品阶)i);
                 if(山水回收)
                 {
-                    天帝图录回收山水素材.按钮(品阶键[i],选);
-                    var 勾=品阶键[i].transform.Find("品阶勾选标识")?.GetComponent<Text>();if(勾!=null)勾.text=选?"✓":"□";
+                    天帝图录回收山水素材.按钮(品阶按钮,选);
+                    var 勾=品阶按钮.transform.Find("品阶勾选标识")?.GetComponent<Text>();if(勾!=null)勾.text=选?"✓":"□";
                 }
-                else 天帝道纹美术.选中((Image)品阶键[i].targetGraphic,选);
+                else { var 图=品阶按钮.targetGraphic as Image; if(图 != null)天帝道纹美术.选中(图,选); }
             }
-            类型键.GetComponentInChildren<Text>().text="道纹类型："+new[]{"全部类型","属性道纹","分叉道纹","功能道纹","特性道纹","转化道纹"}[草稿.类型]+" ›";
-            位置键.GetComponentInChildren<Text>().text="库存范围："+new[]{"整个背包","当前筛选","当前页"}[草稿.位置]+" ›";
-            var 候选=范围候选(草稿).ToList();int 数=候选.Count(x=>数据.可回收(x,out _));
-            预览字.text="可选 "+数+" 枚 · 受保护 "+(候选.Count-数)+" 枚";
+            var 类型字=类型键?.GetComponentInChildren<Text>(); if(类型字 != null) 类型字.text="道纹类型："+new[]{"全部类型","属性道纹","分叉道纹","功能道纹","特性道纹","转化道纹"}[Mathf.Clamp(草稿.类型,0,5)]+" ›";
+            var 位置字=位置键?.GetComponentInChildren<Text>(); if(位置字 != null) 位置字.text="库存范围："+new[]{"整个背包","当前筛选","当前页"}[Mathf.Clamp(草稿.位置,0,2)]+" ›";
+            var 候选=范围候选(草稿).ToList();int 数=数据 == null ? 0 : 候选.Count(x=>数据.可回收(x,out _));
+            if(预览字 != null) 预览字.text="可选 "+数+" 枚 · 受保护 "+(候选.Count-数)+" 枚";
             if(山水回收)
             {
                 山水类型?.SetValueWithoutNotify(草稿.类型);
                 for(int i=0;i<3;i++)if(库存范围键[i]!=null)
-                {库存范围键[i].GetComponentInChildren<Text>().text=(草稿.位置==i?"●  ":"○  ")+new[]{"整个背包","当前筛选","当前页"}[i];天帝图录回收山水素材.按钮(库存范围键[i],草稿.位置==i);}
+                {var 字=库存范围键[i].GetComponentInChildren<Text>();if(字!=null)字.text=(草稿.位置==i?"●  ":"○  ")+new[]{"整个背包","当前筛选","当前页"}[i];天帝图录回收山水素材.按钮(库存范围键[i],草稿.位置==i);}
             }
         }
-        void 关闭小窗()
-        {
-            var 旧=范围层;范围层=null;旧.gameObject.SetActive(false);
-            if(Application.isPlaying)Destroy(旧.gameObject);else DestroyImmediate(旧.gameObject);
-            foreach(var 项 in 原状态)if(项.Key!=null)项.Key.interactable=项.Value;
-            刷新();
-        }
+        void 关闭小窗() => 关闭范围();
         键(框,"取消批选范围","取消",20,432,344,44,关闭小窗);
         键(框,"应用批选范围","应用并选中",396,432,344,44,()=>{设置批选范围(草稿);关闭小窗();一键选中();},true);
         if(山水回收)
@@ -109,15 +106,14 @@ public sealed partial class 天帝道纹回收界面
             类型键.gameObject.SetActive(false);位置键.gameObject.SetActive(false);
             var 类型标题=字文(正文,"道纹类型",0,216,672,40,24);类型标题.name="批选道纹类型标题";定(类型标题.rectTransform,0,216,672,40);天帝图录回收山水素材.文字(类型标题,字体,24);
             山水类型=条件下拉(正文,"批选类型下拉",0,264,new List<string>{"全部类型","属性道纹","分叉道纹","功能道纹","特性道纹","转化道纹"},v=>{草稿.类型=v;更新();},false);
-            定((RectTransform)山水类型.transform,0,264,672,49);天帝首两页山水素材.轻纸(山水类型.targetGraphic as Image);山水类型.captionText.fontSize=21;
+            if(山水类型 != null){定((RectTransform)山水类型.transform,0,264,672,49);天帝首两页山水素材.轻纸(山水类型.targetGraphic as Image);if(山水类型.captionText != null)山水类型.captionText.fontSize=21;}
             var 库存标题=字文(正文,"库存范围",0,321,672,40,24);库存标题.name="批选库存范围标题";定(库存标题.rectTransform,0,321,672,40);天帝图录回收山水素材.文字(库存标题,字体,24);
             for(int i=0;i<3;i++){int n=i;库存范围键[i]=键(正文,"库存范围-"+i,"",i*231,367,210,49,()=>{草稿.位置=n;更新();});定((RectTransform)库存范围键[i].transform,i*231,367,210,49);var 文=字文((RectTransform)库存范围键[i].transform,"",8,0,194,49,21);定(文.rectTransform,8,0,194,49);文.alignment=TextAnchor.MiddleCenter;}
             定(保护字.rectTransform,0,421,672,30);保护字.fontSize=19;定(预览字.rectTransform,0,457,672,33);预览字.fontSize=20;
-            var 取消=框.Find("取消批选范围").GetComponent<Button>();定((RectTransform)取消.transform,72,685,282,63);天帝图录回收山水素材.按钮(取消);
-            var 应用=框.Find("应用批选范围").GetComponent<Button>();定((RectTransform)应用.transform,448,685,300,63);天帝首两页山水素材.按钮(应用,"朱红按钮",true);
-            定(取消.GetComponentInChildren<Text>().rectTransform,8,0,266,63);定(应用.GetComponentInChildren<Text>().rectTransform,8,0,284,63);
+            var 取消=框.Find("取消批选范围")?.GetComponent<Button>();if(取消!=null){定((RectTransform)取消.transform,72,685,282,63);天帝图录回收山水素材.按钮(取消);var 文=取消.GetComponentInChildren<Text>();if(文!=null)定(文.rectTransform,8,0,266,63);}
+            var 应用=框.Find("应用批选范围")?.GetComponent<Button>();if(应用!=null){定((RectTransform)应用.transform,448,685,300,63);天帝首两页山水素材.按钮(应用,"朱红按钮",true);var 文=应用.GetComponentInChildren<Text>();if(文!=null)定(文.rectTransform,8,0,284,63);}
             var 关闭键=键(框,"关闭批选范围","×",734,20,56,56,关闭小窗);天帝图录回收山水素材.按钮(关闭键);定((RectTransform)关闭键.transform,734,20,56,56);
-            var 关闭文字=关闭键.GetComponentInChildren<Text>();关闭文字.text="×";关闭文字.font=字体;关闭文字.fontSize=32;关闭文字.alignment=TextAnchor.MiddleCenter;定(关闭文字.rectTransform,0,0,56,56);
+            var 关闭文字=关闭键.GetComponentInChildren<Text>();if(关闭文字!=null){关闭文字.text="×";关闭文字.font=字体;关闭文字.fontSize=32;关闭文字.alignment=TextAnchor.MiddleCenter;定(关闭文字.rectTransform,0,0,56,56);}
         }
         更新();
         if(天帝移动适配.启用)
@@ -133,12 +129,20 @@ public sealed partial class 天帝道纹回收界面
                 天帝双端页面布局.固定(口,12,48,正文宽,高-108);正文.sizeDelta=new Vector2(0,350);
                 foreach(var 文 in 正文.GetComponentsInChildren<Text>())文.fontSize=16;
                 foreach(RectTransform 子 in 正文)if(子.GetComponent<Text>()!=null)天帝双端页面布局.固定(子,0,-子.anchoredPosition.y,正文宽,子.rect.height);
-                for(int i=0;i<8;i++)天帝双端页面布局.按键((RectTransform)品阶键[i].transform,i%4*(正文宽+6)/4,i/4*52+34,(正文宽-18)/4);
-                天帝双端页面布局.按键((RectTransform)类型键.transform,0,142,正文宽);
-                天帝双端页面布局.按键((RectTransform)位置键.transform,0,194,正文宽);
+                for(int i=0;i<8;i++)if(品阶键[i]!=null)天帝双端页面布局.按键((RectTransform)品阶键[i].transform,i%4*(正文宽+6)/4,i/4*52+34,(正文宽-18)/4);
+                if(类型键!=null)天帝双端页面布局.按键((RectTransform)类型键.transform,0,142,正文宽);
+                if(位置键!=null)天帝双端页面布局.按键((RectTransform)位置键.transform,0,194,正文宽);
                 天帝双端页面布局.按键(框.Find("取消批选范围") as RectTransform,12,高-52,(正文宽-8)/2);
                 天帝双端页面布局.按键(框.Find("应用批选范围") as RectTransform,16+正文宽/2,高-52,(正文宽-8)/2);
             };
         }
+    }
+    public bool 关闭范围()
+    {
+        if(范围层==null)return false;
+        var 旧=范围层;范围层=null;旧.gameObject.SetActive(false);
+        if(Application.isPlaying)Destroy(旧.gameObject);else DestroyImmediate(旧.gameObject);
+        if(范围原状态!=null)foreach(var 项 in 范围原状态)if(项.Key!=null)项.Key.interactable=项.Value;
+        范围原状态=null;刷新();return true;
     }
 }

@@ -28,9 +28,8 @@ public sealed partial class 天帝战斗系统
     {
         if (!技能有链路(槽)) return 技能已解封(槽) ? "无技能链路" : "未解封";
         int 路 = 技能通路(槽);
-        foreach (var 纹 in 道纹.道纹)
-            if (纹.格子.HasValue && 道纹.弹槽道纹[路].Contains(纹.编号) && 纹.是顺序功能)
-                return 纹.功能.ToString();
+        var 起点 = 读取通路参数(路).顺序计划?.起点;
+        if (起点 != null && 起点.功能 != 道纹功能.旧版) return 起点.功能.ToString();
         return "灵力弹";
     }
     static bool 方向有效(Vector2 向) => !float.IsNaN(向.x) && !float.IsNaN(向.y)
@@ -64,7 +63,7 @@ public sealed partial class 天帝战斗系统
             if (自动) { 主角.回复灵力(技能灵力消耗); 发射冷却 = 0; }
             return;
         }
-        普通释放次数++; 特性根释放(参数.通路);
+        普通释放次数++; 特性根释放(参数.通路, 自动 ? (Vector2?)null : 前摇方向);
         当前通路 = 参数.通路; 通路释放次数[当前通路]++;
         if (余响.记录释放("普攻") != null)
         { 回响剩余 = (float)天帝数值.取("talents.echo_delay"); 回响参数 = 参数; 回响方向 = 前摇方向; 回响自动释放 = 自动; }
@@ -83,6 +82,16 @@ public sealed partial class 天帝战斗系统
     {
         发射冷却 = Mathf.Max(0, 发射冷却 - 秒);
         主角.回复灵力(主角.灵力 * (float)天帝数值.取("player.mana_regen_fraction") * 秒);
+        // 只推进本步开始前已有的回响，避免新射击的回响提前一个细步。
+        if (回响剩余 >= 0)
+        {
+            回响剩余 -= 秒;
+            if (回响剩余 <= .000001f)
+            {
+                if (回响参数 != null && 发射根(回响参数, false, 回响自动释放 ? (Vector2?)null : 回响方向)) 回响次数++;
+                回响剩余 = -1; 回响参数 = null; 回响自动释放 = false;
+            }
+        }
         if (前摇剩余 >= 0)
         {
             前摇剩余 -= 秒;
@@ -90,15 +99,6 @@ public sealed partial class 天帝战斗系统
         }
         if (前摇剩余 < 0 && 发射冷却 <= .00001f)
             尝试开始自动释放();
-        if (回响剩余 >= 0)
-        {
-            回响剩余 -= 秒;
-            if (回响剩余 <= 0)
-            {
-                if (回响参数 != null && 发射根(回响参数, false, 回响自动释放 ? (Vector2?)null : 回响方向)) 回响次数++;
-                回响剩余 = -1; 回响参数 = null; 回响自动释放 = false;
-            }
-        }
     }
 
     int 随机自动技能槽()

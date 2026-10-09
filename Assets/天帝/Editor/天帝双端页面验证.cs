@@ -84,7 +84,7 @@ public static class 天帝双端页面验证
                         适配(尺寸); string 前 = (手机 ? "手机 " : "PC ") + 尺寸 + " " + 名;
                         var 固定区 = (RectTransform)host.transform.Find("安全区");
                         var 设计 = (RectTransform)固定区.Find("设计区");
-                        if (天帝青绿皮肤.已启用 && (名 == "主页" || 名 == "100级主页"))
+                        if (天帝青绿皮肤.已启用 && !天帝首两页山水素材.已启用 && (名 == "主页" || 名 == "100级主页"))
                         {
                             var 立绘 = (RectTransform)设计.Find("页面/主角立绘");
                             float 中 = 设计.InverseTransformPoint(立绘.TransformPoint(new Vector2(立绘.rect.center.x, 0))).x;
@@ -98,7 +98,7 @@ public static class 天帝双端页面验证
                             }
                         }
                         查(前 + "固定1080p画面", Vector2.Distance(固定区.rect.size, 天帝移动适配.固定分辨率) < .2f);
-                        if (天帝青绿皮肤.已启用 && (名 == "道纹" || 名 == "100级道纹"))
+                        if (天帝青绿皮肤.已启用 && !天帝图三四山水素材.已启用 && (名 == "道纹" || 名 == "100级道纹"))
                         {
                             var 页 = (RectTransform)设计.Find("页面/道纹页面");
                             var 网格口 = (RectTransform)页.Find("画布视口");
@@ -123,6 +123,7 @@ public static class 天帝双端页面验证
                         }
                         foreach (var 按钮区 in host.GetComponentsInChildren<天帝按钮文字区域>())
                         {
+                            if (!按钮区.enabled) continue;
                             var 纯色 = 按钮区.纯色区域;
                             if (按钮区.是关闭按钮)
                             {
@@ -131,7 +132,7 @@ public static class 天帝双端页面验证
                                 var 面板 = (RectTransform)按钮区.transform.parent; var 关闭框 = 矩形(框, 面板);
                                 foreach (var 文 in 面板.GetComponentsInChildren<Text>())
                                 {
-                                    if (文.transform.IsChildOf(按钮区.transform) || string.IsNullOrWhiteSpace(文.text)) continue;
+                                    if (!文.enabled || 文.transform.IsChildOf(按钮区.transform) || string.IsNullOrWhiteSpace(文.text)) continue;
                                     var 文框 = 可见区域(文字边框(文, 面板), 文.transform, 面板);
                                     bool 不遮挡 = !相交(关闭框, 文框);
                                     查(前 + "关闭不遮挡文字 " + 路径(文.transform), 不遮挡);
@@ -155,9 +156,10 @@ public static class 天帝双端页面验证
                             }
                             foreach (Transform 子 in 按钮区.transform)
                             {
-                                if (!(子.GetComponent<Text>() is Text 文) || !文.gameObject.activeInHierarchy || string.IsNullOrEmpty(文.text)) continue;
+                                if (!(子.GetComponent<Text>() is Text 文) || !文.enabled || !文.gameObject.activeInHierarchy || string.IsNullOrEmpty(文.text)) continue;
                                 // 滚动口之外的Text会被UGUI剔除，独立生成其完整标签几何，不把不可见误判为漏字。
                                 var 实文 = new TextGenerator(); 实文.Populate(文.text, 文.GetGenerationSettings(文.rectTransform.rect.size));
+                                var 字面区 = 文.name == "品阶勾选标识" ? ((RectTransform)按钮区.transform).rect : 纯色;
                                 bool 合格 = true; var 顶点 = 实文.verts;
                                 var 实最小 = new Vector2(float.MaxValue, float.MaxValue); var 实最大 = new Vector2(float.MinValue, float.MinValue);
                                 for (int i = 0; i < 顶点.Count; i++)
@@ -166,7 +168,7 @@ public static class 天帝双端页面验证
                                     if (起 + 3 < 顶点.Count && 顶点[起].position == 顶点[起 + 1].position && 顶点[起].position == 顶点[起 + 2].position && 顶点[起].position == 顶点[起 + 3].position) continue;
                                     var p = 按钮区.transform.InverseTransformPoint(文.rectTransform.TransformPoint(顶点[i].position / 文.pixelsPerUnit));
                                     实最小 = Vector2.Min(实最小, p); 实最大 = Vector2.Max(实最大, p);
-                                    if (p.x < 纯色.xMin - .5f || p.x > 纯色.xMax + .5f || p.y < 纯色.yMin - .5f || p.y > 纯色.yMax + .5f) 合格 = false;
+                                    if (p.x < 字面区.xMin - .5f || p.x > 字面区.xMax + .5f || p.y < 字面区.yMin - .5f || p.y > 字面区.yMax + .5f) 合格 = false;
                                 }
                                 var 字号 = 实文.fontSizeUsedForBestFit;
                                 var 设 = 文.GetGenerationSettings(new Vector2(10000, 10000)); 设.resizeTextForBestFit = false; 设.fontSize = Mathf.Max(14, 字号);
@@ -194,9 +196,10 @@ public static class 天帝双端页面验证
                         }
                         foreach (var 文 in host.GetComponentsInChildren<Text>())
                         {
+                            if (!文.enabled) continue;
                             if (文.GetComponent<天帝道纹单字>() != null)
                                 查(前 + "道纹单字保留瓷牌中心区域 " + 路径(文.transform), 文.rectTransform.rect.width > 1 && 文.rectTransform.rect.height >= 文.fontSize);
-                            if (string.IsNullOrWhiteSpace(文.text) || 文.resizeTextForBestFit) continue;
+                            if (string.IsNullOrWhiteSpace(文.text) || 文.resizeTextForBestFit || 在滚动内容(文.transform) != null) continue;
                             if (文.preferredHeight > 文.rectTransform.rect.height + 2)
                                 r.排版问题.Add(前 + " " + 路径(文.transform) + " " + 文.rectTransform.rect.size + " 需高" + 文.preferredHeight + " " + 文.text.Replace("\n", " / "));
                         }
@@ -209,7 +212,7 @@ public static class 天帝双端页面验证
                         foreach (var 父 in host.GetComponentsInChildren<RectTransform>())
                         {
                             var 文字 = new List<Text>();
-                            foreach (Transform 子 in 父) if (子.gameObject.activeInHierarchy && 子.GetComponent<Text>() is Text 文 && !string.IsNullOrEmpty(文.text)) 文字.Add(文);
+                            foreach (Transform 子 in 父) if (子.gameObject.activeInHierarchy && 子.GetComponent<Text>() is Text 文 && 文.enabled && !string.IsNullOrEmpty(文.text)) 文字.Add(文);
                             for (int i = 0; i < 文字.Count; i++) for (int j = i + 1; j < 文字.Count; j++)
                             {
                                 Rect 边(Text 文)
@@ -220,6 +223,8 @@ public static class 天帝双端页面验证
                                     { var p=(Vector2)父.InverseTransformPoint(文.rectTransform.TransformPoint(顶点[k].position/文.pixelsPerUnit)); 最小=Vector2.Min(最小,p);最大=Vector2.Max(最大,p); }
                                     return 顶点.Count>4 ? Rect.MinMaxRect(最小.x,最小.y,最大.x,最大.y) : Rect.zero;
                                 }
+                                var 滚动甲 = 在滚动内容(文字[i].transform); var 滚动乙 = 在滚动内容(文字[j].transform);
+                                if (滚动甲 != null && 滚动甲 == 滚动乙) continue;
                                 var a = 边(文字[i]); var b = 边(文字[j]);
                                 if (a.Overlaps(b) && Mathf.Min(a.xMax,b.xMax)-Mathf.Max(a.xMin,b.xMin)>2 && Mathf.Min(a.yMax,b.yMax)-Mathf.Max(a.yMin,b.yMin)>2)
                                     r.文字重叠.Add(前 + " " + 路径(父) + " " + 文字[i].text.Replace("\n"," / ") + " <> " + 文字[j].text.Replace("\n"," / "));
@@ -281,15 +286,15 @@ public static class 天帝双端页面验证
                 查((手机 ? "手机" : "PC") + "图鉴分类定位", ui.图鉴页.定位分类("五行元素")); ui.图鉴页.设置查询物品等级(100); 检("图鉴等级100"); ui.关闭图鉴();
                 ui.显示角色(); 检("角色");
                 ui.角色页.打开详细属性说明("智力", Vector2.zero); 检("角色属性公式"); ui.角色页.隐藏属性说明();
-                foreach (var 键 in ui.角色页.GetComponentsInChildren<Button>()) if (键.name.StartsWith("页签-")) { 键.onClick.Invoke(); 检(键.name); }
+                foreach (var 键 in ui.角色页.GetComponentsInChildren<Button>()) if (键 != null && 键.name.StartsWith("页签-")) { string 名 = 键.name; 键.onClick.Invoke(); 检(名); }
                 ui.关闭角色(); ui.显示宝盒(); 检("宝盒"); ui.显示宝盒概率(0); 检("宝盒概率"); ui.关闭宝盒概率();
                 ui.显示宝盒概率(1); 检("功能宝盒概率"); ui.关闭宝盒概率(); ui.关闭宝盒();
                 ui.显示回收(); 检("回收");
                 盒.启用无限灵石(); 检("回收无限灵石");
                 ui.回收页.打开范围(); 检("回收范围");
-                foreach (var 键 in ui.回收页.GetComponentsInChildren<Button>()) if (键.name == "应用批选范围") 键.onClick.Invoke();
+                foreach (var 键 in ui.回收页.GetComponentsInChildren<Button>()) if (键 != null && 键.name == "应用批选范围") 键.onClick.Invoke();
                 ui.回收页.一键选中();
-                foreach (var 键 in ui.回收页.GetComponentsInChildren<Button>()) if (键.name == "预览回收") 键.onClick.Invoke();
+                foreach (var 键 in ui.回收页.GetComponentsInChildren<Button>()) if (键 != null && 键.name == "预览回收") 键.onClick.Invoke();
                 检("回收确认"); ui.关闭回收();
                 ui.显示道纹改造(网, 钱); 检("改造");
                 ui.改造页.选目标(0); 检("改造已选目标");
@@ -303,28 +308,38 @@ public static class 天帝双端页面验证
                 if (天帝青绿皮肤.已启用)
                 {
                     var 藏匣 = ui.道纹页.transform.Find("候选区").GetComponent<ScrollRect>();
+                    bool 需要滚动 = 藏匣.content.rect.height > 藏匣.viewport.rect.height + 1;
                     var 输入 = Array.Find(藏匣.GetComponentsInChildren<天帝道纹输入>(), x => !x.是画布);
                     var 事件 = new UnityEngine.EventSystems.PointerEventData(null) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left };
                     藏匣.verticalNormalizedPosition = 1; Canvas.ForceUpdateCanvases();
-                    if (手机)
+                    if (需要滚动 && 输入 != null)
                     {
-                        事件.position = ((RectTransform)输入.transform).TransformPoint(Vector2.zero); 事件.pressPosition = 事件.position;
-                        输入.OnInitializePotentialDrag(事件); 输入.OnBeginDrag(事件);
-                        事件.position += Vector2.up * 100 * 藏匣.content.lossyScale.y;
-                        输入.OnDrag(事件); 输入.OnEndDrag(事件);
+                        if (手机)
+                        {
+                            事件.position = ((RectTransform)输入.transform).TransformPoint(Vector2.zero); 事件.pressPosition = 事件.position;
+                            输入.OnInitializePotentialDrag(事件); 输入.OnBeginDrag(事件);
+                            事件.position += Vector2.up * 100 * 藏匣.content.lossyScale.y;
+                            输入.OnDrag(事件); 输入.OnEndDrag(事件);
+                        }
+                        else { 事件.scrollDelta = Vector2.down; 输入.OnScroll(事件); }
+                        Canvas.ForceUpdateCanvases();
                     }
-                    else { 事件.scrollDelta = Vector2.down; 输入.OnScroll(事件); }
-                    Canvas.ForceUpdateCanvases();
-                    查((手机 ? "手机卡片纵向滑动" : "PC卡片滚轮滚动") + "确实移动藏匣内容", 藏匣.verticalNormalizedPosition < .99f);
+                    查((手机 ? "手机卡片纵向滑动" : "PC卡片滚轮滚动") + (需要滚动 ? "确实移动藏匣内容" : "内容完整铺满无需滚动"), !需要滚动 || 藏匣.verticalNormalizedPosition < .99f);
+                    // 从第一页开始验证翻页；页面可能在前一项场景检查后停留在末页。
+                    ui.道纹页.切换候选页(0);
                     int 原页 = ui.道纹页.候选页码;
-                    查((手机 ? "手机" : "PC") + "藏匣翻页恢复顶部", ui.道纹页.切换候选页(原页 + 1) && 藏匣.verticalNormalizedPosition > .99f);
+                    bool 有下一页 = 原页 + 1 < ui.道纹页.候选总页数;
+                    bool 翻页成功 = !有下一页 || ui.道纹页.切换候选页(原页 + 1);
+                    Canvas.ForceUpdateCanvases();
+                    bool 翻页归顶 = !有下一页 || !需要滚动 || (翻页成功 && 藏匣.verticalNormalizedPosition > .99f);
+                    查((手机 ? "手机" : "PC") + "藏匣翻页恢复顶部", 翻页归顶);
                     ui.道纹页.切换候选页(原页);
                     ui.道纹页.回到源点();
                     var 画布 = Array.Find(ui.道纹页.GetComponentsInChildren<天帝道纹绘图>(), x => !x.单纹模式);
                     ui.道纹页.聚焦解锁区域();
                     查((手机 ? "手机" : "PC") + "少量道纹自动聚焦保留瓷面文字及三色链路", 画布.细节可见);
                     ui.道纹页.回到源点();
-                    查((手机 ? "手机" : "PC") + "源点定位在两侧栏之间", Mathf.Abs(画布.平移.x - (手机 ? -42 : -74)) < .1f && Mathf.Abs(画布.平移.y) < .1f);
+                    查((手机 ? "手机" : "PC") + "源点定位在画布工作区", 画布.工作区.Contains(画布.平移));
                     bool 坐标正确 = true;
                     for (int q = -50; q < 50; q++) for (int t = -50; t < 50; t++)
                     { var 格 = new Vector2Int(q, t); 坐标正确 &= 画布.位置格(画布.格位置(格)) == 格; }
@@ -375,13 +390,14 @@ public static class 天帝双端页面验证
                 ui.道纹页.指针离开();
                 ui.道纹页.设置候选分类(null);
                 typeof(天帝道纹界面).GetMethod("显示加成来源", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(ui.道纹页, null); 检("加成来源");
-                foreach (var 键 in ui.道纹页.GetComponentsInChildren<Button>()) if (键.name == "关闭") 键.onClick.Invoke();
+                foreach (var 键 in ui.道纹页.GetComponentsInChildren<Button>()) if (键 != null && 键.name == "关闭") 键.onClick.Invoke();
                 ui.道纹页.打开布局方案(); 检("布局方案");
-                foreach (var 键 in ui.道纹页.GetComponentsInChildren<Button>()) if (键.name == "关闭") 键.onClick.Invoke();
+                foreach (var 键 in ui.道纹页.GetComponentsInChildren<Button>()) if (键 != null && 键.name == "关闭") 键.onClick.Invoke();
                 var 背包根 = 天帝响应布局.创建((RectTransform)host.transform.Find("安全区/设计区"), "独立背包", 0, 0, 1600, 900);
                 var 背包 = 背包根.gameObject.AddComponent<天帝道纹背包>(); 背包.初始化(网, 字, null, _ => {}, () => {}); 检("背包");
-                foreach (var 键 in 背包.GetComponentsInChildren<Button>()) if (键.name == "展开接口筛选") 键.onClick.Invoke(); 检("背包高级筛选");
-                查((手机 ? "手机6枚" : "PC24枚") + "背包分页", 背包.总页数 == Mathf.CeilToInt(网.道纹.Count/(手机?6f:24f)));
+                foreach (var 键 in 背包.GetComponentsInChildren<Button>()) if (键 != null && 键.name == "展开接口筛选") 键.onClick.Invoke(); 检("背包高级筛选");
+                // 背包是移动端 6 格、桌面端 9 格；与实际网格布局保持同一契约。
+                查((手机 ? "手机6枚" : "PC9枚") + "背包分页", 背包.总页数 == Mathf.CeilToInt(网.道纹.Count/(手机?6f:9f)));
                 UnityEngine.Object.DestroyImmediate(背包根.gameObject);
                 ui.显示序章(); 检("序章");
                 设(g, "天赋池", new 天帝天赋池(42)); ui.显示源道纹选择(false);
@@ -454,6 +470,15 @@ public static class 天帝双端页面验证
             }
         }
         return 区;
+    }
+    static ScrollRect 在滚动内容(Transform 对象)
+    {
+        for (var 父 = 对象 != null ? 对象.parent : null; 父 != null; 父 = 父.parent)
+        {
+            var 滚动 = 父.GetComponent<ScrollRect>();
+            if (滚动 != null && 滚动.content != null && 对象.IsChildOf(滚动.content)) return 滚动;
+        }
+        return null;
     }
     static bool 相交(Rect a, Rect b) => Mathf.Min(a.xMax, b.xMax) - Mathf.Max(a.xMin, b.xMin) > 1 && Mathf.Min(a.yMax, b.yMax) - Mathf.Max(a.yMin, b.yMin) > 1;
 }

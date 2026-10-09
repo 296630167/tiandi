@@ -47,6 +47,11 @@ public static class 天帝构建工具
     public static string 验证自动吸附() => 天帝自动吸附验证.运行();
     public static string 验证灵石掉落() => 天帝灵石掉落验证.运行();
     public static string 验证真实数值() => 天帝真实数值验证.运行();
+    public static string 验证第三轮战斗() => 天帝第三轮战斗验证.运行();
+    public static string 验证第三轮界面() => 天帝第三轮界面验证.运行();
+    public static string 验证第三轮流程() => 天帝第三轮流程验证.运行();
+    public static string 验证第三轮寻路() => 天帝第三轮寻路验证.运行();
+    public static void 拍摄双端页面() => 天帝青绿验收.运行();
     public static string 验证真实数值实战() => 天帝真实数值实战验证.启动();
     public static string 验证战斗视野() => 天帝战斗视野验证.运行();
     public static string 验证主动战斗实装()
@@ -110,12 +115,13 @@ public static class 天帝构建工具
     public static string 构建Windows()
     {
         if (EditorApplication.isPlaying) throw new InvalidOperationException("请先退出运行模式");
+        if (!File.Exists(Path.Combine(项目根, 主场景))) throw new InvalidOperationException("主场景不存在，请先初始化项目。");
         PlayerSettings.bundleVersion = "0.15.0"; PlayerSettings.productName = 天帝游戏.全名;
         string 路径 = Path.Combine(项目根, "生成/Windows/天帝.exe"); Directory.CreateDirectory(Path.GetDirectoryName(路径));
-        if (!File.Exists(天帝战斗地图.场景路径)) throw new InvalidOperationException("请先运行天帝/初始化战斗场景。");
+        if (!File.Exists(Path.Combine(项目根, 天帝战斗地图.场景路径))) throw new InvalidOperationException("请先运行天帝/初始化战斗场景。");
         var 报告 = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { 主场景, 天帝战斗地图.场景路径 }, locationPathName = 路径, target = BuildTarget.StandaloneWindows64, options = BuildOptions.None });
         Directory.CreateDirectory(Path.Combine(项目根, "生成/验证"));
-        File.WriteAllText(Path.Combine(项目根, "生成/验证/windows-build.json"), "{\"result\":\"" + 报告.summary.result + "\",\"errors\":" + 报告.summary.totalErrors + ",\"warnings\":" + 报告.summary.totalWarnings + ",\"bytes\":" + 报告.summary.totalSize + "}");
+        File.WriteAllText(Path.Combine(项目根, "生成/验证/windows-build.json"), JsonUtility.ToJson(new 构建摘要(报告), true));
         if (报告.summary.result != BuildResult.Succeeded) throw new Exception("Windows构建失败：" + 报告.summary.result);
         return 路径;
     }
@@ -149,7 +155,7 @@ public static class 天帝构建工具
         {
             PlayerSettings.bundleVersion = "0.17.0"; PlayerSettings.productName = 天帝游戏.全名;
             var 报告 = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { 主场景, 天帝战斗地图.场景路径 }, locationPathName = 输出, target = BuildTarget.StandaloneWindows64, options = BuildOptions.None });
-            File.WriteAllText(Path.Combine(验证目录, "windows-build.json"), "{\"result\":\"" + 报告.summary.result + "\",\"errors\":" + 报告.summary.totalErrors + ",\"warnings\":" + 报告.summary.totalWarnings + ",\"bytes\":" + 报告.summary.totalSize + "}");
+            File.WriteAllText(Path.Combine(验证目录, "windows-build.json"), JsonUtility.ToJson(new 构建摘要(报告), true));
             if (报告.summary.result != BuildResult.Succeeded) throw new InvalidOperationException("属性道纹版构建失败。");
             return 输出;
         }
@@ -164,7 +170,8 @@ public static class 天帝构建工具
         {
             PlayerSettings.bundleVersion = "0.16.0";
             var 报告 = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { 主场景, 天帝战斗地图.场景路径 }, locationPathName = 输出, target = BuildTarget.StandaloneWindows64, options = BuildOptions.None });
-            File.WriteAllText(Path.Combine(项目根, "生成/验证/美术接入/windows-build.json"), "{\"result\":\"" + 报告.summary.result + "\",\"errors\":" + 报告.summary.totalErrors + ",\"warnings\":" + 报告.summary.totalWarnings + ",\"bytes\":" + 报告.summary.totalSize + "}");
+            string 验证路径=Path.Combine(项目根, "生成/验证/美术接入");Directory.CreateDirectory(验证路径);
+            File.WriteAllText(Path.Combine(验证路径, "windows-build.json"), JsonUtility.ToJson(new 构建摘要(报告), true));
             if (报告.summary.result != BuildResult.Succeeded) throw new InvalidOperationException("美术版构建失败。");
             return 输出;
         }
@@ -207,8 +214,10 @@ public static class 天帝构建工具
     {
         if (!EditorApplication.isPlaying) throw new InvalidOperationException("请先运行场景");
         var 游戏 = UnityEngine.Object.FindAnyObjectByType<天帝游戏>();
+        if (游戏 == null || 游戏.界面 == null) throw new InvalidOperationException("运行中的天帝游戏或界面尚未初始化。");
         游戏.界面.显示标题(); Canvas.ForceUpdateCanvases();
         string 路径 = Path.Combine(项目根, "生成/验证/界面预览-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + ".png");
+        Directory.CreateDirectory(Path.GetDirectoryName(路径));
         ScreenCapture.CaptureScreenshot(路径); EditorApplication.QueuePlayerLoopUpdate(); return 路径;
     }
     public static string 导出主页截图()
@@ -218,6 +227,7 @@ public static class 天帝构建工具
             throw new InvalidOperationException("请先进入主页，截图不会切换页面或修改玩家数据。");
         Canvas.ForceUpdateCanvases();
         string 路径 = Path.Combine(项目根, "生成/验证/主页实机-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".png");
+        Directory.CreateDirectory(Path.GetDirectoryName(路径));
         ScreenCapture.CaptureScreenshot(路径); EditorApplication.QueuePlayerLoopUpdate(); return 路径;
     }
     public static string 导出主页等级截图()
@@ -231,6 +241,7 @@ public static class 天帝构建工具
             { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left });
         Canvas.ForceUpdateCanvases();
         string 路径 = Path.Combine(项目根, "生成/验证/主页等级实机-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".png");
+        Directory.CreateDirectory(Path.GetDirectoryName(路径));
         ScreenCapture.CaptureScreenshot(路径); EditorApplication.QueuePlayerLoopUpdate(); return 路径;
     }
     public static string 查看改造界面并截图(string 通货名)
@@ -242,6 +253,7 @@ public static class 天帝构建工具
         if (!string.IsNullOrEmpty(通货名) && Enum.TryParse<通货种类>(通货名, out var 种类)) 游戏.界面.改造页.选通货(种类);
         Canvas.ForceUpdateCanvases();
         string 路径 = Path.Combine(项目根, "生成/验证/改造实机-" + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".png");
+        Directory.CreateDirectory(Path.GetDirectoryName(路径));
         var 溢出 = 游戏.界面.改造页.GetComponentsInChildren<UnityEngine.UI.Text>().Where(x => x.enabled && !string.IsNullOrEmpty(x.text) && x.preferredHeight > x.rectTransform.rect.height + 1);
         File.WriteAllText(路径.Replace(".png", ".txt"), "文字溢出：\n" + string.Join("\n", 溢出.Select(x => x.text + " [" + x.preferredHeight + "/" + x.rectTransform.rect.height + "]")));
         ScreenCapture.CaptureScreenshot(路径); EditorApplication.QueuePlayerLoopUpdate(); return 路径;
@@ -262,5 +274,10 @@ public static class 天帝构建工具
             暂停 = EditorApplication.isPaused, 宽 = Screen.width, 高 = Screen.height, 帧 = Time.frameCount, 比例 = 画布 != null ? 画布.scaleFactor : 0 });
     }
     [Serializable] class 运行状态 { public bool 编译中; public bool 游戏中; public string 场景; public string 阶段; public bool 设置; public bool 暂停; public int 宽; public int 高; public int 帧; public float 比例; }
+    [Serializable] class 构建摘要
+    {
+        public string result; public int errors; public int warnings; public long bytes;
+        public 构建摘要(BuildReport r){result=r.summary.result.ToString();errors=r.summary.totalErrors;warnings=r.summary.totalWarnings;bytes=(long)r.summary.totalSize;}
+    }
 }
 #endif

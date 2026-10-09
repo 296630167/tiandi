@@ -140,13 +140,15 @@ public static partial class 天帝剩余概念验收
     static void 检查主动冷却HUD(string 阶段, 天帝战斗系统 战, 天帝主角属性 人)
     {
         var 按钮 = 主动HUD字段<Button[]>("技能键"); var 遮罩 = 主动HUD字段<Image[]>("技能冷却遮罩");
-        bool 亮度 = true, 点击 = true, 径向 = true, 隐藏 = true;
+        bool 亮度 = true, 点击 = true, 径向 = true, 隐藏 = true, 文字亮度 = true;
         var 名字 = 主动HUD字段<Text[]>("技能标签"); var 状态 = 主动HUD字段<Text[]>("技能状态字"); var 序号 = 主动HUD字段<Text[]>("技能按键字");
         for (int i = 0; i < 6; i++)
         {
             bool 链 = 战.技能有链路(i), 开 = 战.技能已解封(i), 冷 = 链 && 开 && 战.技能冷却剩余 > .00001f;
             bool 可操作 = 链 && 开 && !战.玩家死亡 && !游戏.界面.战斗已暂停 && 人.当前灵力 >= 天帝战斗系统.技能灵力消耗;
             亮度 &= Mathf.Abs(按钮[i].GetComponent<CanvasGroup>().alpha - (可操作 ? 1 : .5f)) < .00001f;
+            float 预期文字Alpha = 天帝移动适配.启用 ? (可操作 ? 1 : .5f) : 1;
+            文字亮度 &= new[]{名字[i],状态[i],序号[i]}.All(t=>Mathf.Abs(t.color.a-预期文字Alpha)<.00001f);
             点击 &= 按钮[i].interactable == (可操作 && !冷);
             float 比例 = 冷 ? Mathf.Clamp01(战.技能冷却剩余 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
             径向 &= 遮罩[i].gameObject.activeSelf == 冷 && 遮罩[i].type == Image.Type.Filled && 遮罩[i].fillMethod == Image.FillMethod.Radial360
@@ -155,6 +157,7 @@ public static partial class 天帝剩余概念验收
                 && 序号[i].gameObject.activeSelf == 链 && 按钮[i].GetComponent<CanvasGroup>().blocksRaycasts == 链;
         }
         检查(阶段 + "-冷却保持亮度其它禁用半透明", 亮度); 检查(阶段 + "-按钮按实际状态可用", 点击);
+        检查(阶段 + "-文字禁用透明度只应用一次", 文字亮度);
         检查(阶段 + "-径向剩余比例与结束隐藏", 径向); 检查(阶段 + "-未接通槽按钮文字及射线均隐藏", 隐藏);
         var 闪 = 主动HUD字段<Button>("闪避键"); var 轨 = 主动HUD字段<Image>("闪避冷却轨道"); var 条 = 主动HUD字段<Image>("闪避冷却进度");
         bool 闪可 = !战.玩家死亡 && !游戏.界面.战斗已暂停, 闪冷 = 战.闪避冷却剩余 > .00001f;

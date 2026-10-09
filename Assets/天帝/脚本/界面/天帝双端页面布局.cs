@@ -123,19 +123,30 @@ sealed class 天帝正文重排
         var 扩展 = new System.Collections.Generic.List<Vector2>();
         float 映射(float y) { float 值 = y; foreach (var e in 扩展) if (y >= e.x - .1f) 值 += e.y; return 值; }
         float 底 = 原高;
-        foreach (var 项 in 子)
+        for (int 起 = 0; 起 < 子.Count;)
         {
-            if (项.区 == null) continue;
-            float 新宽 = Mathf.Max(1, 项.宽 / 原宽 * 宽);
-            天帝双端页面布局.固定(项.区, 项.x / 原宽 * 宽, 映射(项.y), 新宽, 项.高);
-            float 高 = 项.高;
-            var 文 = 项.区.GetComponent<Text>();
-            if (文 != null && !文.resizeTextForBestFit && !string.IsNullOrWhiteSpace(文.text)) 高 = Mathf.Max(高, Mathf.Ceil(文.preferredHeight) + 4);
-            if (项.内容 != null) 高 = Mathf.Max(高, 项.内容.排版(新宽));
-            if (项.区.GetComponent<Selectable>() != null) 高 = Mathf.Max(44, 高);
-            if (高 > 项.高 + .1f) 扩展.Add(new Vector2(项.y + 项.高, 高 - 项.高));
-            天帝双端页面布局.固定(项.区, 项.x / 原宽 * 宽, 映射(项.y), 新宽, 高);
-            底 = Mathf.Max(底, 映射(项.y) + 高);
+            int 止 = 起 + 1;
+            while (止 < 子.Count && Mathf.Abs(子[止].y - 子[起].y) < .1f) 止++;
+            float 原行底 = 子[起].y, 新行底 = 原行底;
+            for (int i = 起; i < 止; i++)
+            {
+                var 项 = 子[i]; if (项.区 == null) continue;
+                float 新宽 = Mathf.Max(1, 项.宽 / 原宽 * 宽);
+                天帝双端页面布局.固定(项.区, 项.x / 原宽 * 宽, 映射(项.y), 新宽, 项.高);
+                float 高 = 项.高;
+                var 文 = 项.区.GetComponent<Text>();
+                if (文 != null && !文.resizeTextForBestFit && !string.IsNullOrWhiteSpace(文.text)) 高 = Mathf.Max(高, Mathf.Ceil(文.preferredHeight) + 4);
+                if (项.内容 != null) 高 = Mathf.Max(高, 项.内容.排版(新宽));
+                bool 按键 = 项.区.GetComponent<Selectable>() != null;
+                if (按键) 高 = Mathf.Max(44, 高);
+                // 同起点多列统一计算行底；跨行装饰背景不参与正文行高。
+                if (文 != null || 项.内容 != null || 按键)
+                { 原行底 = Mathf.Max(原行底, 项.y + 项.高); 新行底 = Mathf.Max(新行底, 项.y + 高); }
+                天帝双端页面布局.固定(项.区, 项.x / 原宽 * 宽, 映射(项.y), 新宽, 高);
+                底 = Mathf.Max(底, 映射(项.y) + 高);
+            }
+            if (新行底 > 原行底 + .1f) 扩展.Add(new Vector2(原行底, 新行底 - 原行底));
+            起 = 止;
         }
         // 背景跨越多行时跟随新增的正文高度。
         foreach (var 项 in 子)

@@ -94,7 +94,16 @@ public static class 天帝游戏截图
     }
     static void 点(string 名)
     {
-        Canvas.ForceUpdateCanvases(); var b = 游戏.GetComponentsInChildren<Button>().First(x => x.name == 名);
+        Canvas.ForceUpdateCanvases();
+        var 按钮列 = 游戏.GetComponentsInChildren<Button>();
+        var b = 按钮列.FirstOrDefault(x => x != null && x.name == 名);
+        // 正式主页会根据是否有可继续存档在“开始游戏/继续游戏”之间切换节点名；
+        // 取景夹具优先按语义回退，避免存档状态让截图流程在第一步中断。
+        if (b == null && 名 == "开始游戏") b = 按钮列.FirstOrDefault(x => x != null && (x.name == "继续游戏" || x.GetComponentInChildren<Text>()?.text == "继续游戏"));
+        if (b == null && 名 == "进入战斗") b = 按钮列.FirstOrDefault(x => x != null && (x.name == "开始游戏" || x.GetComponentInChildren<Text>()?.text == "开始游戏"));
+        if (b == null && 名 == "跳过序章" && 游戏.阶段 != 游戏阶段.序章)
+            return; // 当前正式入口已越过序章时，跳过按钮不会创建。
+        if (b == null) throw new InvalidOperationException("找不到按钮：" + 名);
         if (!b.interactable) throw new InvalidOperationException("按钮不可用：" + 名);
         b.onClick.Invoke();
     }
@@ -199,11 +208,18 @@ public static class 天帝游戏截图
     {
         yield return new WaitForSecondsRealtime(.7f);
         var 输入 = 游戏.GetComponentInChildren<UnityEngine.InputSystem.UI.InputSystemUIInputModule>(); if (输入 != null) 输入.enabled = false;
-        点("开始游戏"); yield return null; 点("跳过序章");
-        while (!游戏.界面.源道纹页.可选择) yield return null;
-        int 次 = 0; while (!游戏.天赋池.候选.Any(x => x.种类 == 天赋种类.普通人) && 次++ < 100) 游戏.刷新天赋();
-        点("源道纹-" + 游戏.天赋池.候选.ToList().FindIndex(x => x.种类 == 天赋种类.普通人)); 点("确认天赋");
-        yield return new WaitForSecondsRealtime(.6f); yield return 拍("06_主页与主角.jpg");
+        点("开始游戏"); yield return null;
+        bool 已有主页 = 游戏.阶段 == 游戏阶段.主页;
+        if (!已有主页)
+        {
+            if (游戏.界面.确认已打开) 点("开始新游戏");
+            yield return null; 点("跳过序章");
+            while (游戏.界面 == null || 游戏.界面.源道纹页 == null || !游戏.界面.源道纹页.可选择) yield return null;
+            int 次 = 0; while (!游戏.天赋池.候选.Any(x => x.种类 == 天赋种类.普通人) && 次++ < 100) 游戏.刷新天赋();
+            点("源道纹-" + 游戏.天赋池.候选.ToList().FindIndex(x => x.种类 == 天赋种类.普通人)); 点("确认天赋");
+            yield return new WaitForSecondsRealtime(.6f);
+        }
+        yield return 拍("06_主页与主角.jpg");
         Time.captureFramerate = 30; 构筑(); 游戏.打开道纹(); yield return null;
         var 页 = 游戏.界面.道纹页; 页.画布.缩放 = 1.15f; 页.画布.平移 = new Vector2(-130, 32); 页.刷新(); 页.指针离开();
         yield return 拍("01_道纹分支构筑.jpg"); 游戏.返回主页(); 点("进入战斗");

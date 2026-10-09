@@ -173,7 +173,7 @@ public partial class 天帝界面
             if (子.GetComponent<Text>() is Text 文) 文.enabled = false;
         var 按钮文字区域 = 地图等级下拉.GetComponent<天帝按钮文字区域>();
         if (按钮文字区域 != null) 按钮文字区域.enabled = false;
-        var 箭头 = 剪纸字((RectTransform)地图等级下拉.transform, "等级展开箭头", "▾", 154, 0, 30, 57, 26, 天帝剪纸界面皮肤.墨);
+        var 箭头 = 剪纸字((RectTransform)地图等级下拉.transform, "等级展开箭头", "▾", 153, 0, 30, 57, 26, 天帝剪纸界面皮肤.墨);
         箭头.alignment = TextAnchor.MiddleCenter;
         var 菜单 = 地图等级下拉.template;
         if (菜单 == null) return;

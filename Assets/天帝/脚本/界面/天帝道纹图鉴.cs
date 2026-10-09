@@ -24,7 +24,17 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
 
     public void 初始化(Font 默认字体, Action 关闭)
     {
-        字体 = 默认字体; 根 = (RectTransform)transform;
+        // 公共初始化可重复调用，先清理旧视图与查询状态。
+        分类位置.Clear(); 分类按钮.Clear(); 范围列表.Clear(); 特性查询.Clear();
+        剪纸分类行.Clear(); 剪纸图鉴卡.Clear(); 剪纸图鉴图.Clear(); 剪纸图鉴名.Clear(); 剪纸道纹单字.Clear();
+        剪纸当前分类 = null; 剪纸页 = 0; 剪纸详情目标 = null;
+        查询物品等级 = 1;
+        for(int i=transform.childCount-1;i>=0;i--)
+        {
+            var 旧=transform.GetChild(i).gameObject;旧.SetActive(false);
+            if(Application.isPlaying)Destroy(旧);else DestroyImmediate(旧);
+        }
+        字体 = 默认字体 ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); 根 = (RectTransform)transform;
         var 遮罩 = 底(根, "图鉴遮罩", 0, 0, 1600, 900, null, new Color(0, 0, 0, .82f));
         var 遮罩按钮 = 遮罩.gameObject.AddComponent<Button>();
         遮罩按钮.transition = Selectable.Transition.None; 遮罩按钮.onClick.AddListener(() => 关闭?.Invoke());
@@ -88,7 +98,7 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
         y += 190;
         var 规则 = 底(内容, "连接机制说明", 0, y, 列表宽, 200, "二级面板");
         字(规则, "连接规则标题", "连接与计算规则", 26, 12, 1240, 40, 23, 天帝道纹美术.强调);
-        var 规则字 = 正文(规则, "连接规则正文", "接口必须相互对接并连通源道纹；线路只能向同圈或外圈传导，未接通的道纹不生效。\n基础与普通属性全局去重；形态与五行按通路分别计算，每枚道纹每路只计一次，跨路共享以白点标记。\n1—6手动释放对应接口，共用全局攻击间隔；增加通路不会直接倍增攻速。顺序弹继承祖先历史，兄弟独立；特性同次覆盖共享命中历史。\n特性/转化已进入8级以上战斗独立掉落池；冰、雷、时间、空间仍不掉落。", 26, 58, 1266, 18, 天帝道纹美术.次文);
+        var 规则字 = 正文(规则, "连接规则正文", "接口必须相互对接并连通源道纹；线路只能向同圈或外圈传导，未接通的道纹不生效。\n基础与普通属性全局去重；形态与五行按通路分别计算，每枚道纹每路只计一次，跨路共享以白点标记。\n自动选择最近敌人，从已接通接口中随机释放一路，共用全局攻击间隔；增加通路不会直接倍增攻速。顺序弹继承祖先历史，兄弟独立；特性同次覆盖共享命中历史。\n特性/转化已进入8级以上战斗独立掉落池；冰、雷、时间、空间仍不掉落。", 26, 58, 1266, 18, 天帝道纹美术.次文);
         规则.sizeDelta = new Vector2(列表宽, 规则字.rectTransform.sizeDelta.y + 78);
         y += 规则.sizeDelta.y + 8; 内容.sizeDelta = new Vector2(列表宽, Mathf.Max(626, y));
         字(框, "图鉴底注", "单条区间由物品等级决定，品阶控制容量；重复词条相加。查询不改变已拥有道纹。", 34, 799, 1320, 24, 16, 天帝道纹美术.次文);
@@ -98,11 +108,11 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
         if (天帝移动适配.启用)
         {
             var 分类列 = new List<RectTransform>();
-            foreach (var 名 in 分类名) 分类列.Add((RectTransform)分类按钮[名].transform);
-            分类列.Add(框.Find("查看共通规则") as RectTransform);
+            foreach (var 名 in 分类名) if (分类按钮.TryGetValue(名, out var 分类键) && 分类键 != null) 分类列.Add((RectTransform)分类键.transform);
+            var 共通按钮 = 框.Find("查看共通规则") as RectTransform; if (共通按钮 != null) 分类列.Add(共通按钮);
             var 分类口 = 天帝双端页面布局.横列(框, "图鉴分类视口", 分类列.ToArray(), 120);
-            框.Find("收录说明").gameObject.SetActive(false);
-            框.Find("图鉴底注").gameObject.SetActive(false);
+            框.Find("收录说明")?.gameObject.SetActive(false);
+            框.Find("图鉴底注")?.gameObject.SetActive(false);
             天帝双端页面布局.移动页(框, 面板 =>
             {
                 float 宽 = 面板.rect.width, 高 = 面板.rect.height;
@@ -110,7 +120,7 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
                 天帝双端页面布局.固定(分类口, 8, 天帝双端页面布局.页头高度, 宽 - 240, 44);
                 天帝双端页面布局.区域(面板, "等级查询标签", 宽 - 226, 天帝双端页面布局.页头高度, 80, 44);
                 天帝双端页面布局.区域(面板, "物品等级输入", 宽 - 144, 天帝双端页面布局.页头高度, 70, 44);
-                天帝响应布局.比例(等级输入.textComponent.rectTransform, .05f, 0, .9f, 1);
+                if (等级输入 != null && 等级输入.textComponent != null) 天帝响应布局.比例(等级输入.textComponent.rectTransform, .05f, 0, .9f, 1);
                 天帝双端页面布局.区域(面板, "等级查询范围", 宽 - 68, 天帝双端页面布局.页头高度, 60, 44);
                 天帝双端页面布局.固定(视口, 8, 118, 宽 - 40, 高 - 126);
                 天帝双端页面布局.固定(轨, 宽 - 26, 118, 18, 高 - 126);
@@ -219,12 +229,17 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
         var r=天帝特性道纹.创建(1,kind,id,道纹品阶.普通,查询物品等级,0);var row=行框(kind+"-"+id,y);画图标(row,r);
         字(row,"道纹名称",r.名称,文字左,14,780,36,24,天帝道纹美术.正文);
         字(row,"道纹类别",kind+" / 八品阶 / 不可改造",980,20,312,26,17,天帝道纹美术.次文).alignment=TextAnchor.MiddleRight;
-        string conditions="";
-        if(kind==道纹分类.特性)for(int i=0;i<天帝特性道纹.数值(id,"condition_count");i++)conditions+=天帝特性道纹.文本(id,"条件."+i+".0")+"≥"+天帝特性道纹.门槛(r,i).ToString("0.##")+"；";
-        var text=正文(row,"特性机制",r.介绍+"\n普通品阶条件（物品"+查询物品等级+"级）："+conditions+"\n固定相对两口 · 同名最高激活品阶生效 · 下游功能不被接管",文字左,56,文字宽,19,天帝道纹美术.正文);
+        var text=正文(row,"特性机制",特性说明(r),文字左,56,文字宽,19,天帝道纹美术.正文);
         特性查询.Add((r,text));完成行(row,Mathf.Max(158,text.rectTransform.sizeDelta.y+76),ref y);
     }
     readonly List<(道纹实例 纹,Text 文)> 特性查询=new List<(道纹实例,Text)>();
+    string 特性说明(道纹实例 纹)
+    {
+        if(纹.分类==道纹分类.转化)
+            return 纹.介绍+"\n普通品阶：半径 "+天帝特性道纹.品阶值(纹,"半径")+" 格，转化效率 "+(天帝特性道纹.品阶值(纹,"转换")*100).ToString("0.##")+"%。\n仅转换第一条接通源通路内的范围属性；目标冲突保留原词条，同目标取最高效率。";
+        string 条件="";for(int i=0;i<天帝特性道纹.数值(纹.特性编号,"condition_count");i++)条件+=天帝特性道纹.文本(纹.特性编号,"条件."+i+".0")+"≥"+天帝特性道纹.门槛(纹,i).ToString("0.##")+"；";
+        return 纹.介绍+"\n普通品阶条件（物品"+查询物品等级+"级）："+条件+"\n固定相对两口 · 同名最高激活品阶生效 · 下游功能不被接管";
+    }
     void 完成行(RectTransform 行, float 高, ref float y) { 行.sizeDelta = new Vector2(列表宽, 高); y += 高 + 12; }
     void 画图标(RectTransform 行, 道纹实例 示意)
     {
@@ -239,8 +254,12 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
     public void 设置查询物品等级(int 等级)
     {
         查询物品等级 = Mathf.Clamp(等级, 1, 天帝数值.玩家上限); if (等级输入 != null) 等级输入.SetTextWithoutNotify(查询物品等级.ToString());
-        foreach (var 项 in 范围列表) 项.文字.text = 范围说明(项.属性, 查询物品等级);
-        foreach(var item in 特性查询){item.纹.物品等级=查询物品等级;string c="";if(item.纹.分类==道纹分类.特性)for(int i=0;i<天帝特性道纹.数值(item.纹.特性编号,"condition_count");i++)c+=天帝特性道纹.文本(item.纹.特性编号,"条件."+i+".0")+"≥"+天帝特性道纹.门槛(item.纹,i).ToString("0.##")+"；";item.文.text=item.纹.介绍+"\n普通品阶条件（物品"+查询物品等级+"级）："+c+"\n固定相对两口 · 同名最高激活品阶生效 · 下游功能不被接管";}
+        foreach (var 项 in 范围列表) if (项 != null && 项.文字 != null) 项.文字.text = 范围说明(项.属性, 查询物品等级);
+        foreach(var item in 特性查询)
+        {
+            if(item.文 == null || item.纹 == null) continue;
+            item.纹.物品等级=查询物品等级;item.文.text=特性说明(item.纹);
+        }
         if (天帝移动适配.启用 && 视口 != null && 视口.rect.width < 列表宽) 排版移动正文();
         if (剪纸详情目标 != null) 展示剪纸详情(剪纸详情目标);
     }
@@ -264,7 +283,11 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
         float 顶 = Mathf.Max(0, 内容.anchoredPosition.y) + 2; string 当前 = 分类名[0];
         foreach (var 名 in 分类名) if (分类位置.TryGetValue(名, out float 位置) && 顶 >= 位置) 当前 = 名;
         if (滚动.verticalNormalizedPosition <= .001f) 当前 = 分类名[分类名.Length - 1];
-        foreach (var 项 in 分类按钮) 天帝道纹美术.选中((Image)项.Value.targetGraphic, 项.Key == 当前);
+        foreach (var 项 in 分类按钮)
+        {
+            var 图 = 项.Value?.targetGraphic as Image;
+            if (图 != null) 天帝道纹美术.选中(图, 项.Key == 当前);
+        }
     }
     public static string 范围说明(道纹属性 属性, int 物品等级)
     {
@@ -306,9 +329,9 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
     // 保留原悬停组件入口；主要规则已内联，不需要悬停才能阅读。
     public void 显示详情(道纹属性 属性, bool 分叉, Vector2 屏幕)
     {
-        if (浮窗 == null) return;
+        if (浮窗 == null || 浮窗字 == null || 根 == null) return;
         浮窗字.text = 分叉 ? "分叉道纹\n无属性词条；掉落时获得3–6个固定接口，可以旋转，不能改造。" : 属性 + "道纹\n" + 类型说明(属性) + "\n" + 范围说明(属性, 查询物品等级);
-        float 宽 = Mathf.Min(440, 根.rect.width - 24);
+        float 宽 = Mathf.Min(440, Mathf.Max(120, 根.rect.width - 24));
         浮窗字.rectTransform.sizeDelta = new Vector2(宽 - 36, 740);
         float 高 = Mathf.Min(浮窗字.preferredHeight + 36, 根.rect.height - 24);
         浮窗.sizeDelta = new Vector2(宽, 高); 浮窗字.rectTransform.sizeDelta = new Vector2(宽 - 36, 高 - 36);
@@ -339,7 +362,7 @@ public sealed partial class 天帝道纹图鉴 : MonoBehaviour
     }
     Button 按钮(RectTransform 父, string 名, string 文, float x, float y, float w, float h, Action 点击)
     {
-        var t = 底(父, 名, x, y, w, h, "按钮"); var 键 = t.gameObject.AddComponent<Button>(); 键.targetGraphic = t.GetComponent<Image>(); 天帝道纹美术.设置按钮(键);
+        var t = 底(父, 名, x, y, w, h, "按钮"); if (t == null) return null; var 图 = t.GetComponent<Image>(); var 键 = t.gameObject.AddComponent<Button>(); 键.targetGraphic = 图; 天帝道纹美术.设置按钮(键);
         键.onClick.AddListener(() => 点击?.Invoke()); 字(t, "按钮文字", 文, 6, 0, w-12, h, 19, 天帝道纹美术.正文).alignment = TextAnchor.MiddleCenter; 天帝道纹美术.设置按钮(键); return 键;
     }
 }

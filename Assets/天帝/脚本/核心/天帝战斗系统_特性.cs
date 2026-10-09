@@ -159,12 +159,12 @@ public sealed partial class 天帝战斗系统
             if(id==24&&broken&&s.冷却<=0)施放特性(s);
         }
     }
-    void 特性根释放(int route)
+    void 特性根释放(int route, Vector2? 方向)
     {
         同步特性();foreach(var s in 特性运行表.Values.ToArray())
         {
             if(s.定义.通路!=route)continue;
-            if(周期主动特性(种(s))&&s.冷却<=0)施放特性方向(s,前摇方向);
+            if(周期主动特性(种(s))&&s.冷却<=0)施放特性方向(s,方向);
             if(种(s)!=26)continue;
             s.根次数++;if(s.根次数>=特("shield_cast_count")&&s.冷却<=0){s.根次数=0;授盾((float)(特("shield_on_cast_g")*u*强(s)),基持续(s),s.定义.道纹.编号);s.冷却=特("shield_cast_period");特性施放次数++;}
         }

@@ -92,6 +92,7 @@ public sealed partial class 天帝道纹回收界面
         var 纸 = 详情区.gameObject.AddComponent<Image>(); 纸.raycastTarget = false;
         天帝图录回收山水素材.纸(纸, "详情长卷", "朱红纸框");
         var 口 = 图(详情区, "山水回收详情视口", 28, 24, 390, 620, null, Color.clear).rectTransform;
+        口.GetComponent<Image>().raycastTarget = true;
         口.gameObject.AddComponent<RectMask2D>();
         详情卡.SetParent(口, false); 定(详情卡, 0, 0, 390, 620); 详情卡.localScale = Vector3.one; 山水详情正文 = 详情卡;
         var 滚 = 口.gameObject.AddComponent<ScrollRect>(); 滚.viewport = 口; 滚.content = 详情卡;

@@ -61,6 +61,8 @@ public sealed class 天帝存档数据
 public sealed class 天帝存档
 {
     public const int 当前版本 = 3;
+    public const int 最大存档字节数 = 16 * 1024 * 1024;
+    enum 读取失败类型 { 无, 无文件, 文件损坏, 未来版本 }
     public string 路径 { get; }
     public string 备份路径 => 路径 + ".bak";
     public bool 有文件 => File.Exists(路径) || File.Exists(备份路径);
@@ -91,18 +93,21 @@ public sealed class 天帝存档
         var 网 = 天帝道纹.读取存档(数据.画布);
         var 钱 = new 天帝通货(网, 1); 钱.读取库存(数据.通货, 数据.无限通货);
     }
-    bool 尝试读取(string 文件, out 天帝存档数据 数据, out string 原因)
+    bool 尝试读取(string 文件, out 天帝存档数据 数据, out string 原因, out 读取失败类型 失败)
     {
-        数据 = null; 原因 = "";
+        数据 = null; 原因 = ""; 失败 = 读取失败类型.无文件;
         try
         {
             if (!File.Exists(文件)) return false;
-            if (new FileInfo(文件).Length > 16 * 1024 * 1024) throw new InvalidDataException("存档文件过大");
+            失败 = 读取失败类型.文件损坏;
+            if (new FileInfo(文件).Length > 最大存档字节数) throw new InvalidDataException("存档文件过大");
             var 值 = JsonUtility.FromJson<天帝存档数据>(File.ReadAllText(文件, Encoding.UTF8));
+            if (值 != null && 值.版本 > 当前版本)
+            { 失败 = 读取失败类型.未来版本; 原因 = "存档版本不受支持"; return false; }
             // 旧存档没有地图等级字段；缺省0迁移为第一档，不改变角色或库存。
             if (值 != null && 值.地图等级 == 0) 值.地图等级 = 1;
             迁移(值);
-            校验(值); 数据 = 值; return true;
+            校验(值); 数据 = 值; 失败 = 读取失败类型.无; return true;
         }
         catch (Exception 异常) when (异常 is IOException || 异常 is InvalidDataException || 异常 is UnauthorizedAccessException || 异常 is ArgumentException || 异常 is InvalidOperationException)
         { 原因 = 异常.Message; return false; }
@@ -134,10 +139,10 @@ public sealed class 天帝存档
     public 天帝存档数据 读取()
     {
         提示 = "";
-        if (尝试读取(路径, out var 数据, out var 主因)) return 数据;
+        if (尝试读取(路径, out var 数据, out var 主因, out var 主失败)) return 数据;
         // 不用旧备份回滚未来版本的存档，避免升级后误覆盖新格式。
-        if (主因 == "存档版本不受支持") { 提示 = "存档来自其他版本，暂时无法继续。原文件已保留。"; return null; }
-        if (尝试读取(备份路径, out 数据, out var 备因))
+        if (主失败 == 读取失败类型.未来版本) { 提示 = "存档来自其他版本，暂时无法继续。原文件已保留。"; return null; }
+        if (尝试读取(备份路径, out 数据, out var 备因, out _))
         { 提示 = "已读取上一份有效备份。"; return 数据; }
         if (主因.Length > 0 || 备因.Length > 0) 提示 = "存档无法读取，原文件已保留；可选择新游戏。";
         return null;
@@ -148,14 +153,18 @@ public sealed class 天帝存档
         try
         {
             校验(数据); 数据.版本 = 当前版本; 数据.保存时间 = DateTime.UtcNow.ToString("O");
+            var 编码 = new UTF8Encoding(false);
+            string 内容 = JsonUtility.ToJson(数据, true);
+            if (编码.GetByteCount(内容) > 最大存档字节数)
+            { 提示 = "进度保存失败，存档超过16 MiB上限。原存档和备份已保留。"; Debug.LogWarning(提示); return false; }
             Directory.CreateDirectory(Path.GetDirectoryName(路径));
             using (var 流 = new FileStream(临时, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (var 写入 = new StreamWriter(流, new UTF8Encoding(false)))
-            { 写入.Write(JsonUtility.ToJson(数据, true)); 写入.Flush(); 流.Flush(true); }
+            using (var 写入 = new StreamWriter(流, 编码))
+            { 写入.Write(内容); 写入.Flush(); 流.Flush(true); }
             if (!File.Exists(路径)) File.Move(临时, 路径);
             else
             {
-                bool 原有效 = 尝试读取(路径, out _, out _);
+                bool 原有效 = 尝试读取(路径, out _, out _, out _);
                 try { File.Replace(临时, 路径, 原有效 ? 备份路径 : null); }
                 catch (Exception 异常) when (异常 is PlatformNotSupportedException || 异常 is IOException)
                 {
