@@ -154,6 +154,20 @@ public sealed partial class 天帝通货界面
     void 刷新山水改造状态()
     {
         if(!山水已装配)return;
+        // 空目标时压缩右侧下半区，让下一步提示和固定接口更接近目标卡；
+        // 选中道纹后恢复完整词条阅读间距，避免两种状态互相挤压。
+        bool 空目标 = 当前目标 == null;
+        if (接口标题 != null) 山水位置(接口标题.rectTransform, 847, 空目标 ? 452 : 502, 640, 30);
+        for (int d = 0; d < 6; d++) if (接口底[d] != null) 山水位置(接口底[d].rectTransform, 847 + d * 109, 空目标 ? 486 : 536, 103, 35);
+        if (洗练区 != null) 山水位置(洗练区, 847, 空目标 ? 524 : 574, 640, 28);
+        var 下一步 = 面板 == null ? null : Array.Find(面板.GetComponentsInChildren<Text>(true), x => x.text == "3 · 下一次改造");
+        if (下一步 != null) 山水位置(下一步.rectTransform, 847, 空目标 ? 557 : 607, 500, 36);
+        if (使用键 != null) 山水位置((RectTransform)使用键.transform, 848, 空目标 ? 604 : 654, 353, 65);
+        if (原因字 != null) 山水位置(原因字.rectTransform, 1206, 空目标 ? 604 : 654, 285, 65);
+        if (结果标题 != null && 结果标题.transform.parent is RectTransform 结果区)
+        {
+            山水位置(结果区, 841, 空目标 ? 684 : 734, 661, 87);
+        }
         if(空目标图示!=null)空目标图示.enabled=当前目标==null;
         for(int i=0;i<通货键.Length;i++)
         {
@@ -175,6 +189,8 @@ public sealed partial class 天帝通货界面
         if(目标按钮==null||使用键==null)return;
         if(天帝移动适配.启用)天帝首两页山水素材.按钮(目标按钮,"目标选择框");
         else 天帝首两页山水素材.轻按钮(目标按钮);
+        var 目标底图 = 目标按钮.GetComponent<Image>();
+        if (目标底图 != null) 目标底图.color = 当前目标 == null ? new Color(1f, .94f, .76f, 1f) : Color.white;
         天帝首两页山水素材.按钮(使用键,"墨绿按钮",true);
         if(!天帝移动适配.启用)
         {

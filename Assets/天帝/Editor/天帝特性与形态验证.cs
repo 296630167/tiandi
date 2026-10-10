@@ -17,22 +17,47 @@ public static class 天帝特性与形态验证
     static object 字段(object o,string name)=>o.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).GetValue(o);
     static void 写(object o,string name,object v)=>o.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).SetValue(o,v);
     static void 设(object o,string name,object v)=>o.GetType().GetProperty(name).SetValue(o,v);
-    static object 调(object o,string name,params object[] args)=>o.GetType().GetMethod(name,BindingFlags.Instance|BindingFlags.NonPublic).Invoke(o,args);
-    static void 放(天帝道纹 g,道纹实例 rune,int x,int y)
-    {var p=new Vector2Int(x,y);if(!g.获得道纹(rune)||!g.解锁格子(p)||!g.放置(rune,p))throw new Exception("隔离夹具放置失败 "+p);}
+    static object 调(object o,string name,params object[] args)
+    {
+        var m = o.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
+            .SingleOrDefault(x => x.Name == name && x.GetParameters().Length == args.Length);
+        if (m == null) throw new MissingMethodException(o.GetType().Name, name + "/" + args.Length);
+        return m.Invoke(o, args);
+    }
+    static void 放(天帝道纹 g,道纹实例 rune,Vector2Int p)
+    {
+        bool got = g.获得道纹(rune); var unlock = got ? g.尝试解锁格子(p) : 道纹解锁结果.已解锁;
+        bool placed = got && unlock == 道纹解锁结果.成功 && g.放置(rune,p);
+        if (!placed) throw new Exception("隔离夹具放置失败 " + p + " · 获得=" + got + " · 解锁=" + unlock + " · 技能点=" + g.技能点 + " · 已解锁=" + g.格已解锁(p));
+    }
+    static void 放(天帝道纹 g,道纹实例 rune,int x,int y)=>放(g,rune,new Vector2Int(x,y));
     static 道纹实例 功(int id,道纹功能 f)
     {var a=天帝道纹生成.创建(id,道纹分类.功能,道纹品阶.稀有,new System.Random(id));设(a,"功能",f);a.接口=天帝顺序道纹.固定接口(f,3);a.词条.Clear();a.词条.Add(new 道纹词条(天帝顺序道纹.兼容属性(f),1));return a;}
     static 天帝道纹 新()=>new 天帝道纹(42,天帝天赋.获取((int)天赋种类.普通人));
     static 天帝道纹 特网(int id,道纹品阶 grade=道纹品阶.普通)
     {
         var g=新();g.设置玩家等级(100);放(g,天帝特性道纹.创建(1,道纹分类.特性,id,grade,1,0),1,0);
-        int x=2;
+        // 夹具需要覆盖 15 个属性分支、15 个叶子和 5 个功能，全部放在合法范围内。
+        // 属性分支向下，功能链从最外层向上延伸，保持真实接口与向外传导规则。
+        var 分叉位 = new List<Vector2Int>();
+        for (int q = 2; q <= 15; q++) 分叉位.Add(new Vector2Int(q, 0));
+        分叉位.Add(new Vector2Int(15, 1));
+        var 叶位 = new List<Vector2Int>();
+        for (int q = 2; q <= 15; q++) 叶位.Add(new Vector2Int(q, -1));
+        叶位.Add(new Vector2Int(15, -1));
+        var 功能位 = new[] { new Vector2Int(14, 1), new Vector2Int(14, 2), new Vector2Int(14, 3), new Vector2Int(14, 4), new Vector2Int(14, 5) };
+        int x = 2, i = 0;
         foreach(var a in 天帝道纹属性.非功能属性)
         {
-            var b=天帝道纹生成.创建(x,道纹分类.分叉,道纹品阶.普通,new System.Random(x));b.接口=11;放(g,b,x,0);
-            var leaf=天帝道纹生成.创建(100+x,道纹分类.属性,道纹品阶.普通,new System.Random(x),道纹属性分组.基础);leaf.接口=16;leaf.词条.Clear();leaf.词条.Add(道纹词条.从定点(a,1000000));放(g,leaf,x,1);x++;
+            var b=天帝道纹生成.创建(x,道纹分类.分叉,道纹品阶.普通,new System.Random(x));b.接口 = i < 14 ? 27 : 31;放(g,b,分叉位[i]);
+            var leaf=天帝道纹生成.创建(100+x,道纹分类.属性,道纹品阶.普通,new System.Random(x),道纹属性分组.基础);leaf.接口 = i < 14 ? 2 : 32;leaf.词条.Clear();leaf.词条.Add(道纹词条.从定点(a,1000000));放(g,leaf,叶位[i]);x++;i++;
         }
-        foreach(var f in new[]{道纹功能.齐射,道纹功能.分裂,道纹功能.连锁,道纹功能.回旋,道纹功能.爆破}){放(g,功(200+x,f),x,0);x++;}
+        i = 0;
+        foreach(var f in new[]{道纹功能.齐射,道纹功能.分裂,道纹功能.连锁,道纹功能.回旋,道纹功能.爆破})
+        {
+            int 位 = i++;
+            var fun = 功(200+x,f); fun.接口 = 天帝顺序道纹.固定接口(f, 4);放(g,fun,功能位[位]);x++;
+        }
         return g;
     }
     sealed class 战夹:IDisposable
@@ -112,7 +137,7 @@ public static class 天帝特性与形态验证
                 case 21:t.步(.9f);查("砺甲站稳减伤",(float)调(t.战,"特性受伤前",100f,true,t.战.敌人[0])<100);break;
                 case 22:写(t.状态,"冷却",0f);调(t.战,"特性受伤后",100f,0f,false);t.步(.025f);break;
                 case 24:写(t.状态,"冷却",0f);调(t.战,"特性受伤后",1f,1f,true);break;
-                case 26:写(t.状态,"冷却",0f);for(int n=0;n<8;n++)调(t.战,"特性根释放",0);break;
+                case 26:写(t.状态,"冷却",0f);for(int n=0;n<8;n++)调(t.战,"特性根释放",0,(Vector2?)null);break;
                 default:查("T"+id+"明确施放成功",t.施放());break;
             }
             t.步(.4f);

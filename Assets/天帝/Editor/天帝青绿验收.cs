@@ -26,6 +26,7 @@ public static class 天帝青绿验收
     }
     public static void 拍摄(GameObject host, string 名, int 宽, int 高)
     {
+        if (Environment.GetEnvironmentVariable("TIANDI_SKIP_SCREENSHOTS") == "1") return;
         if (string.IsNullOrEmpty(图片目录)) return;
         if (host == null) throw new ArgumentNullException(nameof(host), "青绿UI拍摄宿主不能为空。");
         var hostRect=host.transform as RectTransform; if(hostRect==null) throw new InvalidOperationException("青绿UI拍摄宿主必须是 RectTransform。");

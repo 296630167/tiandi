@@ -63,18 +63,35 @@ public partial class 天帝界面
     }
     void 剪纸导航(RectTransform 父, string 名, int 序, Action 点击)
     {
-        var 像 = 剪纸图(父, "暖纸按钮", 25, 237 + 101 * 序, 382, 89);
+        bool 次级入口 = 序 >= 3;
+        float y = 次级入口 ? 540 + (序 - 3) * 78 : 237 + 101 * 序;
+        float x = 次级入口 ? 56 : 25;
+        float 宽 = 次级入口 ? 320 : 382;
+        float 高 = 次级入口 ? 72 : 89;
+        var 像 = 剪纸图(父, "暖纸按钮", x, y, 宽, 高);
         像.name = 名; 像.raycastTarget = true;
         var 键 = 像.gameObject.AddComponent<天帝剪纸导航按钮>(); 键.targetGraphic = 像;
         键.轻纸样式 = true;
         天帝首两页山水素材.轻按钮(键);
-        键.标签 = 剪纸字((RectTransform)键.transform, "导航文字", 名, 136, 0, 213, 89, 29, new Color32(18,55,47,255));
-        var 图标 = 剪纸图((RectTransform)键.transform, "导航_" + 名, 49, 10, 70, 68);
+        键.标签 = 剪纸字((RectTransform)键.transform, "导航文字", 名, 次级入口 ? 104 : 136, 0, 次级入口 ? 190 : 213, 高, 次级入口 ? 24 : 29, new Color32(18,55,47,255));
+        var 图标 = 剪纸图((RectTransform)键.transform, "导航_" + 名, 次级入口 ? 34 : 49, 次级入口 ? 8 : 10, 次级入口 ? 56 : 70, 次级入口 ? 56 : 68);
         图标.preserveAspect = true;
         键.图标=图标;
         键.刷新文字();
         键.onClick.AddListener(() => { 关闭等级下拉(); 点击(); });
         天帝按钮声音.绑定(键);
+        // 高频入口保持完整对比，图鉴、宝盒、回收和调试入口降为次级视觉层，
+        // 仍保留相同尺寸与触控范围，避免主页七个入口争夺开始历练的注意力。
+        if (序 >= 3)
+        {
+            var 次级色 = 键.colors;
+            次级色.normalColor = new Color(1f, 1f, 1f, .78f);
+            次级色.highlightedColor = new Color(1f, 1f, 1f, .92f);
+            次级色.pressedColor = new Color(.86f, .89f, .84f, .96f);
+            键.colors = 次级色;
+            图标.color = new Color(1f, 1f, 1f, .86f);
+            键.标签.color = new Color32(62, 91, 78, 255);
+        }
     }
     void 显示剪纸主页()
     {

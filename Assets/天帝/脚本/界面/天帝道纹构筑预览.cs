@@ -43,7 +43,7 @@ public sealed partial class 天帝道纹界面
         单弹字 = 文字(框, "", 22, 151, 388, 52, 31, TextAnchor.MiddleLeft); 单弹字.color = 天帝道纹美术.纸墨;
         射击字 = 文字(框, "", 22, 208, 388, 26, 15, TextAnchor.MiddleLeft); 射击字.color = 天帝道纹美术.纸次墨;
         形态字 = 文字(框, "", 22, 248, 388, 55, 18, TextAnchor.UpperLeft); 形态字.color = 天帝道纹美术.纸墨;
-        var 演示区 = 底(框, "攻击形态演示", 22, 316, 388, 92, new Color(.018f, .036f, .045f));
+        var 演示区 = 底(框, "攻击形态演示", 22, 316, 388, 92, new Color(.035f, .10f, .09f));
         演示区.gameObject.AddComponent<RectMask2D>();
         var 画 = 区块(演示区, "形态演示绘制", 0, 0, 388, 92);
         攻击演示 = 画.gameObject.AddComponent<天帝道纹攻击演示>(); 攻击演示.raycastTarget = false;

@@ -178,7 +178,8 @@ public static partial class 天帝剩余概念验收
             var r = 遮罩[i].rectTransform;
             return 遮罩[i].sprite == 底.sprite && Vector2.Distance(r.anchoredPosition, 底.rectTransform.anchoredPosition) < .0001f
                 && Vector2.Distance(r.rect.size, 底.rectTransform.rect.size) < .0001f
-                && Mathf.Abs(r.rect.width - (手机 ? 39 : 44)) < .0001f;
+                // 手机圆形技能底随64逻辑像素触控格放大，PC维持原44像素图标。
+                && Mathf.Abs(r.rect.width - (手机 ? 45 : 44)) < .0001f;
         }));
     }
     static void 检查主动冷却暂停(string 平台, 天帝战斗场景 场)

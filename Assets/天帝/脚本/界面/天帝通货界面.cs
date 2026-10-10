@@ -85,6 +85,7 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
         目标按钮 = 键(面板, "选择目标道纹", "点击这里，选择道纹", 672, 144, 556, 88, 打开背包);
         目标提示 = 目标按钮.GetComponentInChildren<Text>();
         目标提示.rectTransform.anchoredPosition = new Vector2(110, -14); 目标提示.rectTransform.sizeDelta = new Vector2(426, 56); 目标提示.fontSize = 23;
+        目标提示.fontStyle = FontStyle.Bold; 目标提示.alignment = TextAnchor.MiddleCenter;
         var 图区 = 区块((RectTransform)目标按钮.transform, "目标道纹图标", 2, 2, 84, 76);
         目标图 = 图区.gameObject.AddComponent<天帝道纹绘图>(); 目标图.单纹模式 = true; 目标图.单纹半径 = 32; 目标图.raycastTarget = false;
         目标图.数据=数据;
@@ -277,7 +278,8 @@ public sealed partial class 天帝通货界面 : MonoBehaviour
         目标图.单纹 = 纹; 目标图.SetVerticesDirty();
         目标图短名.text=天帝道纹美术.单字(纹);
         目标提示.gameObject.SetActive(纹 == null);
-        分类字.text = 纹 == null ? "从背包选择要改造的道纹" : 天帝道纹品阶.彩色品阶文字(纹.品阶) + "    物品" + 纹.物品等级 + "级    " + (纹.格子.HasValue ? "已放置" : "未放置") + "    #" + 纹.编号;
+        分类字.text = 纹 == null ? "尚未选择道纹  ·  点击上方按钮打开藏匣" : 天帝道纹品阶.彩色品阶文字(纹.品阶) + "    物品" + 纹.物品等级 + "级    " + (纹.格子.HasValue ? "已放置" : "未放置") + "    #" + 纹.编号;
+        分类字.color = 纹 == null ? 天帝道纹美术.金墨 : 淡字;
         if (背包已打开) 背包.更新选择(纹);
         容量字.text = 纹 == null ? "" : 纹.分类 == 道纹分类.分叉 || 纹.是特性道纹 ? "不可改造" : 词数 + " / " + 纹.词条上限;
         bool 单洗 = 当前通货 == 通货种类.易纹砂 && 词数 > 0;

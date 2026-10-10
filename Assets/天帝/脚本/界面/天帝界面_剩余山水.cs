@@ -137,7 +137,7 @@ public partial class 天帝界面
         var 按键 = new Button[3]; var 卡片 = new RectTransform[3];
         var 插画组 = new RectTransform[3]; var 卡标题 = new Text[3]; var 卡说明 = new Text[3]; var 卡价格 = new Text[3]; var 概率键 = new Button[3];
         var 名称 = new[] { "属性宝盒", "功能宝盒", "分叉宝盒" };
-        var 说明 = new[] { "随机属性增益 · 需接通源纹", 天帝顺序道纹.功能数量 + "种等概率 · 固定稀有 · 单功能", "固定普通 · 无词条 · 3–6接口" };
+        var 说明 = new[] { "随机属性增益 · 需接通源纹", 天帝顺序道纹.功能数量 + "种等概率 · 改变攻击形态 · 未必增加伤害", "固定普通 · 无词条 · 3–6接口" };
         Action 刷余额 = () =>
         {
             余额.text = "灵石  " + 游戏.宝盒数据.灵石显示;
@@ -149,12 +149,13 @@ public partial class 天帝界面
             int 序 = i; var 卡 = 余窗(框, 名称[i], 142 + i * 448, 230, 424, 384, "红叶弹窗");
             var 插画 = 图(卡, "宝盒独立插画", 64, 19, 296, 137, Color.white, 天帝剪纸界面皮肤.素材(名称[i] + "插画")); 插画.preserveAspect = true;
             卡标题[i] = 余字(卡, 名称[i], 28, 161, 368, 48, 34, true, TextAnchor.MiddleCenter);
-            卡说明[i] = 余字(卡, 说明[i], 27, 211, 370, 44, 20, 对齐: TextAnchor.MiddleCenter, 次要: true);
-            var 概率 = 余键(卡, "查看概率", 28, 266, 148, 38, () => 显示宝盒概率(序), 大小: 19); 概率.name = "宝盒概率-" + 序;
-            var 价格 = 余字(卡, 天帝宝盒.价格((宝盒种类)i) + " 灵石 / 次", 186, 267, 208, 38, 23, 对齐: TextAnchor.MiddleRight);
+            // 功能宝盒说明固定为两行；给正文留出真实字高，避免 PC 下被 44px 卡片裁切。
+            卡说明[i] = 余字(卡, 说明[i], 27, 211, 370, 58, 18, 对齐: TextAnchor.MiddleCenter, 次要: true);
+            var 概率 = 余键(卡, "查看概率", 28, 278, 148, 38, () => 显示宝盒概率(序), 大小: 19); 概率.name = "宝盒概率-" + 序;
+            var 价格 = 余字(卡, 天帝宝盒.价格((宝盒种类)i) + " 灵石 / 次", 186, 279, 208, 38, 23, 对齐: TextAnchor.MiddleRight);
             价格.fontStyle = FontStyle.Bold;
             卡片[i] = 卡; 插画组[i] = 插画.rectTransform; 卡价格[i] = 价格; 概率键[i] = 概率;
-            按键[i] = 余键(卡, "抽取", 28, 316, 368, 50, () =>
+            按键[i] = 余键(卡, "抽取", 28, 328, 368, 50, () =>
             {
                 if (游戏.宝盒数据.抽取((宝盒种类)序, out var 纹, out var 提示))
                 {

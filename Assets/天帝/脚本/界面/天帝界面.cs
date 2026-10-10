@@ -76,10 +76,10 @@ public partial class 天帝界面
     RectTransform 主页人物;
     Image 主页人物图;
     float 主页待机秒;
-    readonly Color 墨 = new Color(0.13f, 0.23f, 0.22f);
-    readonly Color 次墨 = new Color(0.35f, 0.43f, 0.39f);
-    readonly Color 朱 = new Color(0.60f, 0.25f, 0.20f);
-    readonly Color 纸 = new Color(0.94f, 0.92f, 0.86f);
+    readonly Color 墨 = 天帝界面主题.正文;
+    readonly Color 次墨 = 天帝界面主题.次文;
+    readonly Color 朱 = 天帝界面主题.警示色;
+    readonly Color 纸 = 天帝界面主题.纸色;
     public bool 设置已打开 { get; private set; }
     public bool 确认已打开 { get; private set; }
     public 天帝道纹界面 道纹页 { get; private set; }
@@ -99,7 +99,9 @@ public partial class 天帝界面
         适配.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         // 适配到整数像素时，文字和纸材边线不再落在半像素上；非整数比例由
         // CanvasScaler 正常插值，避免改变 16:9 设计区的比例。
-        界面画布.pixelPerfect = true;
+        // 设计区会按安全区等比缩放；非整数比例下开启 pixelPerfect 会让中文边缘
+        // 被强制吸附到像素格，手机上比素材本身更容易出现发糊和笔画粗细不一。
+        界面画布.pixelPerfect = false;
         响应布局 = 根.AddComponent<天帝响应布局>();
         for (int i = 0; i < 留边.Length; i++)
         {
@@ -139,7 +141,7 @@ public partial class 天帝界面
     Text 字(RectTransform 父, string 内容, float x, float y, float w, float h, int 大小, Color 色)
     {
         var 文 = 区块(父, "文字", x, y, w, h).gameObject.AddComponent<Text>();
-        文.font = 游戏.默认字体; 文.text = 内容; 文.fontSize = 大小; 文.color = 天帝道纹美术.纸面文字(色);
+        文.font = 天帝界面主题.正文字体(游戏.默认字体); 文.text = 内容; 文.fontSize = 大小; 文.color = 天帝道纹美术.纸面文字(色);
         文.alignment = TextAnchor.MiddleCenter; 文.raycastTarget = false;
         文.horizontalOverflow = HorizontalWrapMode.Wrap; 文.verticalOverflow = VerticalWrapMode.Overflow; 天帝界面美术.文字(文); return 文;
     }
@@ -861,7 +863,7 @@ public partial class 天帝界面
         适配排版次数++;
         // CanvasScaler 是唯一的屏幕缩放来源。这里仅调整安全区和设计区，避免
         // 每帧手写 scaleFactor 与 CanvasScaler 在不同执行顺序下互相覆盖。
-        界面画布.pixelPerfect = 天帝移动适配.启用;
+        界面画布.pixelPerfect = false;
         if (区 != 上次安全区 || 尺寸 != 上次尺寸)
         {
             上次安全区 = 区; 上次尺寸 = 尺寸;

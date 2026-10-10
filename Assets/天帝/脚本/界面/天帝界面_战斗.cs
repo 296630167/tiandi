@@ -21,6 +21,29 @@ public partial class 天帝界面
         文.alignment = TextAnchor.MiddleLeft; 文.horizontalOverflow = HorizontalWrapMode.Overflow;
         文.verticalOverflow = VerticalWrapMode.Overflow; return 文;
     }
+    // 战斗层压低装饰对比，让角色、敌人和技能成为视线中心；页面仍沿用同一套青绿/宣纸素材。
+    void 战斗面板(Image 图)
+    {
+        if (图 == null) return;
+        if (天帝剪纸界面皮肤.已启用)
+        {
+            图.sprite = 天帝剪纸界面皮肤.素材("墨青画布");
+            图.type = Image.Type.Sliced; 图.pixelsPerUnitMultiplier = 2;
+            图.color = new Color(1, 1, 1, .90f);
+        }
+        else if (天帝青绿皮肤.已启用)
+        {
+            图.sprite = 天帝青绿皮肤.获取("QLUI_深青面板");
+            图.type = Image.Type.Sliced; 图.pixelsPerUnitMultiplier = 2;
+            图.color = new Color(1, 1, 1, .90f);
+        }
+        else
+        {
+            图.sprite = null; 图.type = Image.Type.Simple;
+            图.color = new Color(.025f, .08f, .075f, .86f);
+        }
+        图.raycastTarget = false;
+    }
     void 建立紧凑战斗界面()
     {
         下次战斗文本刷新=0;
@@ -32,7 +55,7 @@ public partial class 天帝界面
         战斗界面层.localScale = Vector3.one * 安全区布局比例(天帝移动适配.布局尺寸);
         战斗界面层.SetSiblingIndex(设计区.GetSiblingIndex());
         var 状态 = 战斗角落("主角战斗状态", new Vector2(0, 1), new Vector2(18, -18), new Vector2(330, 108));
-        var 底 = 状态.gameObject.AddComponent<Image>(); 天帝界面美术.面板(底,"二级面板",new Color(1,1,1,.96f)); 底.raycastTarget = false;
+        var 底 = 状态.gameObject.AddComponent<Image>(); 战斗面板(底);
         战斗文字(状态, "青岚原 · 地图 Lv." + 游戏.当前地图等级, 14, 4, 302, 25, 17, new Color(.74f, .87f, .80f));
         战斗血量 = 战斗文字(状态, "", 14, 29, 302, 25, 18, 纸);
         战斗生命底=图(状态, "生命底", 14, 55, 302, 7, new Color(.12f, .08f, .07f, .8f)).rectTransform;
@@ -44,7 +67,7 @@ public partial class 天帝界面
         战斗血量.gameObject.SetActive(false); 战斗生命底.gameObject.SetActive(false); 战斗血条.gameObject.SetActive(false);
 
         var 统计 = 战斗角落("波次敌人信息", Vector2.one, new Vector2(-18, -18), new Vector2(374, 114));
-        var 统计底 = 统计.gameObject.AddComponent<Image>(); 天帝界面美术.面板(统计底,"二级面板",new Color(1,1,1,.96f)); 统计底.raycastTarget = false;
+        var 统计底 = 统计.gameObject.AddComponent<Image>(); 战斗面板(统计底);
         战斗波次 = 战斗文字(统计, "", 14, 5, 346, 104, 16, 纸);
         战斗波次.alignment = TextAnchor.UpperLeft;
         var 暂停区 = 战斗角落("暂停入口", Vector2.one, new Vector2(-18, -140), new Vector2(94, 36));
@@ -59,11 +82,9 @@ public partial class 天帝界面
         战斗小地图 = 地图预览(小图框, 6, 6, 100, 100);
         战斗小地图.当前地图 = 游戏.战斗场景.地图; 战斗小地图.SetVerticesDirty();
         var 目标框 = 战斗角落("战斗目标", Vector2.zero, new Vector2(18, 82), new Vector2(300, 52));
-        var 目标底 = 目标框.gameObject.AddComponent<Image>(); 目标底.color = new Color(.02f, .05f, .04f, .84f); 目标底.raycastTarget = false;
-        if (天帝剪纸界面皮肤.已启用) 天帝界面美术.面板(目标底,"二级面板",Color.white);
-        else if (天帝青绿皮肤.已启用) { 目标底.sprite = 天帝青绿皮肤.获取("QLUI_深青面板"); 目标底.type = Image.Type.Sliced; 目标底.pixelsPerUnitMultiplier = 2; 目标底.color = Color.white; }
+        var 目标底 = 目标框.gameObject.AddComponent<Image>(); 战斗面板(目标底);
         战斗目标 = 战斗文字(目标框, "", 10, 4, 280, 44, 16, 天帝道纹美术.浅字);
-        战斗目标.color = 天帝剪纸界面皮肤.已启用?天帝剪纸界面皮肤.墨:天帝道纹美术.浅字;
+        战斗目标.color = 天帝界面主题.浅字;
         战斗目标.horizontalOverflow = HorizontalWrapMode.Wrap;
 
         拾取列表 = new 天帝拾取提示(战斗界面层, 游戏.默认字体, 游戏.拾取提示停留秒, true, true);
@@ -108,13 +129,13 @@ public partial class 天帝界面
         bool 满级 = 人.等级 >= 天帝数值.玩家上限;
         if (战斗经验字 != null) 战斗经验字.text = 满级 ? "经验 · 已满级" : "经验 " + 游戏.道纹数据.当前经验 + " / " + 游戏.道纹数据.升级所需经验;
         战斗条进度(战斗经验条,战斗经验底,满级?1:(float)游戏.道纹数据.当前经验/Mathf.Max(1,游戏.道纹数据.升级所需经验));
-        string 分类(战斗敌人级别 类) => 战.分类剩余(类) + "<color=#546666>(场" + 战.分类在场(类) + ")</color>";
+        string 分类(战斗敌人级别 类) => 战.分类剩余(类) + "<color=#A9C2B4>(场" + 战.分类在场(类) + ")</color>";
         if (战斗波次 != null)
         {
             if (天帝移动适配.启用)
                 战斗波次.text = "剩余 " + 战.剩余敌人数量 + " · 场 " + 战.场上敌人数量 + " · 待 " + 战.未生成敌人数量 + "\n普 " + 战.分类剩余(战斗敌人级别.普通) + "  精 " + 战.分类剩余(战斗敌人级别.精英) + "  头 " + 战.分类剩余(战斗敌人级别.头目) + "  王 " + 战.分类剩余(战斗敌人级别.王级);
             else
-                战斗波次.text = "<size=24>剩余 " + 战.剩余敌人数量 + " / " + 战.敌人.Count + "</size>  <color=#546666>场上 " + 战.场上敌人数量 + " · 待刷 " + 战.未生成敌人数量 + "</color>\n"
+                战斗波次.text = "<size=24>剩余 " + 战.剩余敌人数量 + " / " + 战.敌人.Count + "</size>  <color=#A9C2B4>场上 " + 战.场上敌人数量 + " · 待刷 " + 战.未生成敌人数量 + "</color>\n"
                     + "普通 " + 分类(战斗敌人级别.普通) + "    精英 " + 分类(战斗敌人级别.精英) + "\n"
                     + "头目 " + 分类(战斗敌人级别.头目) + "    BOSS " + 分类(战斗敌人级别.王级);
         }

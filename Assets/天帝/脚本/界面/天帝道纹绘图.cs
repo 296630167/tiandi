@@ -51,8 +51,8 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             !数据.已放置.TryGetValue(纹.格子.Value, out var 实纹) || !ReferenceEquals(实纹,纹)) return 链路状态.空位;
         return 获取链路状态(纹.格子.Value,方向);
     }
-    public static Color 链路状态颜色(链路状态 状态) => 状态 == 链路状态.已激活 ? new Color(.35f,.91f,.57f) :
-        状态 == 链路状态.未激活 ? new Color(.96f,.36f,.31f) : new Color(.55f,.65f,.65f,.20f);
+    public static Color 链路状态颜色(链路状态 状态) => 状态 == 链路状态.已激活 ? new Color(.24f,.67f,.45f) :
+        状态 == 链路状态.未激活 ? new Color(.72f,.27f,.22f) : new Color(.55f,.65f,.65f,.20f);
     public Vector2Int? 预览格;
     public bool 预览可放;
     public 道纹实例 拖动纹;
@@ -126,8 +126,8 @@ public sealed class 天帝道纹绘图 : MaskableGraphic
             else if(已解锁 && !数据.已放置.ContainsKey(格)) 画权重(vh, 点, 天帝道纹.格权重(格), 缩放);
             if (可解锁)
             {
-                // 可解锁格沿用现有预览亮起的青绿色，填充很轻，只强调可操作边界。
-                var 高亮 = new Color(.25f, 1f, .75f, .90f);
+                // 可解锁使用暖金语义，和已接通青玉、错误朱红区分，避免整片画布荧光化。
+                var 高亮 = new Color(.78f, .62f, .24f, .82f);
                 六边(vh, 点, 半径 * 格间距 - 1, new Color(高亮.r, 高亮.g, 高亮.b, .08f), 高亮, Mathf.Max(1.4f, 2.6f * 缩放));
             }
             if (数据.已放置.TryGetValue(格, out var 纹))

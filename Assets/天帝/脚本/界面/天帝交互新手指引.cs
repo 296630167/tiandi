@@ -323,12 +323,16 @@ public sealed class 天帝交互新手指引 : MonoBehaviour
         遮罩.SetVerticesDirty();
         var 安=全画布.Find("安全区") as RectTransform;var 范围=安!=null?边(安):根.rect;
         bool 手机=天帝移动适配.启用;float 宽=Mathf.Min(手机?740:620,范围.width-40);
-        标题.fontSize=手机?42:25;正文.fontSize=手机?36:22;操作字.fontSize=手机?42:22;
+        标题.fontSize=手机?42:25;正文.fontSize=手机?30:22;操作字.fontSize=手机?34:22;
         标题.fontStyle=正文.fontStyle=FontStyle.Normal;
         天帝双端页面布局.固定(标题.rectTransform,36,手机?100:94,宽-72,手机?90:56);
         float 正文顶=手机?200:162;
         天帝双端页面布局.固定(正文.rectTransform,32,正文顶,宽-64,100);
         float 按键高=手机?132:48;
+        float 可用正文高 = Mathf.Max(96, 范围.height - 正文顶 - 48 - 按键高);
+        // 小屏教程卡片不能靠 BestFit 随机缩字；按当前宽度逐档收敛，确保正文和按钮始终同屏。
+        while (手机 && 正文.preferredHeight + 12 > 可用正文高 && 正文.fontSize > 24)
+            正文.fontSize -= 2;
         float 正文高=正文.preferredHeight+12;float 高=Mathf.Min(范围.height-32,正文高+正文顶+48+按键高);
         天帝双端页面布局.固定(正文.rectTransform,32,正文顶,宽-64,高-正文顶-48-按键高);
         var 继续=(RectTransform)继续键.transform;var 跳=卡.Find("跳过引导") as RectTransform;

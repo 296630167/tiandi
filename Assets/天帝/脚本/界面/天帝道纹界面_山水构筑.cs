@@ -91,7 +91,7 @@ public sealed partial class 天帝道纹界面
         foreach(var 文 in new[]{单弹字,射击字,形态字,对比字,连接字})if(文!=null)文.color=天帝剪纸界面皮肤.墨;
         if (状态字 != null) 状态字.color=new Color32(246,230,192,255);
         foreach(var 文 in new[]{成长字,汇总字,空列表提示,单弹字,射击字,形态字,对比字,连接字,提示字})if(文!=null){文.font=字体;文.resizeTextForBestFit=false;文.color=天帝剪纸界面皮肤.墨;}
-        if(数据 != null && 数据.道纹 != null && 数据.道纹.Count==0 && 空列表提示 != null)空列表提示.text="藏匣尚空\n回主页开启属性宝盒\n或去青岚原收集道纹";
+        if(数据 != null && 数据.道纹 != null && 数据.道纹.Count==0 && 空列表提示 != null)空列表提示.text="藏匣尚空\n可回主页开属性宝盒\n或去青岚原收集道纹";
         if (页码字 != null) 页码字.text=(候选页码+1)+" / "+候选总页数;
         if (单弹字 != null && 单弹字.transform.parent != null) foreach(Transform 子 in 单弹字.transform.parent)if(子.GetComponent<Text>() is Text 文&&文.text=="战斗变化")文.color=状态字 != null ? 状态字.color : 天帝剪纸界面皮肤.墨;
         for(int i=0;i<候选卡.Count;i++)

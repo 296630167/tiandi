@@ -73,8 +73,12 @@ public static class 天帝道纹画布预览验证
         检查("未对接能指出本纹缺失方向", new 天帝道纹连接诊断(错口网).说明(错口).Contains("左口未启用"));
         var 封印 = 加(错口网, 道纹属性.智力, 1, 16, new Vector2Int(0, 1));
         检查("源纹封印显示对应解封等级", new 天帝道纹连接诊断(错口网).说明(封印).Contains("50级"));
+        // 新规则要求每次解锁都贴着既有解锁区域；先铺一条空白解锁路径，
+        // 再把道纹放到远端，测试的仍然是“没有相邻道纹”的诊断。
+        for (int x = 2; x <= 5; x++) 错口网.解锁格子(new Vector2Int(x, 0));
         var 孤 = 加(错口网, 道纹属性.智力, 1, 9, new Vector2Int(5, 0));
         检查("无邻纹显示独立原因", new 天帝道纹连接诊断(错口网).说明(孤).Contains("独立道纹"));
+        错口网.解锁格子(new Vector2Int(6, 0));
         var 邻 = 加(错口网, 道纹属性.智力, 1, 9, new Vector2Int(6, 0));
         检查("互接分支未连源单独解释", new 天帝道纹连接诊断(错口网).说明(邻).Contains("分支未接源纹"));
         var 返 = 网(); 加(返, 道纹属性.力量, 1, 63, new Vector2Int(1, 0)); 加(返, 道纹属性.力量, 1, 63, new Vector2Int(2, -1));
@@ -84,7 +88,15 @@ public static class 天帝道纹画布预览验证
         for (int 种 = 0; 种 < 10; 种++)
         {
             var 随 = new System.Random(种); var 网格 = 网(50);
-            for (int q = -3; q <= 3; q++) for (int r = -3; r <= 3; r++) if (q != 0 || r != 0) 加(网格, 道纹属性.力量, 1, 随.Next(1, 64), new Vector2Int(q, r));
+            var 格序 = new List<Vector2Int>();
+            for (int q = -3; q <= 3; q++) for (int r = -3; r <= 3; r++)
+                if (q != 0 || r != 0) 格序.Add(new Vector2Int(q, r));
+            格序.Sort((a, b) => 天帝道纹.格权重(a) != 天帝道纹.格权重(b) ? 天帝道纹.格权重(a).CompareTo(天帝道纹.格权重(b)) : a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+            foreach (var 格 in 格序)
+            {
+                if (!网格.解锁格子(格)) throw new Exception("随机网络夹具解锁失败 " + 格);
+                加(网格, 道纹属性.力量, 1, 随.Next(1, 64), 格);
+            }
             var 结果诊断 = new 天帝道纹连接诊断(网格);
             foreach (var 纹 in 网格.道纹)
             {

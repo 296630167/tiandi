@@ -11,18 +11,19 @@ public static class 天帝道纹美术
     {
         get { if (!已查瓷图) { 瓷图=Resources.Load<Texture2D>("白瓷道纹/构筑道纹图集"); 已查瓷图=true; } return 瓷图; }
     }
-    public static readonly Color 正文 = new Color(.09f, .24f, .27f);
-    public static readonly Color 次文 = new Color(.27f, .37f, .37f);
+    // 兼容旧页面字段；真实颜色由全局语义主题集中维护。
+    public static readonly Color 正文 = 天帝界面主题.正文;
+    public static readonly Color 次文 = 天帝界面主题.次文;
     public static readonly Color 纸墨 = 正文;
     public static readonly Color 纸次墨 = 次文;
-    public static readonly Color 强调 = new Color(.14f, .38f, .39f);
-    public static readonly Color 金墨 = new Color(.53f, .33f, .13f);
-    public static readonly Color 浅字 = new Color(.95f, .91f, .78f);
-    public static readonly Color 纸色 = new Color(.95f, .91f, .80f);
-    public static readonly Color 行底 = new Color(.93f, .94f, .85f);
+    public static readonly Color 强调 = 天帝界面主题.强调;
+    public static readonly Color 金墨 = 天帝界面主题.金墨;
+    public static readonly Color 浅字 = 天帝界面主题.浅字;
+    public static readonly Color 纸色 = 天帝界面主题.纸色;
+    public static readonly Color 行底 = 天帝界面主题.行底;
     public static readonly Color 画布石青 = new Color(.16f, .29f, .32f);
-    public static readonly Color 成功色 = new Color(.16f, .41f, .30f);
-    public static readonly Color 警示色 = new Color(.64f, .27f, .17f);
+    public static readonly Color 成功色 = 天帝界面主题.成功色;
+    public static readonly Color 警示色 = 天帝界面主题.警示色;
     // 品阶文字在通知深底上使用独立亮色，浅纸面继续沿用原品阶配色。
     static readonly string[] 深底品阶色 = { "#FFF7DC", "#8DE5B2", "#8FC7FF", "#E5B1FF", "#FFCE8E", "#FFB1AB", "#FFE68E", "#BFE9FF" };
     public static string 深底品阶文字(道纹品阶 阶) => "<color=" + 深底品阶色[Mathf.Clamp((int)阶, 0, 7)] + ">" + 阶 + "</color>";
