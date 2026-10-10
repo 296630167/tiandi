@@ -185,8 +185,13 @@ public sealed class 天帝交互新手指引 : MonoBehaviour
     void 更新引导(bool 检查操作)
     {
         if(游戏==null||游戏.道纹数据==null||!gameObject.activeSelf)return;
-        if(游戏.阶段==游戏阶段.标题||游戏.阶段==游戏阶段.序章||游戏.阶段==游戏阶段.源道纹选择){gameObject.SetActive(false);return;}
         var 网=游戏.道纹数据;var 页=界面.道纹页;
+        if(游戏.阶段==游戏阶段.标题||游戏.阶段==游戏阶段.序章||游戏.阶段==游戏阶段.源道纹选择)
+        {
+            // 页面切换可能让引导提前隐藏；同步解除道纹页拦截，避免返回后仍被当作引导中的输入。
+            if(页!=null){页.引导讲解中=false;页.指针离开();}
+            gameObject.SetActive(false);界面.移动失去焦点();return;
+        }
         if(页!=null&&!页.引导讲解中){页.引导讲解中=true;页.指针离开();}
         if(检查操作)
         {
