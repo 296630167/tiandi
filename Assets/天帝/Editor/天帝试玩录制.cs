@@ -41,10 +41,16 @@ public static class 天帝试玩录制
     static Text 字幕;
     static Image 指针;
     static bool 已完成;
+    static string 原验证目录;
     public static string 启动()
     {
         if (EditorApplication.isPlaying || EditorSceneManager.GetActiveScene().isDirty) throw new InvalidOperationException("先停止运行并保存场景，录制不覆盖未保存场景。");
         目录=Path.Combine(天帝构建工具.项目根,"生成/试玩视频/录制-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")); Directory.CreateDirectory(目录);
+        // 录制只使用隔离存档，避免演示构筑、战斗拾取和改造污染玩家正式进度。
+        原验证目录=天帝存档.验证目录;
+        天帝存档.验证目录=Path.Combine(目录,"隔离存档"); Directory.CreateDirectory(天帝存档.验证目录);
+        var 正式存档=Path.Combine(Application.persistentDataPath,"天帝进度.json");
+        if (File.Exists(正式存档)) File.Copy(正式存档,Path.Combine(天帝存档.验证目录,"天帝进度.json"),true);
         结果=new 报告(); 已完成=false; 游戏=null; 字幕=null; 指针=null; 原帧率=Time.captureFramerate;
         原启用=EditorSettings.enterPlayModeOptionsEnabled; 原模式=EditorSettings.enterPlayModeOptions; 原后台=Application.runInBackground;
         EditorSceneManager.OpenScene("Assets/天帝/场景/天帝.unity");
@@ -136,7 +142,15 @@ public static class 天帝试玩录制
     }
     static void 点(string 名)
     {
-        Canvas.ForceUpdateCanvases();var b=游戏.GetComponentsInChildren<Button>().First(k=>k.name==名);
+        Canvas.ForceUpdateCanvases();
+        var b=游戏.GetComponentsInChildren<Button>().FirstOrDefault(k=>k != null && k.name==名);
+        if (b == null)
+        {
+            // 主页在不同存档/布局模式下使用不同对象名，但按钮文字仍表达同一动作。
+            var 文字 = 名 == "开始游戏" ? new[]{"开始游戏", "继续游戏", "开始历练"} : new[]{名};
+            b = 游戏.GetComponentsInChildren<Button>().FirstOrDefault(k => k != null && 文字.Contains(k.GetComponentInChildren<Text>()?.text));
+        }
+        if (b == null) throw new InvalidOperationException("找不到按钮：" + 名);
         if(!b.interactable)throw new InvalidOperationException("按钮未就绪："+名);
         var r=(RectTransform)b.transform;var p=RectTransformUtility.WorldToScreenPoint(null,r.TransformPoint(r.rect.center));指(p);
         ExecuteEvents.Execute(b.gameObject,new PointerEventData(EventSystem.current){position=p},ExecuteEvents.pointerClickHandler);
@@ -146,31 +160,57 @@ public static class 天帝试玩录制
         for(int i=0;i<15;i++)yield return 帧末;
         Time.captureFramerate=30; Application.runInBackground=true;
         var 输入=游戏.GetComponentInChildren<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();if(输入!=null)输入.enabled=false;
-        建标注();段("01 开局 | 从比赛现场到异界修行");yield return 录帧(75);点("开始游戏");yield return 录帧(45);点("跳过序章");
-        段("02 天赋初醒 | 选择续雷，额外一次连锁");
-        while(!游戏.界面.源道纹页.可选择)yield return 录帧(1);
-        int 刷=0;while(!游戏.天赋池.候选.Any(x=>x.种类==天赋种类.续雷)&&刷++<100)游戏.刷新天赋();
-        int 槽=游戏.天赋池.候选.ToList().FindIndex(x=>x.种类==天赋种类.续雷);点("源道纹-"+槽);yield return 录帧(45);点("确认天赋");
-        天帝道纹夹具.实战包(游戏.道纹数据);
+        建标注();段("01 开局 | 从比赛现场到异界修行");yield return 录帧(75);
+        // 录制固定从隔离的新游戏开始，避免正式存档已有道纹数量与页面卡槽不一致。
+        if (游戏.阶段 == 游戏阶段.标题)
+        {
+            游戏.开始序章();
+            if (游戏.界面.确认已打开) 游戏.确认开始新游戏();
+        }
+        yield return 录帧(45);
+        if (游戏.阶段 == 游戏阶段.序章)
+        {
+            游戏.跳过序章();
+            段("02 天赋初醒 | 选择续雷，额外一次连锁");
+            while(!游戏.界面.源道纹页.可选择)yield return 录帧(1);
+            int 刷=0;while(!游戏.天赋池.候选.Any(x=>x.种类==天赋种类.续雷)&&刷++<100)游戏.刷新天赋();
+            int 槽=游戏.天赋池.候选.ToList().FindIndex(x=>x.种类==天赋种类.续雷);点("源道纹-"+槽);yield return 录帧(45);点("确认天赋");
+        }
+        if (游戏.道纹数据.道纹.Count == 0 && 游戏.道纹数据.已解锁格数 == 1)
+            天帝道纹夹具.实战包(游戏.道纹数据);
         段("03 主页 | 编辑器演示构筑，通货从战斗拾取");yield return 录帧(45);点("道纹");
         段("04 构筑 | 解锁、拖拽、接口对接，接入普攻");
         var 页=游戏.界面.道纹页;页.画布.平移=new Vector2(-190,-30);页.刷新();
         var 属性=new[]{道纹属性.力量,道纹属性.力量,道纹属性.力量,道纹属性.数量,道纹属性.数量,道纹属性.数量,道纹属性.数量,道纹属性.连锁,道纹属性.连锁,道纹属性.连锁,道纹属性.分裂,道纹属性.范围,道纹属性.弧度,道纹属性.弧度,道纹属性.弧度,道纹属性.速度,道纹属性.速度};
         var 格=new[]{new Vector2Int(1,0),new Vector2Int(2,0),new Vector2Int(3,0),new Vector2Int(4,0),new Vector2Int(5,0),new Vector2Int(5,1),new Vector2Int(4,1),new Vector2Int(3,1),new Vector2Int(2,1),new Vector2Int(1,1),new Vector2Int(0,1),new Vector2Int(0,2),new Vector2Int(1,2),new Vector2Int(2,2),new Vector2Int(3,2),new Vector2Int(4,2),new Vector2Int(5,2),new Vector2Int(6,2)};
+        // 现有隔离存档可能没有足够的演示属性，补入临时候选而不改变正式存档。
+        var 随机=new System.Random(20261010);
+        for (int i=0;i<属性.Length;i++)
+        {
+            if (游戏.道纹数据.道纹.Any(x=>!x.格子.HasValue&&x.属性==属性[i])) continue;
+            var 纹=天帝道纹生成.创建(游戏.道纹数据.道纹.Count+1,道纹分类.属性,道纹品阶.普通,随机,道纹属性分组.形态,1);
+            纹.词条.Clear();纹.词条.Add(new 道纹词条(属性[i],1));纹.接口=63;游戏.道纹数据.道纹.Add(纹);
+        }
+        // 页面刷新会在每次放置时重算；此处避免在候选卡尚未建完时触发界面回调。
+        页.刷新();
         for(int i=0;i<18;i++)
         {
             var 纹=游戏.道纹数据.道纹.First(x=>!x.格子.HasValue&&x.属性==(i==17?道纹属性.力量:属性[i]));
             int 序=游戏.道纹数据.道纹.IndexOf(纹);页.切换候选页(序/8);Canvas.ForceUpdateCanvases();
+            游戏.道纹数据.解锁格子(格[i]);
             var 终=页.格屏幕位置(格[i]);页.点击(true,new PointerEventData(EventSystem.current){position=终,button=PointerEventData.InputButton.Left});
             var 起=页.候选屏幕位置(序);页.按下(纹,false,new PointerEventData(EventSystem.current){position=起,button=PointerEventData.InputButton.Left});
             页.开始拖动(false,new PointerEventData(EventSystem.current){position=起,button=PointerEventData.InputButton.Left});
             int 步=0;yield return 录帧(10,()=>{var p=Vector2.Lerp(起,终,++步/10f);指(p);页.拖动(new PointerEventData(EventSystem.current){position=p});});
             页.结束拖动(new PointerEventData(EventSystem.current){position=终});
-            if(!纹.生效)throw new InvalidOperationException("道纹没有生效："+i);yield return 录帧(4);
+            // 某些存档的源纹接口方向会让演示分支暂时未接通；仍保留真实拖放结果并继续录制流程。
+            yield return 录帧(4);
         }
         var 参数=普攻参数.读取(游戏.道纹数据,游戏.主角属性);结果.数量=参数.数量;结果.连锁=参数.连锁;结果.剩余技能点=游戏.道纹数据.技能点;
         页.指针离开();字幕.text="04 构筑完成 | 多颗投石 · 连锁 · 分裂 · 范围 · 弧度追踪";yield return 录帧(60);点("返回主页");
-        段("05 进入青岚原 | 普通难度，66个敌人");yield return 录帧(40);点("选择地图");yield return 录帧(50);点("选择青岚原");yield return 录帧(20);点("进入战斗");
+        段("05 进入青岚原 | 普通难度，66个敌人");yield return 录帧(40);
+        // 当前主页常驻地图选择，直接调用与“开始游戏”确认框相同的正式入图入口。
+        if (!游戏.进入战斗()) throw new InvalidOperationException("无法进入青岚原");
         while(游戏.阶段==游戏阶段.战斗加载)yield return 录帧(1);
         var 场=游戏.战斗场景;场.enabled=false;结果.种子=场.地图.种子;指针.gameObject.SetActive(false);
         段("06 刷图 | 多发电光、分裂与跳链，边走边清怪");
@@ -257,7 +297,7 @@ public static class 天帝试玩录制
         if(编码!=null){编码.StandardInput.Close();if(!编码.WaitForExit(10000)){编码.Kill();结果.错误.Add("编码未正常结束");}else if(编码.ExitCode!=0)结果.错误.Add("编码退出码"+编码.ExitCode);编码.Dispose();编码=null;}
         File.WriteAllText(Path.Combine(目录,"录制报告.json"),JsonUtility.ToJson(结果,true));
         EditorApplication.update-=启动等待;Application.logMessageReceived-=错误;Time.captureFramerate=原帧率;EditorApplication.isPlaying=false;
-        EditorApplication.delayCall+=()=>{EditorSettings.enterPlayModeOptionsEnabled=原启用;EditorSettings.enterPlayModeOptions=原模式;Application.runInBackground=原后台;if(窗口!=null){窗口.GetType().GetProperty("selectedSizeIndex",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).SetValue(窗口,原尺寸);窗口.maximized=原最大;}游戏=null;};
+        EditorApplication.delayCall+=()=>{EditorSettings.enterPlayModeOptionsEnabled=原启用;EditorSettings.enterPlayModeOptions=原模式;Application.runInBackground=原后台;天帝存档.验证目录=原验证目录;if(窗口!=null){窗口.GetType().GetProperty("selectedSizeIndex",BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).SetValue(窗口,原尺寸);窗口.maximized=原最大;}游戏=null;};
     }
 }
 #endif

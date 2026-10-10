@@ -378,7 +378,8 @@ public sealed partial class 天帝道纹界面 : MonoBehaviour
         else if (e.button == PointerEventData.InputButton.Left)
         {
             // 网格共用一个命中对象；须确认连续点击同一枚，避免点击邻格误卸载。
-            if (e.clickCount >= 2 && 上次点击纹 == 纹)
+            // 新手引导的旋转步骤需要保留目标道纹；避免双击误触卸下导致引导无法完成。
+            if (e.clickCount >= 2 && 上次点击纹 == 纹 && !引导讲解中)
             { 记录画布操作(() => 数据.收回(纹), "DW04_卸下"); 上次点击纹 = 按下纹 = null; 已修改 = true; }
             else 上次点击纹 = 纹;
         }
