@@ -114,7 +114,7 @@ public partial class 天帝界面
         var 提示底 = 操作反馈区.gameObject.AddComponent<Image>(); 提示底.sprite = Resources.Load<Sprite>("山水首两页/墨绿按钮"); 提示底.type = Image.Type.Sliced; 提示底.raycastTarget = false;
         操作反馈字 = HUD字(操作反馈区, "技能失败提示", "", 16, 4, 348, 38, 手机 ? 14 : 22, new Color(1, .96f, .82f));
         操作反馈区.gameObject.SetActive(false);
-        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 手机 ? "自动索敌 · 摇杆移动 · 闪避避让" : "自动索敌 · WASD移动 · 空格闪避", 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
+        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 手机 ? "摇杆移动 · 拖动技能瞄准 · 闪避" : "1-6释放技能 · WASD移动 · 空格闪避", 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
         var 阴影 = 操作提示字.gameObject.AddComponent<Shadow>(); 阴影.effectColor = new Color(.02f, .07f, .06f, .9f); 阴影.effectDistance = new Vector2(1, -1);
         操作提示字.gameObject.SetActive(!手机);
         操作反馈秒 = 灵力闪色秒 = 拒绝音效冷却 = 0; 当前闪色槽 = -1;
@@ -168,8 +168,11 @@ public partial class 天帝界面
             bool 正在冷却 = 有链路 && 开 && 冷却 > .00001f;
             技能冷却遮罩[i].gameObject.SetActive(正在冷却);
             技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
-            技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
+            bool 排队释放 = 战.技能输入缓冲槽 == i;
+            技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 排队释放 ? (手机 ? "待发" : "待发") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
+            // 先计算统一状态色，再覆盖“待发”提示；否则每帧刷新会把金色排队提示覆盖掉。
             技能状态字[i].color = 当前闪色槽 == i && 灵力闪色秒 > 0 ? new Color(.85f, .20f, .12f) : 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文;
+            if (排队释放) 技能状态字[i].color = new Color(1f, .78f, .30f, 技能透明[i].alpha);
             // 移动端文字为便于显示会挂到技能区顶层，单独同步 CanvasGroup alpha，禁用态保持整枚技能一致变灰。
             float 文字Alpha = 手机 ? 技能透明[i].alpha : 1;
             var 标签色 = 技能标签[i].color; 标签色.a = 文字Alpha; 技能标签[i].color = 标签色;

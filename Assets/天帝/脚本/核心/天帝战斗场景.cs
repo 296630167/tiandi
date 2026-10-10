@@ -199,9 +199,9 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         void 画线(Vector2 起, Vector2 终)
         {
             // 外晕、内晕和亮芯；沿真实通行交界简化并圆角，不重建碰撞。
-            数据.线(起, 终, .035f, .55f, new Color(.10f, .80f, .55f, .08f));
-            数据.线(起, 终, .036f, .24f, new Color(.20f, 1, .72f, .22f));
-            数据.线(起, 终, .037f, .05f, new Color(.70f, 1, .86f, .75f));
+            数据.线(起, 终, .035f, .42f, new Color(.10f, .80f, .55f, .05f));
+            数据.线(起, 终, .036f, .18f, new Color(.20f, 1, .72f, .13f));
+            数据.线(起, 终, .037f, .04f, new Color(.70f, 1, .86f, .48f));
         }
         foreach (var 轮廓 in 天帝通行轮廓.获取(地图))
             for (int i = 0; i < 轮廓.Count; i++) 画线(轮廓[i], 轮廓[(i + 1) % 轮廓.Count]);
@@ -309,6 +309,14 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
                 战斗几何.圆(敌.位置 + Vector2.up * (半径 + .22f), .19f, .13f, 敌.行动 == 敌人行动.搜索 ? new Color(1, .8f, .3f) : new Color(.4f, .7f, 1), 6);
             if (敌.行动 == 敌人行动.蓄力 && 敌.技能编号 > 0) 画敌预警(敌);
             if (敌.形态提示秒 > 0) 特效地面.圈(天帝纹理特效.冲击环,敌.位置,2+(1-敌.形态提示秒)*3,new Color(.95f,.8f,.4f,.8f));
+        }
+        var 最近 = 战斗.最近目标;
+        if (最近 != null && 最近.存活)
+        {
+            float 半径 = 最近.布点.级别 == 战斗敌人级别.王级 ? 1.8f : .95f;
+            float 呼吸 = .78f + Mathf.Sin(Time.time * 5f) * .08f;
+            战斗几何.环(最近.位置, .17f, 半径 * 呼吸, new Color(1f, .78f, .32f, .72f));
+            特效地面.圈(天帝纹理特效.预警环, 最近.位置, 半径 * 1.12f, new Color(1f, .74f, .28f, .16f));
         }
         画敌术();
         foreach (var 物 in 战斗.掉落.地面)

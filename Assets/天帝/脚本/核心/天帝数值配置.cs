@@ -3,8 +3,8 @@ using System.Collections.Generic;
 public static class 天帝数值配置
 {
     public const string 版本 = "1.2";
-    public const string 配置指纹 = "bf3a64f9c63d66c6e13425c349074c32394df9cb44e235293b7f8104562d3b8a";
-    public const string 原文指纹 = "dc65b090901995a493c7def7d67b5b46b2bf4aa70d453d933c926c3e8db460da";
+    public const string 配置指纹 = "3daba1682fc6643f74d42b25c4d1848fdc11b598352dadbdcf373f6c7b2d2354";
+    public const string 原文指纹 = "61c89930bdf18c60173e4fd414aad0485ae3b33c1e1cb7419a45fa1e8e91df07";
     static readonly Dictionary<string, double> 参数 = new Dictionary<string, double>
     {
         {"levels.player_max", 100d},
@@ -1510,6 +1510,7 @@ public static class 天帝数值配置
         {"battle_content.presentation.polish.input_acceleration", 65d},
         {"battle_content.presentation.polish.input_brake", 95d},
         {"battle_content.presentation.polish.input_reverse", 120d},
+        {"battle_content.presentation.polish.skill_input_buffer_seconds", 0.12d},
         {"battle_content.elite.fan_count", 5d},
         {"battle_content.elite.fan_angle", 15d},
         {"battle_content.elite.charge_damage", 1.5d},

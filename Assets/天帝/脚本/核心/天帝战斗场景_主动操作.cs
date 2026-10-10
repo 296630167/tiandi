@@ -9,6 +9,8 @@ public sealed partial class 天帝战斗场景
     float 闪避剩余;
     Vector2 闪避方向;
     bool 输入已冻结;
+    static bool 有效方向(Vector2 v) => !float.IsNaN(v.x) && !float.IsNaN(v.y)
+        && !float.IsInfinity(v.x) && !float.IsInfinity(v.y) && v.sqrMagnitude > .000001f;
     public bool 可以主动操作 => 游戏 != null && 游戏.阶段 == 游戏阶段.战斗 && 战斗 != null
         && !战斗.玩家死亡 && !游戏.界面.战斗已暂停 && !游戏.界面.新手指引冻结战斗;
     public bool 设置屏幕瞄准(Vector2 屏幕)
@@ -21,7 +23,7 @@ public sealed partial class 天帝战斗场景
         瞄准方向 = 向.normalized; return true;
     }
     public void 设置触控瞄准(Vector2 向)
-    { if (向.sqrMagnitude > .000001f) 瞄准方向 = 向.normalized; }
+    { if (有效方向(向)) 瞄准方向 = 向.normalized; }
     public 战斗操作结果 释放技能(int 槽)
     {
         var 结果 = 可以主动操作 ? 战斗.尝试释放技能(槽, 瞄准方向, 玩家位置) : 战斗操作结果.无法操作;
@@ -36,10 +38,9 @@ public sealed partial class 天帝战斗场景
         var 结果 = 战斗.尝试闪避();
         if (结果 == 战斗操作结果.成功)
         {
-            // 手机端玩家通常先用左摇杆调整走位再按闪避；优先使用当前摇杆方向，
-            // 没有输入时继续沿技能拖拽或鼠标留下的瞄准方向。
-            var 摇杆 = 游戏.界面.战斗摇杆 != null ? 游戏.界面.战斗摇杆.方向 : Vector2.zero;
-            闪避方向 = 摇杆.sqrMagnitude > .000001f ? 摇杆.normalized : 瞄准方向;
+            // 闪避沿最后一次确认的瞄准方向，避免左摇杆残留输入把闪避带向另一侧。
+            // 移动端技能拖拽与桌面鼠标都会更新同一个瞄准方向。
+            闪避方向 = 有效方向(瞄准方向) ? 瞄准方向.normalized : Vector2.right;
             闪避剩余 = (float)天帝数值.取("player.dodge_duration"); 平滑输入 = Vector2.zero;
             天帝声音.提示("润色_跑步");
         }

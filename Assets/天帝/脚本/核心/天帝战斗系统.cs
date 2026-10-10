@@ -169,6 +169,15 @@ public sealed partial class 天帝战斗系统
     public float 敌人损伤比例 => 总敌人最大生命 <= 0 ? 0 : Mathf.Clamp01(累计敌人损伤 / 总敌人最大生命);
     public bool 玩家死亡 => 主角.当前血量 <= 0;
     public 普攻参数 当前普攻 => 读取通路参数(当前通路);
+    // HUD 与战斗演出共用同一套最近目标判定，避免识别环和实际索敌对象不一致。
+    public 战斗敌人 最近目标
+    {
+        get
+        {
+            int 索引 = 找目标(玩家, (float)天帝数值.取("player.range_max"), null);
+            return 索引 >= 0 ? 敌人数据[索引] : null;
+        }
+    }
     public 天帝道纹掉落 掉落 { get; }
     public 天帝通货掉落 通货掉落 { get; }
     public 天帝灵石掉落 灵石掉落 { get; }

@@ -10,6 +10,9 @@ public sealed partial class 天帝战斗系统
     bool 前摇自动释放;
     bool 回响自动释放;
     bool 自动缺灵力已提示;
+    int 缓冲技能槽 = -1;
+    Vector2 缓冲技能方向;
+    float 缓冲技能剩余;
     double 战斗时钟, 无敌结束, 闪避冷却结束;
     public float 技能冷却剩余 => 发射冷却;
     public float 技能冷却总时长 { get; private set; }
@@ -19,6 +22,8 @@ public sealed partial class 天帝战斗系统
     public float 闪避冷却剩余 => (float)System.Math.Max(0, 闪避冷却结束 - 战斗时钟);
     public float 闪避无敌剩余 => (float)System.Math.Max(0, 无敌结束 - 战斗时钟);
     public bool 闪避无敌中 => 无敌结束 - 战斗时钟 > .000001;
+    public float 技能输入缓冲剩余 => Mathf.Max(0, 缓冲技能剩余);
+    public int 技能输入缓冲槽 => 缓冲技能剩余 > .00001f ? 缓冲技能槽 : -1;
     public event Action<战斗操作结果, int, bool> 自动操作反馈;
     public static float 技能灵力消耗 => (float)天帝数值.取("player.skill_mana_cost");
     public static int 技能通路(int 槽) => (6 - 槽) % 6;
@@ -35,20 +40,52 @@ public sealed partial class 天帝战斗系统
     static bool 方向有效(Vector2 向) => !float.IsNaN(向.x) && !float.IsNaN(向.y)
         && !float.IsInfinity(向.x) && !float.IsInfinity(向.y) && 向.sqrMagnitude > .000001f;
 
+    static float 有效间隔(普攻参数 参数)
+    {
+        float 间隔 = 参数 == null ? 0 : 参数.间隔;
+        return float.IsNaN(间隔) || float.IsInfinity(间隔) ? .05f : Mathf.Max(.02f,间隔);
+    }
+    float 计算前摇(float 间隔)
+    {
+        float 比例 = (float)天帝数值.取("player.attack_windup_fraction");
+        if(float.IsNaN(比例)||float.IsInfinity(比例)) 比例=.35f;
+        float 前摇 = 射击前摇;
+        if(float.IsNaN(前摇)) 前摇=0;
+        if(float.IsInfinity(前摇)) 前摇=间隔;
+        return Mathf.Min(Mathf.Max(0,前摇),间隔*Mathf.Clamp01(比例));
+    }
+    void 设置主动节奏(普攻参数 参数)
+    {
+        float 间隔 = 有效间隔(参数);
+        发射冷却 = 技能冷却总时长 = 间隔;
+        前摇剩余 = 计算前摇(间隔);
+    }
+
     public 战斗操作结果 尝试释放技能(int 槽, Vector2 方向, Vector2 位置)
     {
         if (玩家死亡 || !地图.可站立(位置)) return 战斗操作结果.无法操作;
         if (!技能已解封(槽)) return 战斗操作结果.未解封;
         if (!技能有链路(槽)) return 战斗操作结果.无技能链路;
         if (!方向有效(方向)) return 战斗操作结果.无效方向;
-        if (发射冷却 > .00001f || 前摇剩余 >= 0) return 战斗操作结果.冷却中;
+        if (发射冷却 > .00001f || 前摇剩余 >= 0)
+        {
+            // 只记住最后一次有效按键，窗口很短，避免连点堆积成不可预期的自动连发。
+            if (发射冷却 > .00001f && 方向有效(方向))
+            {
+                // 缓冲只保留玩家的瞄准意图；真正释放时取当前站位，避免移动后从旧坐标发射。
+                缓冲技能槽 = 槽; 缓冲技能方向 = 方向.normalized;
+                缓冲技能剩余 = 天帝敌种配置.取("presentation.polish.skill_input_buffer_seconds");
+            }
+            return 战斗操作结果.冷却中;
+        }
+        // 冷却结束后的直接输入优先级最高，避免旧缓冲在下一细步再次触发。
+        缓冲技能槽 = -1; 缓冲技能剩余 = 0;
         var 参数 = 读取通路参数(技能通路(槽));
         if (!参数.已激活) return 战斗操作结果.未解封;
         if (!主角.尝试消耗灵力(技能灵力消耗)) return 战斗操作结果.灵力不足;
         玩家 = 位置; 当前通路 = 参数.通路; 前摇通路 = 参数.通路;
         前摇参数 = 参数; 前摇方向 = 方向.normalized; 前摇自动释放 = false;
-        发射冷却 = 技能冷却总时长 = 参数.间隔;
-        前摇剩余 = Mathf.Min(射击前摇, 参数.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
+        设置主动节奏(参数);
         准备射击?.Invoke(前摇方向);
         if (前摇剩余 <= 0) { 前摇剩余 = -1; 完成主动释放(); }
         return 战斗操作结果.成功;
@@ -81,6 +118,7 @@ public sealed partial class 天帝战斗系统
     void 推进主动计时(float 秒)
     {
         发射冷却 = Mathf.Max(0, 发射冷却 - 秒);
+        缓冲技能剩余 = Mathf.Max(0, 缓冲技能剩余 - 秒);
         主角.回复灵力(主角.灵力 * (float)天帝数值.取("player.mana_regen_fraction") * 秒);
         // 只推进本步开始前已有的回响，避免新射击的回响提前一个细步。
         if (回响剩余 >= 0)
@@ -98,7 +136,19 @@ public sealed partial class 天帝战斗系统
             if (前摇剩余 <= .000001f) { 前摇剩余 = -1; 完成主动释放(); }
         }
         if (前摇剩余 < 0 && 发射冷却 <= .00001f)
-            尝试开始自动释放();
+        {
+            bool 已触发缓冲 = false;
+            if (缓冲技能剩余 > .00001f && 缓冲技能槽 >= 0)
+            {
+                int 槽 = 缓冲技能槽; var 向 = 缓冲技能方向; var 位 = 玩家;
+                缓冲技能槽 = -1; 缓冲技能剩余 = 0;
+                var 结果 = 尝试释放技能(槽, 向, 位);
+                已触发缓冲 = 结果 == 战斗操作结果.成功;
+                if (!已触发缓冲) 自动操作反馈?.Invoke(结果, 槽, false);
+            }
+            else 缓冲技能槽 = -1;
+            if (!已触发缓冲) 尝试开始自动释放();
+        }
     }
 
     int 随机自动技能槽()
@@ -131,8 +181,7 @@ public sealed partial class 天帝战斗系统
         var 参数 = 读取通路参数(技能通路(槽));
         当前通路 = 参数.通路; 前摇通路 = 参数.通路; 前摇参数 = 参数;
         前摇方向 = (敌人数据[目标].位置 - 玩家).normalized; 前摇自动释放 = true;
-        发射冷却 = 技能冷却总时长 = 参数.间隔;
-        前摇剩余 = Mathf.Min(射击前摇, 参数.间隔 * (float)天帝数值.取("player.attack_windup_fraction"));
+        设置主动节奏(参数);
         准备射击?.Invoke(前摇方向);
         if (前摇剩余 <= 0) { 前摇剩余 = -1; 完成主动释放(); }
     }
