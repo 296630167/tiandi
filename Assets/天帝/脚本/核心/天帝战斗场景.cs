@@ -11,6 +11,8 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
     [HideInInspector] public float 区域显示透明度 = .28f; // 兼容旧场景序列化。
     [Tooltip("沿实际通行边界绘制平滑青绿色发光线，F8切换；不改变碰撞。")]
     public bool 显示边界线 = true;
+    [Tooltip("正式战斗默认纯AI观战；关闭后恢复兼容的手动输入。")]
+    public bool 纯AI自动战斗 = true;
     MeshRenderer 边界绘制;
     Material 边界材质;
     Material 背景材质;
@@ -42,13 +44,21 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
     Vector2 受击镜头方向;
     readonly HashSet<战斗敌人> 已播登场 = new HashSet<战斗敌人>();
     readonly List<Mesh> 网格资源 = new List<Mesh>();
+    int 原全局纹理Mipmap限制;
+    AnisotropicFiltering 原各向异性过滤;
+    bool 原纹理流式Mip启用;
+    Texture2D 战斗地图纹理;
+    FilterMode 原战斗地图过滤;
+    int 原战斗地图各向异性;
+    bool 已提升战斗清晰度;
     public void 初始化(天帝游戏 游戏)
     {
         if (this.游戏 != null) return;
         if (地图材质 == null) throw new System.InvalidOperationException("地图材质未配置，请运行天帝/初始化战斗场景。");
         this.游戏 = 游戏;
-        显示移动区域 = false; 显示边界线 = true;
+        显示移动区域 = false; 显示边界线 = false;
         if (游戏.美术 == null || 游戏.美术.青岚原生存大图 == null || 游戏.美术.青岚原生存通行图 == null) throw new System.InvalidOperationException("青岚原生存大图与通行图未接入。");
+        提升战斗清晰度();
         地图 = new 天帝战斗地图(System.BitConverter.ToInt32(System.Guid.NewGuid().ToByteArray(),0), false, false, 游戏.美术.青岚原生存通行图, 游戏.当前地图等级, true); 玩家位置 = 地图.出生位置;
         bool 使用大图 = 地图.生存大图 || 地图.长卷布局 || 地图.固定图片布局 && 地图大图 != null;
         var 当前大图 = 地图.生存大图 ? 游戏.美术.青岚原生存大图 : 地图.长卷布局 ? 游戏.美术.青岚原长卷 : 地图大图;
@@ -81,8 +91,10 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
             背景物.transform.SetParent(transform, false);
             背景物.transform.position = new Vector3(0, -.03f, 0);
             背景物.transform.rotation = Quaternion.Euler(90, 0, 0);
-            var 着色器 = 游戏.美术 != null ? 游戏.美术.立绘着色器 : Shader.Find("天帝/静态立绘");
+            // 战斗场景使用独立锐化材质，避免把主页角色立绘的材质参数带进地图。
+            var 着色器 = Shader.Find("天帝/战斗场景高清") ?? (游戏.美术 != null ? 游戏.美术.立绘着色器 : null) ?? Shader.Find("Sprites/Default");
             背景材质 = new Material(着色器) { name = "青岚原大图与阻挡提示材质" };
+            if (背景材质.HasProperty("_Sharpen")) 背景材质.SetFloat("_Sharpen", .58f);
             var 背景绘制 = 背景物.GetComponent<SpriteRenderer>(); 背景绘制.sprite = 当前大图; 背景绘制.sortingOrder = -32000;
             背景绘制.sharedMaterial = 背景材质;
             var 尺寸 = 当前大图.bounds.size; 背景物.transform.localScale = new Vector3(地图.半宽 * 2 / Mathf.Max(.01f, 尺寸.x), 地图.半高 * 2 / Mathf.Max(.01f, 尺寸.y), 1);
@@ -94,7 +106,9 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         }
         else if (地图.横向区域)
         {
-            背景材质 = new Material(游戏.美术 != null ? 游戏.美术.立绘着色器 : Shader.Find("天帝/静态立绘"));
+            var 着色器 = Shader.Find("天帝/战斗场景高清") ?? (游戏.美术 != null ? 游戏.美术.立绘着色器 : null) ?? Shader.Find("Sprites/Default");
+            背景材质 = new Material(着色器);
+            if (背景材质.HasProperty("_Sharpen")) 背景材质.SetFloat("_Sharpen", .58f);
             建发光边界();
         }
         建随机战场美术();
@@ -110,6 +124,11 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         俯视相机.transform.rotation = Quaternion.Euler(90, 0, 0); 更新相机();
         游戏.主角属性.设置当前资源(游戏.主角属性.血量, 游戏.主角属性.灵力, 游戏.主角属性.灵气护盾);
         战斗 = new 天帝战斗系统(地图, 游戏.道纹数据, 游戏.主角属性, 游戏.当前战斗难度, 游戏.通货数据, 游戏.当前地图等级, 读取战斗视野, 游戏.宝盒数据);
+        // 正式战斗自动锁定最近敌人，并从已接通技能中自动选择一路释放。
+        // 纯AI模式只由场景驱动走位/闪避；关闭纯AI时仍可使用兼容手动模式。
+        战斗.纯AI模式 = 纯AI自动战斗;
+        // 兼容模式保留原手动释放；正式观战模式才启用自动技能调度。
+        战斗.自动攻击启用 = 纯AI自动战斗;
         战斗.敌人死亡 += 敌人死亡;
         战斗.受击表现反馈 += 命中反馈;
         战斗.自动操作反馈 += 自动战斗操作反馈;
@@ -149,6 +168,7 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
             美术.更新(战斗, 玩家位置, 0); 更新战斗绘制();
         }
     }
+
     void 建高清长卷()
     {
         // 纹理从同一完整高清图切出，每个内部边缘共享8像素，分段只为控制纹理大小。
@@ -223,11 +243,20 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         if (游戏 == null || 游戏.阶段 != 游戏阶段.战斗 || 游戏.界面.战斗已暂停 || 游戏.界面.新手指引冻结战斗 || !Application.isFocused)
         { 平滑输入=Vector2.zero; if (!输入已冻结) 游戏?.界面?.取消战斗手势(); 输入已冻结=true; return; }
         输入已冻结=false;
-        读取主动操作();
-        var 输入 = 天帝战斗输入.读取(游戏.界面);
-        if (输入.切换调试区域) 显示边界线 = !显示边界线;
-        平滑输入=天帝战斗润色.推进输入(平滑输入,输入.方向,Time.deltaTime);
-        移动一步(平滑输入, 输入.跑步, Time.deltaTime);
+        if (战斗?.纯AI模式 == true || 纯AI自动战斗)
+        {
+            // 正式战斗不读取键盘、鼠标、摇杆或技能按钮，所有位移由观战 AI 决定。
+            平滑输入 = Vector2.zero;
+            推进自动战斗移动(Time.deltaTime);
+        }
+        else
+        {
+            读取主动操作();
+            var 输入 = 天帝战斗输入.读取(游戏.界面);
+            if (输入.切换调试区域) 显示边界线 = !显示边界线;
+            平滑输入=天帝战斗润色.推进输入(平滑输入,输入.方向,Time.deltaTime);
+            移动一步(平滑输入, 输入.跑步, Time.deltaTime);
+        }
         战斗一步(Time.deltaTime);
     }
     public void 战斗一步(float 秒)
@@ -263,10 +292,15 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         if(击.明细.合计<=0)return;
         天帝声音.提示命中(击);游戏.界面.显示伤害飘字(击.位置,击.明细,击.玩家受伤,击.标记,击.重击);
         美术?.命中(击);
-        if(受击镜头冷却<=0&&(击.玩家受伤&&!击.仅护盾||击.暴击||击.破盾))
+        // 只给暴击、破盾和击杀留确认帧，普通弹道不被频繁停顿打断。
+        if (!击.玩家受伤 && 击.重击) 战斗?.请求命中停顿(击.击杀 ? .045f : .028f);
+        // 普通命中也给极轻的镜头脉冲，让自动战斗的节奏可感知；玩家受伤、暴击和破盾继续使用完整反馈。
+        bool 轻命中 = !击.玩家受伤 && !击.仅护盾 && !击.暴击 && !击.破盾;
+        if(受击镜头冷却<=0&&(轻命中 || 击.玩家受伤&&!击.仅护盾 || 击.暴击 || 击.破盾))
         {
-            受击镜头秒=天帝受击表现.取("camera_seconds");受击镜头冷却=天帝受击表现.取("camera_interval");
-            受击镜头方向=击.方向;受击镜头力度=击.玩家受伤?1: .6f;
+            受击镜头秒=天帝受击表现.取("camera_seconds") * (轻命中 ? .42f : 1f);
+            受击镜头冷却=天帝受击表现.取("camera_interval") * (轻命中 ? .65f : 1f);
+            受击镜头方向=击.方向;受击镜头力度=轻命中 ? .22f : 击.玩家受伤 ? 1 : .6f;
         }
     }
     void 射击声音(Vector2 _) { 天帝声音.提示("ZD01_灵力弹"); }
@@ -277,6 +311,7 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
     void 更新战斗绘制()
     {
         战斗几何.清空();特效.清空();特效地面.清空();敌方危险描边.清空();
+        画导演场景();
         foreach (var 敌 in 战斗.敌人)
         {
             if (!敌.已生成) continue;
@@ -317,6 +352,16 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
             float 呼吸 = .78f + Mathf.Sin(Time.time * 5f) * .08f;
             战斗几何.环(最近.位置, .17f, 半径 * 呼吸, new Color(1f, .78f, .32f, .72f));
             特效地面.圈(天帝纹理特效.预警环, 最近.位置, 半径 * 1.12f, new Color(1f, .74f, .28f, .16f));
+        }
+        // 前摇期间给出轻量的玩家出手方向确认，自动锁敌和手动瞄准共用同一方向。
+        // 只画短线与端点圈，避免遮住地图和敌方危险区；真正伤害仍由战斗模型结算。
+        if (战斗.技能预警剩余 > .0001f && 有效方向(战斗.技能预警方向))
+        {
+            float 脉冲 = .62f + Mathf.Sin(Time.time * 18f) * .12f;
+            Vector2 起点 = 玩家位置 + 战斗.技能预警方向.normalized * .38f;
+            Vector2 终点 = 玩家位置 + 战斗.技能预警方向.normalized * 2.35f;
+            战斗几何.线(起点, 终点, .21f, .055f, new Color(1f, .83f, .38f, 脉冲));
+            特效地面.圈(天帝纹理特效.预警环, 终点, .16f + 脉冲 * .06f, new Color(1f, .83f, .38f, .42f));
         }
         画敌术();
         foreach (var 物 in 战斗.掉落.地面)
@@ -502,6 +547,10 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
     }
     void 更新相机()
     {
+        float 基准半高 = 地图.生存大图 ? (float)天帝数值.取("map.arena.camera_half_height") : 14;
+        float 演出倍率 = 战斗?.导演?.镜头拉近倍率 ?? 1f;
+        float 目标半高 = 基准半高 * 演出倍率;
+        俯视相机.orthographicSize = Mathf.Lerp(俯视相机.orthographicSize, 目标半高, Time.unscaledDeltaTime * 8f);
         float 半高 = 俯视相机.orthographicSize, 半宽 = 半高 * 俯视相机.aspect;
         float x = Mathf.Clamp(玩家位置.x, -Mathf.Max(0, 地图.半宽 - 半宽), Mathf.Max(0, 地图.半宽 - 半宽));
         float y = Mathf.Clamp(玩家位置.y, -Mathf.Max(0, 地图.半高 - 半高), Mathf.Max(0, 地图.半高 - 半高));
@@ -527,6 +576,7 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
     }
     void OnDestroy()
     {
+        恢复战斗清晰度();
         独立形态特效?.Dispose();
         if(战斗!=null)战斗.战术.技能演出释放-=敌技声音;
         if (战斗 != null) { 战斗.射击释放 -= 射击声音; 战斗.掉落.获得道纹 -= 道纹声音; 战斗.通货掉落.获得通货 -= 通货声音; 战斗.灵石掉落.获得灵石 -= 灵石声音; }
@@ -536,6 +586,41 @@ public sealed partial class 天帝战斗场景 : MonoBehaviour
         特效?.Dispose();特效地面?.Dispose();敌方危险描边?.Dispose();
         if (背景材质 != null) Destroy(背景材质);
         if (边界材质 != null) Destroy(边界材质);
+    }
+    void 提升战斗清晰度()
+    {
+        if (已提升战斗清晰度) return;
+        原全局纹理Mipmap限制 = QualitySettings.globalTextureMipmapLimit;
+        原各向异性过滤 = QualitySettings.anisotropicFiltering;
+        原纹理流式Mip启用 = QualitySettings.streamingMipmapsActive;
+        QualitySettings.globalTextureMipmapLimit = 0;
+        QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
+        QualitySettings.streamingMipmapsActive = false;
+        战斗地图纹理 = 游戏 != null && 游戏.美术 != null && 游戏.美术.青岚原生存大图 != null ? 游戏.美术.青岚原生存大图.texture : null;
+        if (战斗地图纹理 != null)
+        {
+            原战斗地图过滤 = 战斗地图纹理.filterMode;
+            原战斗地图各向异性 = 战斗地图纹理.anisoLevel;
+            // Bilinear sampling avoids pixel crawl while the dedicated shader
+            // restores edge contrast after the 4K map is reduced to the viewport.
+            战斗地图纹理.filterMode = FilterMode.Bilinear;
+            战斗地图纹理.anisoLevel = 8;
+        }
+        已提升战斗清晰度 = true;
+    }
+    void 恢复战斗清晰度()
+    {
+        if (!已提升战斗清晰度) return;
+        QualitySettings.globalTextureMipmapLimit = 原全局纹理Mipmap限制;
+        QualitySettings.anisotropicFiltering = 原各向异性过滤;
+        QualitySettings.streamingMipmapsActive = 原纹理流式Mip启用;
+        if (战斗地图纹理 != null)
+        {
+            战斗地图纹理.filterMode = 原战斗地图过滤;
+            战斗地图纹理.anisoLevel = 原战斗地图各向异性;
+            战斗地图纹理 = null;
+        }
+        已提升战斗清晰度 = false;
     }
     sealed class 几何
     {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public enum 敌人行动 { 待机, 追击, 搜索, 蓄力, 后摇, 归巢, 死亡 }
+public enum 战斗态势 { 安稳, 交锋, 危急, 王临 }
 public sealed class 战斗敌人
 {
     public 战斗敌人布点 布点 { get; }
@@ -148,6 +149,14 @@ public sealed partial class 天帝战斗系统
     public int 本局经验 { get; private set; }
     public int 本局升级次数 { get; private set; }
     public int 暴击释放次数 { get; private set; }
+    // 连势只用于战斗节奏与反馈，不改变伤害公式，避免把演出奖励偷偷变成数值膨胀。
+    public int 连势 { get; private set; }
+    public float 连势剩余秒 { get; private set; }
+    public float 连势进度 => Mathf.Clamp01(连势剩余秒 / 2.4f);
+    // 战斗态势只汇总真实战场状态，供HUD和演出读取，不偷偷改变伤害或敌人参数。
+    public float 战斗压力 { get; private set; }
+    public 战斗态势 当前态势 { get; private set; } = 战斗态势.安稳;
+    public string 当前态势文本 => 当前态势 == 战斗态势.王临 ? "狼王来袭" : 当前态势 == 战斗态势.危急 ? "危急" : 当前态势 == 战斗态势.交锋 ? "交锋" : "安稳";
     public int 当前通路 { get; private set; }
     public readonly int[] 通路释放次数 = new int[6];
     public int 开放通路数 => 道纹.开放通路数;
@@ -174,10 +183,13 @@ public sealed partial class 天帝战斗系统
     {
         get
         {
-            int 索引 = 找目标(玩家, (float)天帝数值.取("player.range_max"), null);
+            int 索引 = 找目标(玩家, (float)天帝数值.取("player.range_max"), null, true);
             return 索引 >= 0 ? 敌人数据[索引] : null;
         }
     }
+    public 战斗敌人 锁定目标 => 最近目标;
+    public float 锁定目标剩余秒 => (float)Math.Max(0, 索敌粘滞结束 - 战斗时钟);
+    public float 命中停顿剩余秒 => Mathf.Max(0, 命中停顿剩余);
     public 天帝道纹掉落 掉落 { get; }
     public 天帝通货掉落 通货掉落 { get; }
     public 天帝灵石掉落 灵石掉落 { get; }
@@ -212,6 +224,11 @@ public sealed partial class 天帝战斗系统
     readonly System.Random 战斗随机;
     long 释放序号;
     Vector2 玩家;
+    // 自动索敌与HUD共用一个有容错的粘滞窗口。目标仍在视野与攻击距离内时，
+    // 不因另一只敌人短暂擦身而过就换锁；目标死亡、隔墙或离开范围才切换。
+    int 索敌粘滞目标 = -1;
+    double 索敌粘滞结束;
+    float 命中停顿剩余;
     float 发射冷却, 回响剩余 = -1;
     float 前摇剩余 = -1;
     int 前摇通路;
@@ -254,6 +271,7 @@ public sealed partial class 天帝战斗系统
         敌人AI.特性目标 = 特性诱饵目标; 敌人AI.特性阻挡 = 特性土垒阻挡;
         敌人AI.特性挡路=特性墙挡路;
         战术.特性目标=特性诱饵目标;战术.特性受击=特性目标受击;战术.特性免疫=()=>特性免控;
+        导演 = new 天帝战斗导演(this, 地图, 地图等级, 伤害玩家);
         掉落 = new 天帝道纹掉落(地图, 道纹, 难度);
         通货掉落 = new 天帝通货掉落(地图, 道纹, 通货, 难度);
         灵石掉落 = new 天帝灵石掉落(宝盒, 地图.种子, 道纹.天赋);
@@ -420,17 +438,28 @@ public sealed partial class 天帝战斗系统
     }
     void 一步(float 秒)
     {
+        连势剩余秒 = Mathf.Max(0, 连势剩余秒 - 秒);
+        if (连势剩余秒 <= 0) 连势 = 0;
         for (int i = 电弧数据.Count - 1; i >= 0; i--) { 电弧数据[i].剩余秒 -= 秒; if (电弧数据[i].剩余秒 <= 0) 电弧数据.RemoveAt(i); }
         for (int i = 光圈数据.Count - 1; i >= 0; i--) { 光圈数据[i].剩余秒 -= 秒; if (光圈数据[i].剩余秒 <= 0) 光圈数据.RemoveAt(i); }
         foreach (var 敌 in 敌人数据)
         { 敌.闪白秒 = Mathf.Max(0, 敌.闪白秒 - 秒); 敌.束缚剩余秒 = Mathf.Max(0, 敌.束缚剩余秒 - 秒); if (!敌.存活) 敌.死亡秒 += 秒; }
         if (玩家死亡) { 灵矢数据.Clear(); 待加灵矢.Clear(); 清理扩展功能(); 战术.清理(); 回响剩余 = 前摇剩余 = -1; return; }
+        // 命中停顿只冻结战斗模拟，不改Time.timeScale、不阻塞输入或暂停系统。
+        // 用细步时钟消耗，低帧率下也不会无限延长。
+        if (命中停顿剩余 > 0)
+        {
+            命中停顿剩余 = Mathf.Max(0, 命中停顿剩余 - 秒);
+            return;
+        }
         战斗时钟 += 秒; // 伤害以本细步结束时刻结算，0.100秒边界不延长无敌窗口。
         推进扩展地面(秒);
         推进形态演出(秒);
         推进特性战斗(秒);
         战术.推进效果(玩家, 秒);
         敌人AI.推进(玩家, 秒);
+        更新战斗态势();
+        导演?.推进(秒);
         if (玩家死亡) return;
         推进主动计时(秒);
         int 原数量 = 灵矢数据.Count;
@@ -439,6 +468,25 @@ public sealed partial class 天帝战斗系统
         // 192只限制绘制，逻辑弹体有固定飞行距离；视觉预算不能吞掉根弹或衍生伤害。
         灵矢数据.AddRange(待加灵矢);
         待加灵矢.Clear();
+    }
+    void 更新战斗态势()
+    {
+        int 活跃 = 0, 蓄力 = 0;
+        foreach (var 敌 in 敌人数据)
+        {
+            if (!敌.存活) continue;
+            活跃++;
+            if (敌.行动 == 敌人行动.蓄力) 蓄力++;
+        }
+        float 密度 = Mathf.Clamp01(活跃 / (float)Mathf.Max(1, 生存场上上限));
+        float 生命压力 = 主角.血量 <= 0 ? 1 : 1 - Mathf.Clamp01(主角.当前血量 / Mathf.Max(1, 主角.血量));
+        float 技能压力 = Mathf.Clamp01(蓄力 / 3f);
+        float 王压力 = BOSS已出现 ? 1 : 0;
+        战斗压力 = Mathf.Clamp01(密度 * .48f + 生命压力 * .27f + 技能压力 * .25f);
+        if (王压力 > 0) { 当前态势 = 战斗态势.王临; 战斗压力 = Mathf.Max(战斗压力, .9f); }
+        else if (战斗压力 >= .68f) 当前态势 = 战斗态势.危急;
+        else if (战斗压力 >= .22f) 当前态势 = 战斗态势.交锋;
+        else 当前态势 = 战斗态势.安稳;
     }
     void 处理连锁攻击()
     {
@@ -454,7 +502,7 @@ public sealed partial class 天帝战斗系统
     bool 发射根(普攻参数 参数,bool root, Vector2? 主动方向 = null)
     {
         if (参数 == null || !参数.已激活) return false;
-        int 目标 = 主动方向.HasValue ? -1 : 找目标(玩家, 普攻参数.索敌距离, null);
+        int 目标 = 主动方向.HasValue ? -1 : 找目标(玩家, 普攻参数.索敌距离, null, true);
         if (!主动方向.HasValue && 目标 < 0) return false;
         Vector2 向 = 主动方向 ?? (敌人数据[目标].位置 - 玩家).normalized;
         double 采样 = 战斗随机.NextDouble(); bool 暴击 = 采样 < 参数.暴击率;
@@ -475,14 +523,28 @@ public sealed partial class 天帝战斗系统
             if (独立目标 >= 0) { 目标 = 独立目标; 已分配.Add(目标); 释放.根目标.Add(目标); }
             Vector2 瞄准 = 主动方向 ?? (敌人数据[目标].位置 - 玩家).normalized;
             float 角 = 独立目标 >= 0 ? 0 : (i - (参数.数量 - 1) * .5f) * (float)天帝数值.取("shape.root_spread_degrees");
-            灵矢数据.Add(new 战斗灵矢 { 位置 = 玩家, 方向 = 转向(瞄准, 角), 目标 = 目标, 根目标 = 独立目标, 伤害 = 参数.伤害, 释放 = 释放,
+            灵矢数据.Add(new 战斗灵矢 { 位置 = 玩家, 方向 = 转向(瞄准, 角), 目标 = 目标, 根目标 = 独立目标,
+                // 正式自动攻击的多枚根弹各自维护命中历史，允许兄弟弹命中同一个目标；
+                // 隔离夹具/旧版手动模型保留一次释放单体只结算一次的兼容行为。
+                独立命中 = 自动攻击启用 ? new HashSet<int>() : null, 伤害 = 参数.伤害, 释放 = 释放,
                 剩余距离 = 普攻参数.飞行距离, 剩余连锁 = 参数.连锁, 参数 = 参数, 根普攻弹 = root });
         }
         当前通路 = 参数.通路; 射击释放?.Invoke(向);
         return true;
     }
     int 找目标(Vector2 起, float 范围, HashSet<int> 排除)
+        => 找目标(起, 范围, 排除, false);
+    int 找目标(Vector2 起, float 范围, HashSet<int> 排除, bool 使用粘滞)
     {
+        if (使用粘滞 && 索敌粘滞目标 >= 0 && 索敌粘滞目标 < 敌人数据.Count)
+        {
+            var 粘滞 = 敌人数据[索敌粘滞目标];
+            if (粘滞.存活 && (粘滞.位置 - 起).sqrMagnitude <= 范围 * 范围
+                && (排除 == null || !排除.Contains(索敌粘滞目标)) && 寻路.无遮挡(起, 粘滞.位置)
+                && 战斗时钟 <= 索敌粘滞结束)
+                return 索敌粘滞目标;
+            索敌粘滞目标 = -1; 索敌粘滞结束 = 0;
+        }
         int 最佳 = -1; float 最近 = 范围 * 范围;
         for (int i = 0; i < 敌人数据.Count; i++)
         {
@@ -490,7 +552,19 @@ public sealed partial class 天帝战斗系统
             if (!敌.存活 || 距 > 最近 || (排除 != null && 排除.Contains(i)) || !寻路.无遮挡(起, 敌.位置)) continue;
             最近 = 距; 最佳 = i;
         }
+        if (使用粘滞 && 最佳 >= 0)
+        {
+            索敌粘滞目标 = 最佳;
+            // 粘滞仅用于同一轮战斗的识别稳定，不会把目标锁死在离开视野的敌人身上。
+            索敌粘滞结束 = 战斗时钟 + .65f;
+        }
         return 最佳;
+    }
+    // 由真实受击反馈调用，短暂停顿只冻结战斗模型，给重击留出确认帧。
+    public void 请求命中停顿(float 秒)
+    {
+        if (float.IsNaN(秒) || float.IsInfinity(秒) || 秒 <= 0) return;
+        命中停顿剩余 = Mathf.Clamp(Mathf.Max(命中停顿剩余, 秒), 0, .06f);
     }
     bool 灵矢一步(战斗灵矢 矢, float 秒)
     {
@@ -514,7 +588,7 @@ public sealed partial class 天帝战斗系统
             float 最早 = float.MaxValue;
             for (int i = 0; i < 敌人数据.Count; i++)
             {
-                var 敌 = 敌人数据[i]; if (!敌.存活 || 矢.命中过.Contains(i) || (矢.执行段 == null && 矢.释放.根目标.Contains(i) && (矢.子矢 || 矢.已分裂 || i != 矢.根目标))) continue;
+                var 敌 = 敌人数据[i]; if (!敌.存活 || 矢.命中过.Contains(i)) continue;
                 Vector2 线 = 新 - 矢.位置;
                 float t = 线.sqrMagnitude > 0 ? Mathf.Clamp01(Vector2.Dot(敌.位置 - 矢.位置, 线) / 线.sqrMagnitude) : 0;
                 float 半径 = (敌.布点.级别 == 战斗敌人级别.王级 ? 1.25f : .6f) + 矢.参数.弹体半径;
@@ -532,7 +606,11 @@ public sealed partial class 天帝战斗系统
         }
         var 被击 = 敌人数据[命中]; Vector2 命中点 = 被击.位置;
         矢.释放.根目标.Remove(矢.根目标); 矢.根目标 = -1;
-        矢.命中过.Add(命中); 命中伤害(被击, 矢, 矢.形态倍率);
+        矢.命中过.Add(命中);
+        // 根弹各自允许命中同一目标，但释放级历史仍需保留给分裂/连锁子弹，
+        // 避免衍生弹重新命中本次释放已经处理过的敌人。
+        矢.释放.命中目标.Add(命中);
+        命中伤害(被击, 矢, 矢.形态倍率);
         if (矢.执行段 != null)
         {
             bool 继续 = 顺序命中(矢, 命中, 命中点);
@@ -593,6 +671,8 @@ public sealed partial class 天帝战斗系统
         float 伤 = (float)天帝数值.结算伤害(包, 敌.等级, 敌.防御, 敌.抗性);
         if(敌.特性易伤秒>0)伤*=1+敌.特性易伤;
         if (伤 <= 0) return false;
+        连势 = Mathf.Min(12, 连势 + 1);
+        连势剩余秒 = 2.4f;
         敌人AI.受击警戒(敌, 玩家);
         战术.受伤(敌);
         float 伤前血 = 敌.血量;

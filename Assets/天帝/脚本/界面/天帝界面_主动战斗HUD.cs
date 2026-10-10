@@ -10,7 +10,7 @@ public partial class 天帝界面
     readonly CanvasGroup[] 技能透明 = new CanvasGroup[6];
     readonly Image[] 技能冷却遮罩 = new Image[6];
     Image 生命液, 灵力液, 护盾环, 闪避冷却轨道, 闪避冷却进度;
-    Text 生命球字, 灵力球字, 护盾球字, 闪避状态字, 操作反馈字, 操作提示字;
+    Text 生命球字, 灵力球字, 护盾球字, 闪避状态字, 操作反馈字, 操作提示字, 战斗连势字, 战斗态势字;
     CanvasGroup 闪避透明;
     Button 闪避键;
     float 操作反馈秒, 拒绝音效冷却, 灵力闪色秒;
@@ -41,6 +41,7 @@ public partial class 天帝界面
     void 建立主动战斗HUD()
     {
         bool 手机 = 天帝移动适配.启用;
+        bool 纯AI = 游戏.战斗场景?.战斗?.纯AI模式 == true;
         主动HUD = 铺满(战斗界面层, "主动战斗HUD"); 天帝响应布局.动态(主动HUD);
         生命球区 = HUD区(主动HUD, "生命灵球", 0, 0, 172, 172);
         灵力球区 = HUD区(主动HUD, "灵力灵球", 0, 0, 172, 172);
@@ -60,11 +61,14 @@ public partial class 天帝界面
                 // 圆形只占触控格的中部，四周留出明确的点击安全区，避免技能栏压住战场。
                 HUD图(r, "圆形技能金边", 圆底, 8, 4, 48, 48, new Color(.72f, .64f, .40f));
                 var 圆形技能底 = HUD图(r, "圆形技能青玉底", 圆底, 9.5f, 5.5f, 45, 45, new Color(.08f, .25f, .24f));
-                // 触控时给圆底明确的按下反馈；原按钮目标是透明底图，按下不会产生任何视觉变化。
-                b.targetGraphic = 圆形技能底;
-                b.transition = Selectable.Transition.ColorTint;
-                var 按键色 = b.colors; 按键色.normalColor = Color.white; 按键色.highlightedColor = new Color(1.05f, 1.05f, 1f);
-                按键色.pressedColor = new Color(.70f, .92f, .82f); 按键色.selectedColor = Color.white; 按键色.disabledColor = Color.white; 按键色.fadeDuration = .06f; b.colors = 按键色;
+                if (!纯AI)
+                {
+                    // 触控时给圆底明确的按下反馈；原按钮目标是透明底图，按下不会产生任何视觉变化。
+                    b.targetGraphic = 圆形技能底;
+                    b.transition = Selectable.Transition.ColorTint;
+                    var 按键色 = b.colors; 按键色.normalColor = Color.white; 按键色.highlightedColor = new Color(1.05f, 1.05f, 1f);
+                    按键色.pressedColor = new Color(.70f, .92f, .82f); 按键色.selectedColor = Color.white; 按键色.disabledColor = Color.white; 按键色.fadeDuration = .06f; b.colors = 按键色;
+                }
             }
             var 技能图标 = HUD图(r, "接口道纹图标", Resources.Load<Sprite>("山水首两页/导航_道纹"), 手机 ? 21 : 22, 手机 ? 10 : 10, 手机 ? 21 : 44, 手机 ? 21 : 44, Color.white);
             var 冷却片 = HUD图(r, "技能冷却径向进度", 手机 ? 圆底 : 技能图标.sprite, 手机 ? 9.5f : 22, 手机 ? 5.5f : 10, 手机 ? 45 : 44, 手机 ? 45 : 44, new Color(.02f, .07f, .07f, .72f));
@@ -74,7 +78,7 @@ public partial class 天帝界面
             技能状态字[i] = HUD字(r, "接口技能状态", "", 手机 ? 4 : 4, 手机 ? 42 : 92, 手机 ? 48 : 80, 手机 ? 12 : 28, 手机 ? 9 : 13, 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文);
             var 按键字 = HUD字(r, "接口按键", (i + 1).ToString(), 手机 ? 6 : 3, 手机 ? 4 : 0, 手机 ? 12 : 22, 手机 ? 15 : 30, 手机 ? 10 : 16, 手机 ? new Color(1, .97f, .84f) : 天帝剪纸界面皮肤.墨);
             技能按键字[i] = 按键字;
-            if (手机)
+            if (手机 && !纯AI)
             {
                 // 触屏格内的技能名、冷却和序号按实际字体度量自适应，长名不裁切。
                 foreach (var 文 in new[] { 技能标签[i], 技能状态字[i], 按键字 })
@@ -83,17 +87,18 @@ public partial class 天帝界面
                     var 字阴影 = 文.gameObject.AddComponent<Shadow>(); 字阴影.effectColor = new Color(.02f, .08f, .07f, .95f); 字阴影.effectDistance = new Vector2(1, -1);
                 }
             }
-            if (手机)
+            if (手机 && !纯AI)
             {
                 var 触控 = r.gameObject.AddComponent<天帝战斗触控技能>();
                 触控.可以操作 = () => 游戏.战斗场景?.可以主动操作 == true;
                 触控.瞄准 = 向 => 游戏.战斗场景.设置触控瞄准(向);
                 触控.释放 = () => 游戏.战斗场景.释放技能(槽);
             }
-            else b.onClick.AddListener(() => { if (Mouse.current != null) 游戏.战斗场景.设置屏幕瞄准(Mouse.current.position.ReadValue()); 游戏.战斗场景.释放技能(槽); });
+            else if (!纯AI) b.onClick.AddListener(() => 游戏.战斗场景.释放技能(槽));
+            if (纯AI) { b.interactable = false; 底.raycastTarget = false; }
         }
         闪避区 = HUD区(主动HUD, "闪避技能", 0, 0, 102, 58);
-        闪避键 = 按钮(闪避区, "闪避", 0, 0, 102, 58, () => 游戏.战斗场景.闪避(), true);
+        闪避键 = 按钮(闪避区, 纯AI ? "自动闪避" : "闪避", 0, 0, 102, 58, () => 游戏.战斗场景.闪避(), true);
         闪避键.transition = 手机 ? Selectable.Transition.ColorTint : Selectable.Transition.None;
         if (手机)
         {
@@ -101,6 +106,7 @@ public partial class 天帝界面
             闪避色.pressedColor = new Color(.70f, .92f, .82f); 闪避色.selectedColor = Color.white; 闪避色.disabledColor = Color.white; 闪避色.fadeDuration = .06f; 闪避键.colors = 闪避色;
         }
         闪避透明 = 闪避区.gameObject.AddComponent<CanvasGroup>();
+        if (纯AI) { 闪避键.interactable = false; 闪避透明.blocksRaycasts = false; 闪避透明.alpha = 1f; }
         闪避状态字 = 闪避键.GetComponentInChildren<Text>();
         if (闪避状态字 != null) 闪避状态字.fontSize = 手机 ? 13 : 18;
         闪避冷却轨道 = HUD图((RectTransform)闪避键.transform, "闪避冷却轨道", null, 10, 49, 82, 3, new Color(.04f, .14f, .13f, .75f));
@@ -114,9 +120,15 @@ public partial class 天帝界面
         var 提示底 = 操作反馈区.gameObject.AddComponent<Image>(); 提示底.sprite = Resources.Load<Sprite>("山水首两页/墨绿按钮"); 提示底.type = Image.Type.Sliced; 提示底.raycastTarget = false;
         操作反馈字 = HUD字(操作反馈区, "技能失败提示", "", 16, 4, 348, 38, 手机 ? 14 : 22, new Color(1, .96f, .82f));
         操作反馈区.gameObject.SetActive(false);
-        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 手机 ? "摇杆移动 · 拖动技能瞄准 · 闪避" : "1-6释放技能 · WASD移动 · 空格闪避", 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
+        操作提示字 = HUD字(主动HUD, "主动战斗操作说明", 纯AI ? "自动观战 · 道纹构筑展示" : (手机 ? "摇杆移动 · 拖动技能瞄准 · 闪避" : "1-6释放技能 · WASD移动 · 空格闪避"), 0, 0, 600, 28, 手机 ? 11 : 16, new Color(.99f, .96f, .85f));
         var 阴影 = 操作提示字.gameObject.AddComponent<Shadow>(); 阴影.effectColor = new Color(.02f, .07f, .06f, .9f); 阴影.effectDistance = new Vector2(1, -1);
-        操作提示字.gameObject.SetActive(!手机);
+        操作提示字.gameObject.SetActive(true);
+        战斗连势字 = HUD字(主动HUD, "战斗连势", "", 0, 0, 180, 24, 手机 ? 10 : 14, new Color(1f, .82f, .38f));
+        战斗连势字.alignment = TextAnchor.MiddleCenter;
+        战斗连势字.gameObject.SetActive(!手机);
+        战斗态势字 = HUD字(主动HUD, "战斗态势", "", 0, 0, 220, 24, 手机 ? 10 : 14, new Color(.82f, .91f, .83f));
+        战斗态势字.alignment = TextAnchor.MiddleCenter;
+        战斗态势字.gameObject.SetActive(false);
         操作反馈秒 = 灵力闪色秒 = 拒绝音效冷却 = 0; 当前闪色槽 = -1;
         更新主动战斗布局();
     }
@@ -160,16 +172,19 @@ public partial class 天帝界面
             技能键[i].gameObject.SetActive(有链路);
             技能标签[i].gameObject.SetActive(有链路);
             技能状态字[i].gameObject.SetActive(有链路);
-            技能按键字[i].gameObject.SetActive(有链路);
-            技能透明[i].blocksRaycasts = 有链路;
-            技能键[i].interactable = 可; 技能透明[i].alpha = 可操作非冷却 ? 1 : .5f;
+            技能按键字[i].gameObject.SetActive(有链路 && !战.纯AI模式);
+            技能透明[i].blocksRaycasts = 有链路 && !战.纯AI模式;
+            技能键[i].interactable = !战.纯AI模式 && 可; 技能透明[i].alpha = 战.纯AI模式 ? 1 : (可操作非冷却 ? 1 : .5f);
             // 移动端技能圆形只保留序号、图标和冷却/解锁状态，长名称通过道纹页查看，避免小屏文字挤成一团。
-            技能标签[i].text = 手机 ? "" : 战.技能名称(i);
-            bool 正在冷却 = 有链路 && 开 && 冷却 > .00001f;
-            技能冷却遮罩[i].gameObject.SetActive(正在冷却);
-            技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 0;
+            // 纯 AI 下序号是操作提示，移动端改用短接口方向名，让观众能把展示格对应回初始道纹。
+            技能标签[i].text = 手机 ? 天帝道纹.方向名[天帝战斗系统.技能通路(i)] : 战.技能名称(i);
             bool 排队释放 = 战.技能输入缓冲槽 == i;
-            技能状态字[i].text = !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 排队释放 ? (手机 ? "待发" : "待发") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
+            bool 当前展示 = 战.技能预警槽 == i || (战.技能预警剩余 <= .0001f && 战.当前通路 == 天帝战斗系统.技能通路(i) && 战.技能冷却剩余 > .0001f);
+            bool 正在冷却 = 有链路 && 开 && 冷却 > .00001f;
+            技能冷却遮罩[i].gameObject.SetActive(正在冷却 || 当前展示);
+            技能冷却遮罩[i].fillAmount = 正在冷却 ? Mathf.Clamp01(冷却 / Mathf.Max(.001f, 战.技能冷却总时长)) : 当前展示 ? 1 : 0;
+            技能冷却遮罩[i].color = 当前展示 ? new Color(1f, .78f, .30f, .30f) : new Color(.02f, .07f, .07f, .72f);
+            技能状态字[i].text = 当前展示 ? "正在展示" : !开 ? 天帝道纹.通路解封等级(天帝战斗系统.技能通路(i)) + (手机 ? "级" : "级解封") : 排队释放 ? (手机 ? "待发" : "待发") : 冷却 > .00001f ? 冷却.ToString("0.0") + (手机 ? "" : "秒") : (手机 ? "" : "灵力 ") + 天帝战斗系统.技能灵力消耗.ToString("0");
             // 先计算统一状态色，再覆盖“待发”提示；否则每帧刷新会把金色排队提示覆盖掉。
             技能状态字[i].color = 当前闪色槽 == i && 灵力闪色秒 > 0 ? new Color(.85f, .20f, .12f) : 手机 ? new Color(.83f, .91f, .80f) : 天帝道纹美术.次文;
             if (排队释放) 技能状态字[i].color = new Color(1f, .78f, .30f, 技能透明[i].alpha);
@@ -179,6 +194,27 @@ public partial class 天帝界面
             var 状态色 = 技能状态字[i].color; 状态色.a = 文字Alpha; 技能状态字[i].color = 状态色;
             var 按键色 = 技能按键字[i].color; 按键色.a = 文字Alpha; 技能按键字[i].color = 按键色;
         }
+        if (战斗连势字 != null)
+        {
+            bool 显示 = !手机 && 战.连势 > 1;
+            战斗连势字.gameObject.SetActive(显示);
+            if (显示)
+            {
+                战斗连势字.text = "连势  ×" + 战.连势 + "   " + Mathf.CeilToInt(战.连势剩余秒) + "s";
+                战斗连势字.color = Color.Lerp(new Color(1f, .73f, .28f), new Color(.58f, 1f, .76f), 战.连势进度);
+            }
+        }
+        if (战斗态势字 != null)
+        {
+            bool 显示 = 战.当前态势 != 战斗态势.安稳;
+            战斗态势字.gameObject.SetActive(显示);
+            if (显示)
+            {
+                战斗态势字.text = "态势 · " + 战.当前态势文本 + "  " + Mathf.RoundToInt(战.战斗压力 * 100) + "%";
+                战斗态势字.color = 战.当前态势 == 战斗态势.王临 ? new Color(1f, .78f, .30f) :
+                    战.当前态势 == 战斗态势.危急 ? new Color(1f, .46f, .36f) : new Color(1f, .84f, .46f);
+            }
+        }
         if (手机)
         {
             int 掩码 = 0;
@@ -186,13 +222,16 @@ public partial class 天帝界面
             if (掩码 != 上次手机技能掩码) { 上次手机技能掩码 = 掩码; 更新主动战斗布局(); }
         }
         float 闪冷却 = 战.闪避冷却剩余;
+        // 纯 AI 手机端不保留按钮形状；自动闪避通过短暂特效和文字反馈表达。
+        if (闪避区 != null) 闪避区.gameObject.SetActive(!(手机 && 战.纯AI模式));
         bool 闪可操作非冷却 = !战.玩家死亡 && !战斗已暂停;
         bool 闪可 = 闪可操作非冷却 && 闪冷却 <= .00001f;
-        闪避键.interactable = 闪可; 闪避透明.alpha = 闪可 ? 1 : .5f;
+        闪避键.interactable = !战.纯AI模式 && 闪可; 闪避透明.alpha = 闪可 ? 1 : .5f;
+        闪避透明.blocksRaycasts = !战.纯AI模式;
         闪避冷却轨道.gameObject.SetActive(闪冷却 > .00001f);
         float 闪进度 = Mathf.Clamp01(1 - 闪冷却 / Mathf.Max(.001f, 战.闪避冷却总时长));
         闪避冷却进度.rectTransform.anchorMax = new Vector2(闪进度, 1);
-        闪避状态字.text = 闪冷却 > .00001f ? "闪避 " + 闪冷却.ToString("0.0") : 天帝移动适配.启用 ? "闪避" : "闪避 Space";
+        闪避状态字.text = 闪冷却 > .00001f ? "闪避 " + 闪冷却.ToString("0.0") : 战.纯AI模式 ? "自动闪避" : 天帝移动适配.启用 ? "闪避" : "闪避 Space";
     }
     public void 显示战斗操作反馈(战斗操作结果 结果, int 槽, bool 闪)
     {
@@ -202,6 +241,21 @@ public partial class 天帝界面
         显示操作提示(文, 1.25f);
         if (结果 == 战斗操作结果.灵力不足) { 灵力闪色秒 = .45f; 当前闪色槽 = 槽; }
         if (拒绝音效冷却 <= 0) { 天帝声音.提示("UI04_拒绝"); 拒绝音效冷却 = .18f; }
+    }
+    public void 显示自动战斗反馈(战斗操作结果 结果, int 槽, bool 闪)
+    {
+        if (操作反馈字 == null || 结果 == 战斗操作结果.无法操作) return;
+        if (结果 == 战斗操作结果.成功)
+        {
+            if (闪) 显示操作提示("自动闪避 · 无敌帧", .55f);
+            return;
+        }
+        if (结果 == 战斗操作结果.灵力不足)
+        {
+            显示操作提示("灵力不足 · 道纹链路暂缓", 1.05f);
+            灵力闪色秒 = .5f; 当前闪色槽 = 槽;
+            if (拒绝音效冷却 <= 0) { 天帝声音.提示("UI04_拒绝"); 拒绝音效冷却 = .18f; }
+        }
     }
     void 显示操作提示(string 文, float 秒)
     { 操作反馈字.text = 文; 操作反馈秒 = 秒; 操作反馈区.gameObject.SetActive(true); }
@@ -217,7 +271,7 @@ public partial class 天帝界面
     }
     void 清理主动战斗HUD()
     {
-        主动HUD = null; 操作反馈字 = 操作提示字 = null; 操作反馈秒 = 灵力闪色秒 = 0; 上次手机技能掩码 = -1;
+        主动HUD = null; 操作反馈字 = 操作提示字 = 战斗连势字 = 战斗态势字 = null; 操作反馈秒 = 灵力闪色秒 = 0; 上次手机技能掩码 = -1;
         闪避冷却轨道 = 闪避冷却进度 = null;
         for (int i = 0; i < 6; i++) { 技能键[i] = null; 技能透明[i] = null; 技能冷却遮罩[i] = null; 技能标签[i] = 技能状态字[i] = 技能按键字[i] = null; }
     }
@@ -297,8 +351,10 @@ public partial class 天帝界面
         // 反馈条至少保留240×40逻辑像素，长提示不会被压成一团，也避开两行技能栏。
         置(操作反馈区, w * .5f - (手机 ? 125 : 190), h - (手机 ? 190 : 224), 手机 ? 250 : 380, 手机 ? 42 : 46);
         天帝响应布局.比例(操作反馈字.rectTransform, .045f, .08f, .91f, .84f);
-        操作提示字.gameObject.SetActive(!手机);
-        置(操作提示字.rectTransform, 手机 ? w - 174 : w * .5f - 304, h - (手机 ? 138 : 190), 手机 ? 168 : 608, 手机 ? 18 : 32);
+        操作提示字.gameObject.SetActive(true);
+        置(操作提示字.rectTransform, 手机 ? w * .5f - 110 : w * .5f - 304, h - (手机 ? 84 : 190), 手机 ? 220 : 608, 手机 ? 22 : 32);
+        if (战斗连势字 != null) 置(战斗连势字.rectTransform, 手机 ? 0 : w * .5f - 90, h - 184, 180, 24);
+        if (战斗态势字 != null) 置(战斗态势字.rectTransform, 手机 ? w * .5f - 72 : w * .5f - 110, h - (手机 ? 86 : 210), 手机 ? 144 : 220, 24);
         var 地图状态 = 战斗界面层.Find("主角战斗状态") as RectTransform;
         // 顶部信息卡保持左右安全边距，并给手机留出足够的两行文字高度。
         置(地图状态, 手机 ? 10 : 18, 手机 ? 8 : 18, 手机 ? 178 : 290, 手机 ? 52 : 76);

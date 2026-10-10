@@ -26,6 +26,7 @@ public partial class 天帝界面
     readonly Text 存档状态字;
     Text 战斗坐标;
     Text 战斗目标;
+    Text 战斗锁定信息;
     string 移动目标上次文本;
     float 移动目标显示截止;
     Text 战斗波次;
@@ -172,7 +173,7 @@ public partial class 天帝界面
         if (!保留序章画面 && 序章全屏媒体 != null) { 序章全屏媒体.gameObject.SetActive(false); 删除界面对象(序章全屏媒体.gameObject); 序章全屏媒体 = null; }
         var 旧排版 = 页面.GetComponent<天帝移动排版>(); if (旧排版 != null) 旧排版.排版 = null;
         清空(页面); 清空(弹层); 设置已打开 = 确认已打开 = 地图已打开 = 角色已打开 = 图鉴已打开 = 宝盒已打开 = 回收已打开 = false; 角色页 = null; 图鉴页 = null; 回收页 = null; 宝盒概率层 = null; 页面背景.enabled = !保留序章画面;
-        战斗小地图 = null; 战斗坐标 = null; 战斗目标 = 战斗波次 = null; 移动目标上次文本 = null; 移动目标显示截止 = 0; 战斗离开 = null; 战斗摇杆 = null; 触控跑步 = false;
+        战斗小地图 = null; 战斗坐标 = null; 战斗目标 = 战斗锁定信息 = 战斗波次 = null; 移动目标上次文本 = null; 移动目标显示截止 = 0; 战斗离开 = null; 战斗摇杆 = null; 触控跑步 = false;
         战斗血量 = 战斗配置字 = null; 战斗血条 = null; 伤害字池.Clear();
         掉落提示 = null;
         序章字卡 = null; 序章标题 = 序章正文 = null;
@@ -643,6 +644,27 @@ public partial class 天帝界面
             }
             else 战斗目标.gameObject.SetActive(true);
         }
+    }
+
+    // 自动战斗仍然以最近敌人为目标；用独立的一行状态把锁敌、血量和护盾传达给玩家，
+    // 避免只看场景中的识别环而不知道系统当前实际在打谁。
+    void 更新战斗锁定信息(天帝战斗系统 战)
+    {
+        if (战斗锁定信息 == null) return;
+        var 目标 = 战?.锁定目标;
+        if (目标 == null || !目标.存活)
+        {
+            战斗锁定信息.text = "未锁定目标";
+            战斗锁定信息.color = new Color(.62f, .72f, .68f);
+            return;
+        }
+        float 血 = 目标.血量 / Mathf.Max(.01f, 目标.最大血量);
+        string 盾 = 目标.护盾量 > .01f ? " 盾 " + 战斗短数(目标.护盾量) : "";
+        string 粘滞 = 战.锁定目标剩余秒 > .01f ? " · " + 战.锁定目标剩余秒.ToString("0.0") + "s" : "";
+        战斗锁定信息.text = "锁定  " + 目标.名称 + "  Lv." + 目标.等级 + "  " + (血 * 100).ToString("0") + "%" + 盾 + 粘滞;
+        战斗锁定信息.color = 目标.布点.级别 == 战斗敌人级别.王级
+            ? new Color(1f, .73f, .36f)
+            : new Color(.80f, .92f, .82f);
     }
     public void 更新战斗位置(Vector2 位置, Vector2Int 格)
     {

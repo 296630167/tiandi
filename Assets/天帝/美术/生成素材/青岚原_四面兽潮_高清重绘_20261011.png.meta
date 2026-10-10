@@ -1,0 +1,41 @@
+fileFormatVersion: 2
+guid: 38097aa4311041f4b17a6b8e3efe88fe
+TextureImporter:
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+    sRGBTexture: 1
+  isReadable: 0
+  maxTextureSize: 4096
+  textureSettings:
+    filterMode: 1
+    aniso: 8
+    wrapU: 1
+    wrapV: 1
+  nPOTScale: 0
+  spriteMode: 1
+  spriteMeshType: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  textureType: 8
+  alphaIsTransparency: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 100
+    overridden: 0
+  spriteSheet:
+    sprites: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 38097aa4311041f4b17a6b8e3efe88fe
+    internalID: 0
+  userData: Tap重绘青岚原四面兽潮高清底图_保留原构图与通行拓扑_20261011
+  assetBundleName:
+  assetBundleVariant:
+

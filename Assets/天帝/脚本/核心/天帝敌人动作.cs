@@ -23,8 +23,9 @@ public sealed class 天帝敌人动作
         {
             var frames=new Sprite[5];for(int i=0;i<5;i++)frames[i]=Resources.Load<Sprite>("敌人动作/"+code+"_"+i);缓存.Add(code,frames);
             var 配置=Resources.Load<天帝战斗帧动画>("角色帧动画/"+code);
-            // 狼王凑活候选只提供南向待机；缺少的移动、奔跑和攻击动作继续回退旧静态帧。
-            if(配置==null&&code.StartsWith("BTB",System.StringComparison.OrdinalIgnoreCase))
+            // 狼王第一阶段使用已验收的通用待机动画；后续阶段必须切到各自的
+            // BTB02~BTB05 静态帧，确保转阶段时观战者能看出形态变化。
+            if(配置==null&&string.Equals(code,"BTB01",System.StringComparison.OrdinalIgnoreCase))
                 配置=Resources.Load<天帝战斗帧动画>("角色帧动画/BTB_IDLE_R1");
             方向配置.Add(code,配置!=null&&配置.可用?配置:null);
         }

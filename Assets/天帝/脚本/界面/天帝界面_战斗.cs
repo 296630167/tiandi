@@ -83,7 +83,9 @@ public partial class 天帝界面
         战斗小地图.当前地图 = 游戏.战斗场景.地图; 战斗小地图.SetVerticesDirty();
         var 目标框 = 战斗角落("战斗目标", Vector2.zero, new Vector2(18, 82), new Vector2(300, 52));
         var 目标底 = 目标框.gameObject.AddComponent<Image>(); 战斗面板(目标底);
-        战斗目标 = 战斗文字(目标框, "", 10, 4, 280, 44, 16, 天帝道纹美术.浅字);
+        战斗锁定信息 = 战斗文字(目标框, "未锁定目标", 10, 2, 280, 20, 14, new Color(.80f, .92f, .82f));
+        战斗锁定信息.name = "自动锁定信息";
+        战斗目标 = 战斗文字(目标框, "", 10, 23, 280, 25, 15, 天帝道纹美术.浅字);
         战斗目标.color = 天帝界面主题.浅字;
         战斗目标.horizontalOverflow = HorizontalWrapMode.Wrap;
 
@@ -99,7 +101,7 @@ public partial class 天帝界面
         战斗离开 = 按钮(离开区, "返回主页", 0, 0, 142, 44, 游戏.返回主页);
         var 离开字 = 战斗离开 != null ? 战斗离开.GetComponentInChildren<Text>() : null;
         if (离开字 != null) 离开字.fontSize = 19;
-        if (手机)
+        if (手机 && 游戏.战斗场景?.战斗?.纯AI模式 != true)
         {
             var 摇杆区 = 战斗角落("移动摇杆", Vector2.zero, new Vector2(18, 18), new Vector2(154, 154));
             战斗摇杆 = 摇杆区.gameObject.AddComponent<天帝移动摇杆>();
@@ -123,6 +125,7 @@ public partial class 天帝界面
     {
         战斗条进度(战斗血条,战斗生命底,人.当前血量/Mathf.Max(1,人.血量));
         刷新主动战斗HUD(战, 人);
+        更新战斗锁定信息(战);
         if(Time.unscaledTime<下次战斗文本刷新&&!战斗已暂停)return;
         下次战斗文本刷新=Time.unscaledTime+天帝战斗润色.取("hud_interval");
         if (战斗血量 != null) 战斗血量.text = "Lv." + 人.等级 + "  生命 " + 战斗短数(人.当前血量) + " / " + 战斗短数(人.血量) + "  盾 " + 战斗短数(人.当前灵气护盾 + 战.特性临时护盾);
@@ -168,7 +171,7 @@ public partial class 天帝界面
         字(收益,"本局收获",20,10,200,34,22,天帝道纹美术.强调).alignment=TextAnchor.MiddleLeft;
         掉落提示 = 战斗文字(收益, "", 20, 49, 824, 42, 20, 纸);
         战斗坐标 = 战斗文字(详情, "", 28, 495, 864, 34, 16, 天帝道纹美术.次文);
-        字(详情, 天帝移动适配.启用 ? "自动索敌 · 摇杆移动 · 闪避键" : "自动索敌 · WASD移动 · 空格闪避 · Esc暂停", 28, 539, 864, 32, 17, 天帝道纹美术.次文);
+        字(详情, "自动观战 · 道纹构筑展示 · Esc暂停", 28, 539, 864, 32, 17, 天帝道纹美术.次文);
         var 继续键 = 按钮(详情, "继续战斗", 80, 590, 340, 54, 关闭战斗暂停, true);
         var 继续字 = 继续键 != null ? 继续键.GetComponentInChildren<Text>() : null; if (继续字 != null) 继续字.fontSize = 23;
         var 返回键 = 按钮(详情, "返回主页", 500, 590, 340, 54, 游戏.返回主页);
@@ -268,14 +271,20 @@ public partial class 天帝界面
         区("战斗小地图底", .015f, 图顶, 图宽 / 宽, 图高 / 高);
         if (战斗小地图 != null) 天帝响应布局.比例(战斗小地图.rectTransform, .025f, .06f, .95f, .88f);
         // 导航目标与小地图共用左边界，PC放上方，手机放下方并避开底部摇杆。
-        float 目标高 = 手机 ? 30 : 64, 间距 = 手机 ? 6 : 12;
+        float 目标高 = 手机 ? 32 : 64, 间距 = 手机 ? 6 : 12;
         float 目标宽 = Mathf.Max(图宽, 手机 ? 180 : 300);
         区("战斗目标", 手机 ? .015f : .015f+(图宽+间距)/宽, 手机 ? 图顶 + 图高 / 高 + 间距 / 高 : .98f-目标高/高, 目标宽 / 宽, 目标高 / 高);
         if (战斗目标 != null)
         {
-            天帝响应布局.比例(战斗目标.rectTransform, .045f, .08f, .91f, .84f);
-            战斗目标.fontSize = 手机 ? 10 : 16;
+            天帝响应布局.比例(战斗目标.rectTransform, .045f, 手机 ? .48f : .40f, .91f, 手机 ? .46f : .54f);
+            战斗目标.fontSize = 手机 ? 9 : 15;
             战斗目标.horizontalOverflow = HorizontalWrapMode.Overflow;
+        }
+        if (战斗锁定信息 != null)
+        {
+            天帝响应布局.比例(战斗锁定信息.rectTransform, .045f, .04f, .91f, 手机 ? .40f : .34f);
+            战斗锁定信息.fontSize = 手机 ? 9 : 14;
+            战斗锁定信息.horizontalOverflow = HorizontalWrapMode.Overflow;
         }
         // 拾取通知需要保留完整的两行文案；移动端给出更宽的右侧安全区，避免字体被压缩成一团。
         区("拾取提示列表", 手机 ? .53f : .70f, 手机 ? .39f : .56f, 手机 ? .45f : .285f, 手机 ? .36f : .34f);

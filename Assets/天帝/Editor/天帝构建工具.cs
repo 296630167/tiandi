@@ -31,7 +31,16 @@ public static class 天帝构建工具
     public static string 验证改造材料锁定() => 天帝改造背包验证.验证材料锁定();
     public static string 接入战斗扩展() => 天帝战斗扩展接入.导入();
     public static string 验证战斗扩展() => 天帝战斗扩展验证.运行();
+    public static string 验证战斗手感扩展() => 天帝战斗手感扩展验证.运行();
     public static string 验证战斗扩展实战() => 天帝战斗扩展实战验证.启动();
+    // 批处理/重启编辑器时没有活动场景，验证入口自行打开正式主场景。
+    public static string 验证战斗扩展实战批处理()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("请先退出运行模式。");
+        if (EditorSceneManager.GetActiveScene().isDirty) throw new InvalidOperationException("当前场景有未保存修改，请先保存。");
+        if (EditorSceneManager.GetActiveScene().path != 主场景) EditorSceneManager.OpenScene(主场景);
+        return 天帝战斗扩展实战验证.启动();
+    }
     public static string 验证道纹回收() => 天帝道纹回收验证.运行();
     public static string 巡检全部页面() => 天帝全页巡检.启动();
     public static string 补拍信息层级() => 天帝全页巡检.启动层级补拍();
@@ -48,6 +57,7 @@ public static class 天帝构建工具
     public static string 验证灵石掉落() => 天帝灵石掉落验证.运行();
     public static string 验证真实数值() => 天帝真实数值验证.运行();
     public static string 验证第三轮战斗() => 天帝第三轮战斗验证.运行();
+    public static string 验证第三轮清晰度() => 天帝第三轮清晰度验证.运行();
     public static string 验证第三轮界面() => 天帝第三轮界面验证.运行();
     public static string 验证第三轮流程() => 天帝第三轮流程验证.运行();
     public static string 验证第三轮寻路() => 天帝第三轮寻路验证.运行();

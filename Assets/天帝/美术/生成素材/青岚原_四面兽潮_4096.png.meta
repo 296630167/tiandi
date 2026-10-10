@@ -9,7 +9,7 @@ TextureImporter:
   isReadable: 0
   maxTextureSize: 4096
   textureSettings:
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     wrapU: 1
     wrapV: 1
@@ -25,7 +25,7 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 4096
     textureFormat: -1
-    textureCompression: 2
+    textureCompression: 0
     compressionQuality: 100
     overridden: 0
   spriteSheet:
